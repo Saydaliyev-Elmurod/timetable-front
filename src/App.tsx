@@ -13,6 +13,11 @@ export default function App() {
   const [language, setLanguage] = useState('en');
 
   useEffect(() => {
+    // Set default theme to light
+    document.documentElement.classList.add('light');
+  }, []);
+
+  useEffect(() => {
     // Check if user is already logged in
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -28,7 +33,7 @@ export default function App() {
     }
   }, []);
 
-  const handleLanguageChange = (newLanguage) => {
+  const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage);
     localStorage.setItem('language', newLanguage);
   };
@@ -45,7 +50,7 @@ export default function App() {
     setCurrentView('landing');
   };
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData: any) => {
     setUser(userData);
     setIsAuthenticated(true);
     setCurrentView('dashboard');

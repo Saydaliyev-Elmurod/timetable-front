@@ -82,63 +82,10 @@ interface PageResponse<T> {
   number: number;
 }
 
-// Import mock API
-import { mockSubjectApi } from '../api/mockApi';
+// Import services
+import { SubjectService } from '@/lib/subjects';
 
-// API functions - using mock API for now
-const API_BASE_URL = 'http://localhost:8080/api/subjects/v1';
-const USE_MOCK_API = true; // Set to false when backend is available
-
-const subjectApi = {
-  getAll: async (): Promise<SubjectResponse[]> => {
-    if (USE_MOCK_API) return mockSubjectApi.getAll();
-    const response = await fetch(`${API_BASE_URL}/all`);
-    if (!response.ok) throw new Error('Failed to fetch subjects');
-    return response.json();
-  },
-
-  getPaginated: async (page: number, size: number): Promise<PageResponse<SubjectResponse>> => {
-    if (USE_MOCK_API) return mockSubjectApi.getPaginated(page, size);
-    const response = await fetch(`${API_BASE_URL}?page=${page}&size=${size}`);
-    if (!response.ok) throw new Error('Failed to fetch subjects');
-    return response.json();
-  },
-
-  getById: async (id: number): Promise<SubjectResponse> => {
-    if (USE_MOCK_API) return mockSubjectApi.getById(id);
-    const response = await fetch(`${API_BASE_URL}/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch subject');
-    return response.json();
-  },
-
-  create: async (data: SubjectRequest): Promise<void> => {
-    if (USE_MOCK_API) return mockSubjectApi.create(data);
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create subject');
-  },
-
-  update: async (id: number, data: SubjectRequest): Promise<void> => {
-    if (USE_MOCK_API) return mockSubjectApi.update(id, data);
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update subject');
-  },
-
-  delete: async (id: number): Promise<void> => {
-    if (USE_MOCK_API) return mockSubjectApi.delete(id);
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to delete subject');
-  },
-};
+// Using SubjectService imported from @/lib/subjects
 
 // Helper function to convert old format to new API format
 const convertToTimeSlots = (availability: any): TimeSlot[] => {
@@ -159,7 +106,7 @@ const convertToTimeSlots = (availability: any): TimeSlot[] => {
 };
 
 // Helper function to convert API format to old format
-const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
+const convertFromTimeSlots = (timeSlots: TimeSlot[] | null | undefined): any => {
   const availability: any = {
     monday: [],
     tuesday: [],
@@ -170,9 +117,13 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
     sunday: [],
   };
 
+  if (!timeSlots) return availability;
+
   timeSlots.forEach((slot) => {
     const dayKey = slot.dayOfWeek.toLowerCase();
-    availability[dayKey] = slot.lessons;
+    if (dayKey in availability) {
+      availability[dayKey] = slot.lessons;
+    }
   });
 
   return availability;
@@ -216,7 +167,10 @@ export default function SubjectsPage() {
   // Availability view for existing subjects
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
 
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+type AvailabilityMap = Record<DayOfWeek, number[]>;
+
+const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
@@ -228,7 +182,7 @@ export default function SubjectsPage() {
   const fetchSubjects = async () => {
     try {
       setIsLoading(true);
-      const data = await subjectApi.getPaginated(currentPage, itemsPerPage);
+      const data = await SubjectService.getPaginated(currentPage, itemsPerPage);
       setSubjects(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
@@ -281,7 +235,7 @@ export default function SubjectsPage() {
   const handleEdit = async (subject: SubjectResponse) => {
     try {
       setIsSaving(true);
-      const subjectData = await subjectApi.getById(subject.id);
+      const subjectData = await SubjectService.getById(subject.id);
       setEditingSubjectId(subject.id);
       setInlineFormData({
         name: subjectData.name,
@@ -338,10 +292,10 @@ export default function SubjectsPage() {
     try {
       setIsSaving(true);
       if (editingSubjectId) {
-        await subjectApi.update(editingSubjectId, requestData);
+        await SubjectService.update(editingSubjectId, requestData);
         toast.success('Fan muvaffaqiyatli yangilandi');
       } else {
-        await subjectApi.create(requestData);
+        await SubjectService.create(requestData);
         toast.success('Fan muvaffaqiyatli qo\'shildi');
       }
       setShowInlineForm(false);
@@ -372,11 +326,11 @@ export default function SubjectsPage() {
     });
   };
 
-  const toggleInlineAvailability = (day: string, period: number) => {
+  const toggleInlineAvailability = (day: DayOfWeek, period: number) => {
     setInlineFormData(prev => {
       const dayPeriods = prev.availability[day];
       const newPeriods = dayPeriods.includes(period)
-        ? dayPeriods.filter(p => p !== period)
+        ? dayPeriods.filter((p: number) => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
       
       return {
@@ -389,7 +343,7 @@ export default function SubjectsPage() {
     });
   };
 
-  const toggleInlineDay = (day: string) => {
+  const toggleInlineDay = (day: DayOfWeek) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
     
@@ -453,7 +407,7 @@ export default function SubjectsPage() {
   const confirmDelete = async () => {
     if (deleteDialogSubject) {
       try {
-        await subjectApi.delete(deleteDialogSubject.id);
+        await SubjectService.delete(deleteDialogSubject.id);
         toast.success('Subject deleted successfully');
         setDeleteDialogSubject(null);
         await fetchSubjects();
@@ -472,7 +426,8 @@ export default function SubjectsPage() {
     toast.success('Template downloaded successfully');
   };
 
-  const getTotalAvailablePeriods = (availabilities: TimeSlot[]) => {
+  const getTotalAvailablePeriods = (availabilities: TimeSlot[] | null | undefined) => {
+    if (!availabilities) return 0;
     return availabilities.reduce((total, slot) => total + slot.lessons.length, 0);
   };
 
@@ -934,7 +889,7 @@ export default function SubjectsPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogSubject} onOpenChange={(open) => !open && setDeleteDialogSubject(null)}>
+      <AlertDialog open={!!deleteDialogSubject} onOpenChange={(open: boolean) => !open && setDeleteDialogSubject(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

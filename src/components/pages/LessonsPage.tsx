@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import React, { useState, useMemo } from 'react';
+
+// Types
+import { InternalLesson } from '@/types/lessons';
+import { GroupedData, ConflictDetail, ViewType, LessonSubmitData } from '@/types/common';
+
+// UI Components
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../ui/card';
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -15,25 +22,41 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../ui/table';
+} from '@/components/ui/table';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '../ui/tabs';
+} from '@/components/ui/tabs';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '../ui/collapsible';
+} from '@/components/ui/collapsible';
+
+// Utils & Hooks
+import { cn } from '@/components/ui/utils';
+import { toast } from 'sonner';
 import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  Upload, 
-  Download, 
-  Users, 
+  getLessonsByClass, 
+  getLessonsByTeacher, 
+  getLessonsBySubject, 
+  getLessonsByRoom 
+} from '@/lib/lessonGroups';
+import { filterLessons, paginateLessons } from '@/lib/lessonUtils';
+
+// Components
+import AddLessonModal from '@/components/AddLessonModal';
+
+// Icons
+import { 
+  Plus,
+  Pencil,
+  Trash2,
+  Upload,
+  Download,
+  Users,
   GraduationCap,
   BookOpen,
   MapPin,
@@ -47,86 +70,20 @@ import {
   Lightbulb,
   Target,
   Zap,
-  HelpCircle
+  HelpCircle,
 } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import { toast } from 'sonner@2.0.3';
-import AddLessonModal from '../AddLessonModal';
-import { cn } from '../ui/utils';
 
 export default function LessonsPage() {
-  const [lessons, setLessons] = useState([
-    {
-      id: 1,
-      subject: 'Mathematics',
-      teacher: 'Mr. Karimov',
-      class: '1-A',
-      day: 'Monday',
-      startTime: '09:00',
-      endTime: '10:00',
-      period: 1,
-      frequency: '3x/week',
-      room: 'Room 102',
-      duration: '45 min'
-    },
-    {
-      id: 2,
-      subject: 'English',
-      teacher: 'Ms. Aliyeva',
-      class: '1-A',
-      day: 'Monday',
-      startTime: '10:00',
-      endTime: '11:00',
-      period: 2,
-      frequency: '4x/week',
-      room: 'Room 101',
-      duration: '45 min'
-    },
-    {
-      id: 3,
-      subject: 'Physics',
-      teacher: 'Ms. Rustamova',
-      class: '2-B',
-      day: 'Tuesday',
-      startTime: '09:00',
-      endTime: '11:00',
-      period: 1,
-      frequency: '2x/week',
-      room: 'Lab A',
-      duration: '90 min'
-    },
-    {
-      id: 4,
-      subject: 'Mathematics',
-      teacher: 'Mr. Karimov',
-      class: '2-B',
-      day: 'Wednesday',
-      startTime: '09:00',
-      endTime: '10:00',
-      period: 1,
-      frequency: '3x/week',
-      room: 'Room 102',
-      duration: '45 min'
-    },
-    {
-      id: 5,
-      subject: 'Chemistry',
-      teacher: 'Dr. Nazarov',
-      class: '3-A',
-      day: 'Thursday',
-      startTime: '10:00',
-      endTime: '11:00',
-      period: 2,
-      frequency: '2x/week',
-      room: 'Lab B',
-      duration: '60 min'
-    },
-  ]);
-
-  const [activeTab, setActiveTab] = useState('classes');
+  const [lessons, setLessons] = useState<InternalLesson[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [activeTab, setActiveTab] = useState('classes');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingLesson, setEditingLesson] = useState(null);
+  const [editingLesson, setEditingLesson] = useState<InternalLesson | null>(null);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
@@ -134,86 +91,14 @@ export default function LessonsPage() {
   const availableTeachers = ['Mr. Karimov', 'Ms. Aliyeva', 'Ms. Rustamova', 'Dr. Nazarov', 'Ms. Tursunova'];
   const availableSubjects = ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'History'];
 
-  // Group lessons by different categories
-  const lessonsByClass = React.useMemo(() => {
-    const grouped = lessons.reduce((acc, lesson) => {
-      if (!acc[lesson.class]) {
-        acc[lesson.class] = [];
-      }
-      acc[lesson.class].push(lesson);
-      return acc;
-    }, {});
+  const lessonsByClass = useMemo(() => getLessonsByClass(lessons), [lessons]);
 
-    return Object.entries(grouped).map(([className, classLessons]) => ({
-      id: className,
-      name: className,
-      lessons: classLessons,
-      totalLessons: classLessons.length,
-      totalPeriods: classLessons.reduce((sum, lesson) => sum + parseInt(lesson.frequency), 0),
-      teachers: [...new Set(classLessons.map(l => l.teacher))].length,
-      subjects: [...new Set(classLessons.map(l => l.subject))].length
-    }));
-  }, [lessons]);
+  const lessonsByTeacher = useMemo(() => getLessonsByTeacher(lessons), [lessons]);
 
-  const lessonsByTeacher = React.useMemo(() => {
-    const grouped = lessons.reduce((acc, lesson) => {
-      if (!acc[lesson.teacher]) {
-        acc[lesson.teacher] = [];
-      }
-      acc[lesson.teacher].push(lesson);
-      return acc;
-    }, {});
+  const lessonsBySubject = useMemo(() => getLessonsBySubject(lessons), [lessons]);
+  const lessonsByRoom = useMemo(() => getLessonsByRoom(lessons), [lessons]);
 
-    return Object.entries(grouped).map(([teacherName, teacherLessons]) => ({
-      id: teacherName,
-      name: teacherName,
-      lessons: teacherLessons,
-      totalLessons: teacherLessons.length,
-      totalPeriods: teacherLessons.reduce((sum, lesson) => sum + parseInt(lesson.frequency), 0),
-      classes: [...new Set(teacherLessons.map(l => l.class))].length,
-      subjects: [...new Set(teacherLessons.map(l => l.subject))].length
-    }));
-  }, [lessons]);
-
-  const lessonsBySubject = React.useMemo(() => {
-    const grouped = lessons.reduce((acc, lesson) => {
-      if (!acc[lesson.subject]) {
-        acc[lesson.subject] = [];
-      }
-      acc[lesson.subject].push(lesson);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).map(([subjectName, subjectLessons]) => ({
-      id: subjectName,
-      name: subjectName,
-      lessons: subjectLessons,
-      totalLessons: subjectLessons.length,
-      teachers: [...new Set(subjectLessons.map(l => l.teacher))].length,
-      classes: [...new Set(subjectLessons.map(l => l.class))].length
-    }));
-  }, [lessons]);
-
-  const lessonsByRoom = React.useMemo(() => {
-    const grouped = lessons.reduce((acc, lesson) => {
-      if (!acc[lesson.room]) {
-        acc[lesson.room] = [];
-      }
-      acc[lesson.room].push(lesson);
-      return acc;
-    }, {});
-
-    return Object.entries(grouped).map(([roomName, roomLessons]) => ({
-      id: roomName,
-      name: roomName,
-      lessons: roomLessons,
-      totalPeriods: roomLessons.reduce((sum, lesson) => sum + parseInt(lesson.frequency), 0),
-      teachers: [...new Set(roomLessons.map(l => l.teacher))].length,
-      classes: [...new Set(roomLessons.map(l => l.class))].length
-    }));
-  }, [lessons]);
-
-  const toggleCardExpansion = (cardId) => {
+  const toggleCardExpansion = (cardId: string) => {
     setExpandedCards(prev => {
       const newSet = new Set(prev);
       if (newSet.has(cardId)) {
@@ -235,7 +120,7 @@ export default function LessonsPage() {
     setAllExpanded(!allExpanded);
   };
 
-  const getCurrentTabData = () => {
+  const getCurrentTabData = (): GroupedData[] => {
     switch (activeTab) {
       case 'classes':
         return lessonsByClass;
@@ -250,8 +135,8 @@ export default function LessonsPage() {
     }
   };
 
-  const detectConflicts = React.useCallback((newLesson, excludeId = null) => {
-    const conflictList = [];
+  const detectConflicts = React.useCallback((newLesson: InternalLesson, excludeId: number | null = null): ConflictDetail[] => {
+    const conflictList: ConflictDetail[] = [];
     
     // Check for teacher conflicts
     const teacherConflicts = lessons.filter(
@@ -288,25 +173,25 @@ export default function LessonsPage() {
     return conflictList;
   }, [lessons]);
 
-  const handleAdd = (targetClass = null) => {
+  const handleAdd = (targetClass: string | null = null) => {
     setEditingLesson(null);
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (lesson) => {
+  const handleEdit = (lesson: InternalLesson) => {
     setEditingLesson(lesson);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     setLessons(lessons.filter((l) => l.id !== id));
     toast('Lesson deleted successfully');
   };
 
-  const handleSubmit = (lessonData) => {
+  const handleSubmit = (lessonData: LessonSubmitData) => {
     if (lessonData.multiClass && lessonData.selectedClasses.length > 1) {
       // Handle multi-class lesson creation
-      const newLessons = lessonData.selectedClasses.map((className, index) => ({
+      const newLessons = lessonData.selectedClasses.map((className: string, index: number): InternalLesson => ({
         id: lessons.length + index + 1,
         subject: lessonData.subject,
         teacher: lessonData.selectedTeachers[0] || 'TBD',
@@ -345,7 +230,7 @@ export default function LessonsPage() {
         );
         toast('Lesson updated successfully');
       } else {
-        const newLesson = {
+        const newLesson: InternalLesson = {
           id: lessons.length + 1,
           ...singleLessonData,
         };
@@ -357,7 +242,7 @@ export default function LessonsPage() {
     setIsDialogOpen(false);
   };
 
-  const renderLessonCard = (item, type) => {
+  const renderLessonCard = (item: GroupedData, type: ViewType) => {
     const isExpanded = expandedCards.has(item.id);
     
     return (
@@ -451,7 +336,7 @@ export default function LessonsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {type === 'classes' && (
-                    <Button size="sm" onClick={(e) => {
+                    <Button size="sm" onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleAdd(item.name);
                     }}>
@@ -512,7 +397,7 @@ export default function LessonsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {item.lessons.map((lesson) => (
+                  {item.lessons.map((lesson: InternalLesson) => (
                     <TableRow key={lesson.id}>
                       {type === 'classes' && (
                         <>
@@ -663,19 +548,19 @@ export default function LessonsPage() {
           </TabsList>
 
           <TabsContent value="classes" className="space-y-4">
-            {lessonsByClass.map(item => renderLessonCard(item, 'classes'))}
+            {lessonsByClass.map((item: GroupedData) => renderLessonCard(item, 'classes'))}
           </TabsContent>
 
           <TabsContent value="teachers" className="space-y-4">
-            {lessonsByTeacher.map(item => renderLessonCard(item, 'teachers'))}
+            {lessonsByTeacher.map((item: GroupedData) => renderLessonCard(item, 'teachers'))}
           </TabsContent>
 
           <TabsContent value="subjects" className="space-y-4">
-            {lessonsBySubject.map(item => renderLessonCard(item, 'subjects'))}
+            {lessonsBySubject.map((item: GroupedData) => renderLessonCard(item, 'subjects'))}
           </TabsContent>
 
           <TabsContent value="rooms" className="space-y-4">
-            {lessonsByRoom.map(item => renderLessonCard(item, 'rooms'))}
+            {lessonsByRoom.map((item: GroupedData) => renderLessonCard(item, 'rooms'))}
           </TabsContent>
         </Tabs>
 

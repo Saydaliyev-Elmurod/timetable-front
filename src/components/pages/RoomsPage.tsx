@@ -47,90 +47,16 @@ import {
 } from '../ui/tooltip';
 import { Switch } from '../ui/switch';
 
-// API Types
-interface TimeSlot {
-  dayOfWeek: string;
-  lessons: number[];
-}
+// Import services and types
+import {
+  RoomService,
+  RoomRequest,
+  RoomResponse,
+  TimeSlot
+} from '@/lib/rooms';
+import type { PaginatedResponse } from '@/lib/api';
 
-interface RoomRequest {
-  name: string;
-  shortName: string;
-  availabilities: TimeSlot[];
-}
-
-interface RoomResponse {
-  id: number;
-  name: string;
-  shortName: string;
-  availabilities: TimeSlot[];
-}
-
-interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-}
-
-// Import mock API
-import { mockRoomApi } from '../api/mockApi';
-
-// API functions - using mock API for now
-const API_BASE_URL = 'http://localhost:8080/api/rooms/v1';
-const USE_MOCK_API = true; // Set to false when backend is available
-
-const roomApi = {
-  getAll: async (): Promise<RoomResponse[]> => {
-    if (USE_MOCK_API) return mockRoomApi.getAll();
-    const response = await fetch(`${API_BASE_URL}/all`);
-    if (!response.ok) throw new Error('Failed to fetch rooms');
-    return response.json();
-  },
-
-  getPaginated: async (page: number, size: number): Promise<PageResponse<RoomResponse>> => {
-    if (USE_MOCK_API) return mockRoomApi.getPaginated(page, size);
-    const response = await fetch(`${API_BASE_URL}?page=${page}&size=${size}`);
-    if (!response.ok) throw new Error('Failed to fetch rooms');
-    return response.json();
-  },
-
-  getById: async (id: number): Promise<RoomResponse> => {
-    if (USE_MOCK_API) return mockRoomApi.getById(id);
-    const response = await fetch(`${API_BASE_URL}/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch room');
-    return response.json();
-  },
-
-  create: async (data: RoomRequest): Promise<void> => {
-    if (USE_MOCK_API) return mockRoomApi.create(data);
-    const response = await fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create room');
-  },
-
-  update: async (id: number, data: RoomRequest): Promise<void> => {
-    if (USE_MOCK_API) return mockRoomApi.update(id, data);
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update room');
-  },
-
-  delete: async (id: number): Promise<void> => {
-    if (USE_MOCK_API) return mockRoomApi.delete(id);
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to delete room');
-  },
-};
+// Using RoomService imported from @/lib/rooms
 
 // Helper function to convert old format to new API format
 const convertToTimeSlots = (availability: any): TimeSlot[] => {
@@ -205,7 +131,8 @@ export default function RoomsPage() {
   // Availability view for existing rooms
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
 
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
@@ -217,7 +144,7 @@ export default function RoomsPage() {
   const fetchRooms = async () => {
     try {
       setIsLoading(true);
-      const data = await roomApi.getPaginated(currentPage, itemsPerPage);
+      const data = await RoomService.getPaginated(currentPage, itemsPerPage);
       setRooms(data.content);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
@@ -267,7 +194,7 @@ export default function RoomsPage() {
   const handleEdit = async (room: RoomResponse) => {
     try {
       setIsSaving(true);
-      const roomData = await roomApi.getById(room.id);
+      const roomData = await RoomService.getById(room.id);
       setEditingRoomId(room.id);
       setInlineFormData({
         name: roomData.name,
@@ -310,10 +237,10 @@ export default function RoomsPage() {
     try {
       setIsSaving(true);
       if (editingRoomId) {
-        await roomApi.update(editingRoomId, requestData);
+        await RoomService.update(editingRoomId, requestData);
         toast.success('Xona muvaffaqiyatli yangilandi');
       } else {
-        await roomApi.create(requestData);
+        await RoomService.create(requestData);
         toast.success('Xona muvaffaqiyatli qo\'shildi');
       }
       setShowInlineForm(false);
@@ -344,11 +271,11 @@ export default function RoomsPage() {
     });
   };
 
-  const toggleInlineAvailability = (day: string, period: number) => {
+  const toggleInlineAvailability = (day: DayOfWeek, period: number) => {
     setInlineFormData(prev => {
       const dayPeriods = prev.availability[day];
       const newPeriods = dayPeriods.includes(period)
-        ? dayPeriods.filter(p => p !== period)
+        ? dayPeriods.filter((p: number) => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
       
       return {
@@ -361,7 +288,7 @@ export default function RoomsPage() {
     });
   };
 
-  const toggleInlineDay = (day: string) => {
+  const toggleInlineDay = (day: DayOfWeek) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
     
@@ -425,7 +352,7 @@ export default function RoomsPage() {
   const confirmDelete = async () => {
     if (deleteDialogRoom) {
       try {
-        await roomApi.delete(deleteDialogRoom.id);
+        await RoomService.delete(deleteDialogRoom.id);
         toast.success('Xona muvaffaqiyatli o\'chirildi');
         setDeleteDialogRoom(null);
         await fetchRooms();
@@ -812,7 +739,7 @@ export default function RoomsPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogRoom} onOpenChange={(open) => !open && setDeleteDialogRoom(null)}>
+      <AlertDialog open={!!deleteDialogRoom} onOpenChange={(open: boolean) => !open && setDeleteDialogRoom(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

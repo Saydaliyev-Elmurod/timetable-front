@@ -1,14 +1,15 @@
 // API Configuration
 const API_CONFIG = {
-  BASE_URL: process.env.VITE_API_URL || 'http://localhost:8080',
-  USE_MOCK: process.env.VITE_USE_MOCK_API === 'true',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  USE_MOCK: import.meta.env.VITE_USE_MOCK_API === 'true',
   VERSION: 'v1',
   ENDPOINTS: {
     TEACHERS: '/api/teachers',
     SUBJECTS: '/api/subjects',
     ROOMS: '/api/rooms',
     TIMETABLES: '/api/timetables',
-    CLASSES: '/api/classes'
+    CLASSES: '/api/classes',
+    LESSONS: '/api/lessons'
   }
 } as const;
 

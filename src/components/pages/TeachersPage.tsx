@@ -104,7 +104,7 @@ const convertToTimeSlots = (availability: any): TimeSlot[] => {
 };
 
 // Helper function to convert API format to old format
-const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
+const convertFromTimeSlots = (timeSlots: TimeSlot[] | null | undefined): any => {
   const availability: any = {
     monday: [],
     tuesday: [],
@@ -115,9 +115,13 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
     sunday: [],
   };
 
+  if (!timeSlots) return availability;
+
   timeSlots.forEach((slot) => {
     const dayKey = slot.dayOfWeek.toLowerCase();
-    availability[dayKey] = slot.lessons;
+    if (dayKey in availability) {
+      availability[dayKey] = slot.lessons;
+    }
   });
 
   return availability;
@@ -464,7 +468,8 @@ export default function TeachersPage() {
     toast.success('Template downloaded successfully');
   };
 
-  const getTotalAvailablePeriods = (availabilities: TimeSlot[]) => {
+  const getTotalAvailablePeriods = (availabilities: TimeSlot[] | null | undefined) => {
+    if (!availabilities) return 0;
     return availabilities.reduce((total, slot) => total + slot.lessons.length, 0);
   };
 
@@ -767,7 +772,7 @@ export default function TeachersPage() {
                             {teacher.subjects.length === 0 ? (
                               <span className="text-sm text-muted-foreground">No subjects</span>
                             ) : (
-                              teacher.subjects.map((subject) => (
+                              teacher.subjects.map((subject: SubjectResponse) => (
                                 <Badge
                                   key={subject.id}
                                   variant="outline"
@@ -936,7 +941,7 @@ export default function TeachersPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogTeacher} onOpenChange={(open) => !open && setDeleteDialogTeacher(null)}>
+      <AlertDialog open={!!deleteDialogTeacher} onOpenChange={(open: boolean) => !open && setDeleteDialogTeacher(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
