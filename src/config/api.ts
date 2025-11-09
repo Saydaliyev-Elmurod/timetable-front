@@ -1,6 +1,16 @@
+
+function getBaseUrl() {
+  if (typeof window !== 'undefined' && window.location.host.includes('cloudworkstations.dev')) {
+    const currentHost = window.location.host;
+    const backendHost = currentHost.replace(/^\d+-/, '8080-');
+    return `https://${backendHost}`;
+  }
+  return 'http://localhost:8080';
+}
+
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:8080',
+  BASE_URL: getBaseUrl(),
   USE_MOCK: import.meta.env.VITE_USE_MOCK_API === 'true',
   ENDPOINTS: {
     TEACHERS: '/api/teachers/v1',
