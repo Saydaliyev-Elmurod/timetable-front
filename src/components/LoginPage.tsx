@@ -53,6 +53,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
         setIsVerificationStep(true);
       }
     } catch (err) {
+      console.error(err); // Log the full error
       setError('An unexpected error occurred.');
     } finally {
       setLoading(false);
@@ -86,6 +87,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
         });
       }
     } catch (err) {
+      console.error(err); // Log the full error
       setError('An unexpected error occurred.');
     } finally {
       setLoading(false);
