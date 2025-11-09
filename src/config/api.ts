@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  BASE_URL: 'http://localhost:8080',
   USE_MOCK: import.meta.env.VITE_USE_MOCK_API === 'true',
   ENDPOINTS: {
     TEACHERS: '/api/teachers/v1',
