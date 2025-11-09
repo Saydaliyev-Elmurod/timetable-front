@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ArrowLeft, BookOpen } from 'lucide-react';
+import { getCode, login, saveToken, verify } from '../lib/auth'; // Make sure to create this file
 
 export default function LoginPage({ onLogin, onBackToLanding }) {
   const [loginEmail, setLoginEmail] = useState('');
@@ -12,39 +13,93 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerificationStep, setIsVerificationStep] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    // Mock login - in real app, this would validate credentials
-    onLogin({
-      email: loginEmail,
-      name: loginEmail.split('@')[0],
-      avatar: `https://ui-avatars.com/api/?name=${loginEmail.split('@')[0]}&background=random`
-    });
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await login({ email: loginEmail, password: loginPassword });
+      if (result.error) {
+        setError(result.errorDescription);
+      } else {
+        saveToken(result.response.token);
+        onLogin({
+          email: loginEmail,
+          name: loginEmail.split('@')[0], // Placeholder, ideally from token/API
+          avatar: `https://ui-avatars.com/api/?name=${loginEmail.split('@')[0]}&background=random`
+        });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleGetCodeSubmit = async (e) => {
     e.preventDefault();
-    // Mock signup - in real app, this would create account
-    onLogin({
-      email: signupEmail,
-      name: signupName,
-      avatar: `https://ui-avatars.com/api/?name=${signupName}&background=random`
-    });
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getCode(signupEmail);
+      if (result.error) {
+        setError(result.errorDescription);
+      } else {
+        setIsVerificationStep(true);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  const handleVerifySubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const [name, ...surnameParts] = signupName.split(' ');
+    const surname = surnameParts.join(' ');
+
+    try {
+      const result = await verify({
+        name,
+        surname,
+        email: signupEmail,
+        code: parseInt(verificationCode, 10),
+        password: signupPassword,
+      });
+
+      if (result.error) {
+        setError(result.errorDescription);
+      } else {
+        saveToken(result.response.token);
+        onLogin({
+          email: signupEmail,
+          name: signupName,
+          avatar: `https://ui-avatars.com/api/?name=${signupName}&background=random`
+        });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleGoogleLogin = () => {
-    // Mock Google login
-    onLogin({
-      email: 'user@google.com',
-      name: 'Google User',
-      avatar: 'https://ui-avatars.com/api/?name=Google+User&background=random'
-    });
+    // This would be replaced with actual Google OAuth flow
+    setError('Google login is not implemented yet.');
   };
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center p-4">
-      {/* Back to Landing Button */}
       {onBackToLanding && (
         <Button 
           variant="ghost" 
@@ -73,6 +128,11 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
           </div>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 text-center text-red-500 bg-red-100 p-2 rounded-md">
+              {error}
+            </div>
+          )}
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -90,6 +150,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -101,53 +162,77 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
-                  Sign In
+                <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" disabled={loading}>
+                  {loading ? 'Signing In...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
             
             <TabsContent value="signup">
-              <form onSubmit={handleSignupSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700">
-                  Create Account
-                </Button>
-              </form>
+              {!isVerificationStep ? (
+                <form onSubmit={handleGetCodeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700" disabled={loading}>
+                    {loading ? 'Sending Code...' : 'Get Verification Code'}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifySubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="verification-code">Verification Code</Label>
+                    <Input
+                      id="verification-code"
+                      type="text"
+                      placeholder="Enter the code from your email"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700" disabled={loading}>
+                    {loading ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+                </form>
+              )}
             </TabsContent>
           </Tabs>
 
@@ -165,6 +250,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
             variant="outline"
             className="w-full"
             onClick={handleGoogleLogin}
+            disabled={loading}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path

@@ -3,6 +3,7 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import { Toaster } from './components/ui/sonner';
+import { getToken, removeToken } from './lib/auth';
 
 type AppView = 'landing' | 'login' | 'dashboard';
 
@@ -13,20 +14,20 @@ export default function App() {
   const [language, setLanguage] = useState('en');
 
   useEffect(() => {
-    // Set default theme to light
     document.documentElement.classList.add('light');
-  }, []);
 
-  useEffect(() => {
-    // Check if user is already logged in
+    const token = getToken();
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+
+    if (token && savedUser) {
       setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
       setCurrentView('dashboard');
+    } else {
+      localStorage.removeItem('user');
+      removeToken();
     }
-    
-    // Load saved language preference
+
     const savedLanguage = localStorage.getItem('language');
     if (savedLanguage) {
       setLanguage(savedLanguage);
@@ -62,24 +63,15 @@ export default function App() {
     setIsAuthenticated(false);
     setCurrentView('landing');
     localStorage.removeItem('user');
+    removeToken(); 
   };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'landing':
-        return (
-          <LandingPage 
-            onGetStarted={handleGetStarted}
-            onSignIn={handleSignIn}
-          />
-        );
+        return <LandingPage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />;
       case 'login':
-        return (
-          <LoginPage 
-            onLogin={handleLogin}
-            onBackToLanding={handleBackToLanding}
-          />
-        );
+        return <LoginPage onLogin={handleLogin} onBackToLanding={handleBackToLanding} />;
       case 'dashboard':
         return (
           <Dashboard 
@@ -90,12 +82,7 @@ export default function App() {
           />
         );
       default:
-        return (
-          <LandingPage 
-            onGetStarted={handleGetStarted}
-            onSignIn={handleSignIn}
-          />
-        );
+        return <LandingPage onGetStarted={handleGetStarted} onSignIn={handleSignIn} />;
     }
   };
 
