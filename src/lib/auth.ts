@@ -1,5 +1,6 @@
+import { getApiUrl } from '../config/api';
 
-const API_BASE_URL = "/api/auth/v1"; // Assuming a proxy is set up for /api
+const API_BASE_URL = getApiUrl('AUTH');
 
 export const getCode = async (email: string) => {
   const response = await fetch(`${API_BASE_URL}/code`, {

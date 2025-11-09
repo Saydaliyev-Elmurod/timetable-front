@@ -7,6 +7,7 @@ export const API_CONFIG = {
     SUBJECTS: '/api/subjects/v1',
     ROOMS: '/api/rooms/v1',
     TIMETABLES: '/api/timetables',
+    AUTH: '/api/auth/v1'
   }
 };
 
