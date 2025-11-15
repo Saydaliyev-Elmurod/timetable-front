@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { organizationApi, CompanyResponse, LessonPeriod as ApiLessonPeriod } from '@/api/organizationApi';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -11,7 +12,7 @@ import {
   CardTitle,
 } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
-import { Switch } from '../ui/switch';
+import { Skeleton } from '../ui/skeleton';
 import { 
   Plus, 
   Clock, 
@@ -20,42 +21,135 @@ import {
   GripVertical, 
   Save,
   Building2,
-  Calendar,
-  Settings
+  Calendar
 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+
+const LoadingSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <div>
+        <Skeleton className="h-8 w-64 mb-2" />
+        <Skeleton className="h-4 w-80" />
+      </div>
+      <Skeleton className="h-10 w-32" />
+    </div>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-48 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="grid gap-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-48 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-48 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
 
 export default function OrganizationPage() {
   const [organizationData, setOrganizationData] = useState({
-    name: 'Lincoln High School',
-    description: 'A premier educational institution dedicated to academic excellence and holistic development of students.',
+    name: '',
+    description: '',
   });
 
   const [workingDays, setWorkingDays] = useState({
-    monday: true,
-    tuesday: true,
-    wednesday: true,
-    thursday: true,
-    friday: true,
+    monday: false,
+    tuesday: false,
+    wednesday: false,
+    thursday: false,
+    friday: false,
     saturday: false,
     sunday: false,
   });
 
-  const [periods, setPeriods] = useState([
-    { id: 1, type: 'period', name: 'Period 1', startTime: '08:00', endTime: '08:45' },
-    { id: 2, type: 'break', name: 'Morning Break', duration: 15 },
-    { id: 3, type: 'period', name: 'Period 2', startTime: '09:00', endTime: '09:45' },
-    { id: 4, type: 'period', name: 'Period 3', startTime: '09:45', endTime: '10:30' },
-    { id: 5, type: 'break', name: 'Long Break', duration: 30 },
-    { id: 6, type: 'period', name: 'Period 4', startTime: '11:00', endTime: '11:45' },
-    { id: 7, type: 'period', name: 'Period 5', startTime: '11:45', endTime: '12:30' },
-    { id: 8, type: 'break', name: 'Lunch Break', duration: 45 },
-    { id: 9, type: 'period', name: 'Period 6', startTime: '13:15', endTime: '14:00' },
-    { id: 10, type: 'period', name: 'Period 7', startTime: '14:00', endTime: '14:45' },
-  ]);
-
-  const [draggedItem, setDraggedItem] = useState(null);
+  const [periods, setPeriods] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draggedItem, setDraggedItem] = useState<any | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchOrganizationData = async () => {
+      try {
+        setLoading(true);
+        const data: CompanyResponse = await organizationApi.get();
+        setOrganizationData({ 
+          name: data.name || '', 
+          description: data.description || '' 
+        });
+
+        const initialWorkingDays = {
+          monday: false,
+          tuesday: false,
+          wednesday: false,
+          thursday: false,
+          friday: false,
+          saturday: false,
+          sunday: false,
+        };
+        data.daysOfWeek.forEach(day => {
+          initialWorkingDays[day.toLowerCase()] = true;
+        });
+        setWorkingDays(initialWorkingDays);
+
+        const newPeriods = data.periods.map((p, index) => ({
+          id: index + 1,
+          type: p.isBreak ? 'break' : 'period',
+          name: p.name,
+          startTime: p.startTime,
+          endTime: p.endTime,
+          duration: p.duration,
+        }));
+        setPeriods(newPeriods);
+      } catch (error) {
+        // Error is already handled by the api service with a toast
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrganizationData();
+  }, []);
 
   const days = [
     { key: 'monday', label: 'Monday' },
@@ -67,12 +161,12 @@ export default function OrganizationPage() {
     { key: 'sunday', label: 'Sunday' },
   ];
 
-  const updateOrganizationData = useCallback((field, value) => {
+  const updateOrganizationData = useCallback((field: string, value: string) => {
     setOrganizationData(prev => ({ ...prev, [field]: value }));
     setUnsavedChanges(true);
   }, []);
 
-  const toggleWorkingDay = useCallback((day) => {
+  const toggleWorkingDay = useCallback((day: string) => {
     setWorkingDays(prev => ({ ...prev, [day]: !prev[day] }));
     setUnsavedChanges(true);
   }, []);
@@ -80,7 +174,7 @@ export default function OrganizationPage() {
   const selectAllDays = useCallback(() => {
     const allSelected = Object.values(workingDays).every(day => day);
     const newValue = !allSelected;
-    const newWorkingDays = {};
+    const newWorkingDays: { [key: string]: boolean } = {};
     days.forEach(day => {
       newWorkingDays[day.key] = newValue;
     });
@@ -90,7 +184,7 @@ export default function OrganizationPage() {
 
   const addPeriod = useCallback(() => {
     const newPeriod = {
-      id: Math.max(...periods.map(p => p.id)) + 1,
+      id: periods.length > 0 ? Math.max(...periods.map(p => p.id)) + 1 : 1,
       type: 'period',
       name: `Period ${periods.filter(p => p.type === 'period').length + 1}`,
       startTime: '15:00',
@@ -100,9 +194,9 @@ export default function OrganizationPage() {
     setUnsavedChanges(true);
   }, [periods]);
 
-  const addBreak = useCallback((afterIndex) => {
+  const addBreak = useCallback((afterIndex: number) => {
     const newBreak = {
-      id: Math.max(...periods.map(p => p.id)) + 1,
+      id: periods.length > 0 ? Math.max(...periods.map(p => p.id)) + 1 : 1,
       type: 'break',
       name: 'Break',
       duration: 15
@@ -113,29 +207,29 @@ export default function OrganizationPage() {
     setUnsavedChanges(true);
   }, [periods]);
 
-  const updatePeriod = useCallback((id, field, value) => {
+  const updatePeriod = useCallback((id: number, field: string, value: string | number) => {
     setPeriods(prev => prev.map(period => 
       period.id === id ? { ...period, [field]: value } : period
     ));
     setUnsavedChanges(true);
   }, []);
 
-  const deletePeriod = useCallback((id) => {
+  const deletePeriod = useCallback((id: number) => {
     setPeriods(prev => prev.filter(period => period.id !== id));
     setUnsavedChanges(true);
   }, []);
 
-  const handleDragStart = useCallback((e, period) => {
+  const handleDragStart = useCallback((e: React.DragEvent, period: any) => {
     setDraggedItem(period);
     e.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  const handleDragOver = useCallback((e) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleDrop = useCallback((e, targetPeriod) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetPeriod: any) => {
     e.preventDefault();
     if (!draggedItem || draggedItem.id === targetPeriod.id) return;
 
@@ -151,25 +245,48 @@ export default function OrganizationPage() {
     setUnsavedChanges(true);
   }, [draggedItem, periods]);
 
-  const saveChanges = useCallback(() => {
-    // Simulate saving to backend
-    setTimeout(() => {
+  const saveChanges = useCallback(async () => {
+    setIsSaving(true);
+    const daysOfWeek = Object.entries(workingDays)
+      .filter(([, value]) => value)
+      .map(([key]) => key.toUpperCase());
+
+    const apiPeriods: ApiLessonPeriod[] = periods.map(p => ({
+      name: p.name,
+      startTime: p.startTime || '00:00',
+      endTime: p.endTime || '00:00',
+      duration: p.duration || 0,
+      isBreak: p.type === 'break',
+    }));
+
+    const requestData = {
+      ...organizationData,
+      daysOfWeek,
+      periods: apiPeriods,
+    };
+
+    try {
+      await organizationApi.update(requestData);
       setUnsavedChanges(false);
-      toast('Organization settings saved successfully!', {
-        description: 'All changes have been applied.',
-        className: 'border-green-200 bg-green-50 text-green-800',
-      });
-    }, 500);
-  }, []);
+    } catch (error) {
+      // Error is handled by the api service with a toast
+    } finally {
+      setIsSaving(false);
+    }
+  }, [organizationData, workingDays, periods]);
 
   const selectedDaysCount = Object.values(workingDays).filter(Boolean).length;
   const allDaysSelected = selectedDaysCount === days.length;
+
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-2xl font-bold">
             <Building2 className="h-6 w-6" />
             Organization Settings
           </h2>
@@ -177,11 +294,20 @@ export default function OrganizationPage() {
         </div>
         <Button 
           onClick={saveChanges} 
-          disabled={!unsavedChanges}
+          disabled={!unsavedChanges || isSaving}
           className="bg-green-600 hover:bg-green-700 text-white"
         >
-          <Save className="mr-2 h-4 w-4" />
-          Save Changes
+          {isSaving ? (
+            <>
+              <Save className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Changes
+            </>
+          )}
         </Button>
       </div>
 
@@ -192,7 +318,6 @@ export default function OrganizationPage() {
         </div>
       )}
 
-      {/* Organization Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -224,7 +349,6 @@ export default function OrganizationPage() {
         </CardContent>
       </Card>
 
-      {/* Working Days Configuration */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -275,7 +399,6 @@ export default function OrganizationPage() {
         </CardContent>
       </Card>
 
-      {/* Class Time Management */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -382,7 +505,7 @@ export default function OrganizationPage() {
                             min="5"
                             max="120"
                             value={period.duration}
-                            onChange={(e) => updatePeriod(period.id, 'duration', parseInt(e.target.value))}
+                            onChange={(e) => updatePeriod(period.id, 'duration', parseInt(e.target.value, 10))}
                             className="bg-white dark:bg-gray-900"
                           />
                           <span className="text-xs text-muted-foreground">minutes</span>

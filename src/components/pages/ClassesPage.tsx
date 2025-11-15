@@ -220,20 +220,29 @@ export default function ClassesPage({ onNavigate }) {
       }
       
       const data = response.data;
-      
-      // Convert API response to local format
-      const convertedClasses = data.content.map(cls => ({
-        id: cls.id,
-        name: cls.name,
-        shortName: cls.shortName,
-        isActive: true,
-        classTeacher: cls.teacher?.id?.toString() || '',
-        roomIds: cls.rooms?.map(r => r.id.toString()) || [],
-        availability: convertFromTimeSlots(cls.availabilities),
-        updatedDate: cls.updatedDate,
-        createdDate: cls.createdDate
+
+      if (!data) {
+        console.error('fetchClasses: API returned no data', response);
+        setClasses([]);
+        return;
+      }
+
+      // If paginated response is expected, protect against missing content
+      const content = Array.isArray(data.content) ? data.content : [];
+
+      // Convert API response to local format (safely)
+      const convertedClasses = content.map((cls: any) => ({
+        id: cls?.id ?? 0,
+        name: cls?.name ?? 'Unnamed Class',
+        shortName: cls?.shortName ?? '',
+        isActive: cls?.isActive ?? true,
+        classTeacher: cls?.teacher?.id?.toString() || '',
+        roomIds: Array.isArray(cls?.rooms) ? cls.rooms.map((r: any) => String(r?.id ?? '')) : [],
+        availability: convertFromTimeSlots(cls?.availabilities),
+        updatedDate: cls?.updatedDate,
+        createdDate: cls?.createdDate
       }));
-      
+
       setClasses(convertedClasses);
     } catch (error) {
       console.error('Error fetching classes:', error);

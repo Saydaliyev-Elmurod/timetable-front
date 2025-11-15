@@ -210,12 +210,16 @@ export default function TeachersPage() {
   };
 
   const filteredTeachers = React.useMemo(() => 
-    teachers.filter(
-      (teacher) =>
-        teacher.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        teacher.shortName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        teacher.subjects.some((subject: SubjectResponse) => subject.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    ),
+    // Defensive: teacher fields (fullName, shortName, subjects) may be undefined from API
+    teachers.filter((teacher) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      const full = (teacher.fullName || '').toLowerCase();
+      const short = (teacher.shortName || '').toLowerCase();
+      const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+      const subjectMatch = subjects.some((subject: SubjectResponse) => (subject?.name || '').toLowerCase().includes(q));
+      return full.includes(q) || short.includes(q) || subjectMatch;
+    }),
     [teachers, searchQuery]
   );
 
@@ -769,10 +773,10 @@ export default function TeachersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {teacher.subjects.length === 0 ? (
+                            {(!Array.isArray(teacher.subjects) || teacher.subjects.length === 0) ? (
                               <span className="text-sm text-muted-foreground">No subjects</span>
                             ) : (
-                              teacher.subjects.map((subject: SubjectResponse) => (
+                              (teacher.subjects as SubjectResponse[]).map((subject: SubjectResponse) => (
                                 <Badge
                                   key={subject.id}
                                   variant="outline"
