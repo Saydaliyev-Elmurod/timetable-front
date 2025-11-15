@@ -1,3 +1,4 @@
+import { apiCall } from '../../lib/api';
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -69,13 +70,13 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:8080/api/timetable/v1/timetable');
+      const response = await apiCall<TimetableEntity[]>('http://localhost:8080/api/timetable/v1/timetable');
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch timetables: ${response.statusText}`);
+      if (response.error) {
+        throw new Error(`Failed to fetch timetables: ${response.error.message}`);
       }
       
-      const data: TimetableEntity[] = await response.json();
+      const data = response.data || [];
       console.log('API Response:', data);
       
       // Filter out deleted timetables

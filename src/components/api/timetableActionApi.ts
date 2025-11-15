@@ -1,3 +1,4 @@
+import { apiCall } from '../../lib/api';
 // Timetable Action API - Action-based approach for editing timetables
 // Implements atomic operations: MOVE_LESSON, SWAP_LESSONS, PLACE_UNPLACED_LESSON
 
@@ -467,14 +468,13 @@ export const timetableActionApi = {
       }
     }
     
-    const response = await fetch(`${API_BASE_URL}/${timetableId}/validate-move`, {
+    const response = await apiCall<ValidationResponse>(`${API_BASE_URL}/${timetableId}/validate-move`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
     
-    if (!response.ok) throw new Error('Failed to validate action');
-    return response.json();
+    if (response.error) throw new Error('Failed to validate action');
+    return response.data!;
   },
 
   // Apply action to timetable
@@ -493,14 +493,13 @@ export const timetableActionApi = {
       }
     }
     
-    const response = await fetch(`${API_BASE_URL}/${timetableId}/apply-action`, {
+    const response = await apiCall<ActionResponse>(`${API_BASE_URL}/${timetableId}/apply-action`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
     
-    if (!response.ok) throw new Error('Failed to apply action');
-    return response.json();
+    if (response.error) throw new Error('Failed to apply action');
+    return response.data!;
   },
   
   // Get current version (for optimistic locking)

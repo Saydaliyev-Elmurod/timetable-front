@@ -1,3 +1,4 @@
+import { apiCall } from '../../lib/api';
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -212,13 +213,13 @@ export default function ClassesPage({ onNavigate }) {
   const fetchClasses = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/classes/v1?page=${currentPage - 1}&size=${itemsPerPage}`);
+      const response = await apiCall<any>(`${API_BASE_URL}/api/classes/v1?page=${currentPage - 1}&size=${itemsPerPage}`);
       
-      if (!response.ok) {
+      if (response.error) {
         throw new Error('Failed to fetch classes');
       }
       
-      const data = await response.json();
+      const data = response.data;
       
       // Convert API response to local format
       const convertedClasses = data.content.map(cls => ({
@@ -377,15 +378,12 @@ export default function ClassesPage({ onNavigate }) {
         : `${API_BASE_URL}/api/classes/v1`;
       const method = isEdit ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await apiCall(url, {
         method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(requestData),
       });
 
-      if (!response.ok) {
+      if (response.error) {
         throw new Error(`Failed to ${isEdit ? 'update' : 'create'} class`);
       }
 
@@ -501,11 +499,11 @@ export default function ClassesPage({ onNavigate }) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/classes/v1/${deleteDialogClass.id}`, {
+      const response = await apiCall(`${API_BASE_URL}/api/classes/v1/${deleteDialogClass.id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) {
+      if (response.error) {
         throw new Error('Failed to delete class');
       }
 
@@ -688,17 +686,14 @@ export default function ClassesPage({ onNavigate }) {
     try {
       // Create all classes via API
       const promises = newClasses.map(classData =>
-        fetch(`${API_BASE_URL}/api/classes/v1`, {
+        apiCall(`${API_BASE_URL}/api/classes/v1`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(classData),
         })
       );
 
       const responses = await Promise.all(promises);
-      const failedCount = responses.filter(r => !r.ok).length;
+      const failedCount = responses.filter(r => r.error).length;
 
       if (failedCount > 0) {
         toast.error(`Failed to create ${failedCount} of ${newClasses.length} classes`);
@@ -806,17 +801,14 @@ export default function ClassesPage({ onNavigate }) {
           rooms: []
         };
 
-        return fetch(`${API_BASE_URL}/api/classes/v1/${classId}`, {
+        return apiCall(`${API_BASE_URL}/api/classes/v1/${classId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(requestData),
         });
       });
 
       const responses = await Promise.all(promises);
-      const failedCount = responses.filter(r => r && !r.ok).length;
+      const failedCount = responses.filter(r => r && r.error).length;
 
       if (failedCount > 0) {
         toast.error(`Failed to update ${failedCount} of ${selectedClassesForApply.length} classes`);
