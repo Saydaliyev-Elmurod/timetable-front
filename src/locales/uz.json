@@ -199,7 +199,6 @@
     "title": "Dars jadvallari",
     "description": "Yaratilgan dars jadvallarini ko'rish va boshqarish",
     "interactive_view": "Interfaol jadval ko'rinishi",
-    "generate": "Jadval yaratish",
     "showing_demo": "Demo ma'lumotlar ko'rsatilmoqda.",
     "all_title": "Barcha jadvallar",
     "all_description": "Yaratilgan barcha dars jadvallari ro'yxati",
@@ -209,8 +208,18 @@
     "delete_failed": "Jadvallarni o'chirishda xatolik",
     "exporting_excel": "{{name}} Excel-ga eksport qilinmoqda...",
     "exporting_pdf": "{{name}} PDF-ga eksport qilinmoqda...",
-    "opening_print": "Chop etish oynasi ochilmoqda..."
+    "opening_print": "Chop etish oynasi ochilmoqda...",
+    "generate": "Jadval yaratish",
+    "generate_modal_title": "Yangi jadval yaratish",
+    "generate_modal_description": "Yaratmoqchi bo'lgan jadval nomini kiriting",
+    "generate_name_placeholder": "Jadval nomi...",
+    "generating": "Yaratilmoqda...",
+    "generate_success": "Jadval yaratish so'rovi muvaffaqiyatli yuborildi",
+    "generate_failed": "Jadval yaratishda xatolik yuz berdi",
+    "generate_name_required": "Iltimos, jadval uchun nom kiriting",
+    "cancel": "Bekor qilish"
   },
+ 
 
   "landing": {
     "hero": {

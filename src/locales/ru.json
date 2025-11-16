@@ -210,7 +210,15 @@
     "delete_failed": "Не удалось удалить расписание",
     "exporting_excel": "Экспортируется {{name}} в Excel...",
     "exporting_pdf": "Экспортируется {{name}} в PDF...",
-    "opening_print": "Открытие диалога печати..."
+    "opening_print": "Открытие диалога печати...",
+    "generate_modal_title": "Создать новое расписание",
+    "generate_modal_description": "Введите название создаваемого расписания",
+    "generate_name_placeholder": "Название расписания...",
+    "generating": "Создание...",
+    "generate_success": "Запрос на создание расписания успешно отправлен",
+    "generate_failed": "Ошибка при создании расписания",
+    "generate_name_required": "Пожалуйста, введите имя расписания",
+    "cancel": "Отмена"
   },
 
   "landing": {

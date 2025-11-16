@@ -210,7 +210,15 @@
     "delete_failed": "Failed to delete timetable",
     "exporting_excel": "Exporting {{name}} to Excel...",
     "exporting_pdf": "Exporting {{name}} to PDF...",
-    "opening_print": "Opening print dialog..."
+    "opening_print": "Opening print dialog...",
+    "generate_modal_title": "Create new timetable",
+    "generate_modal_description": "Enter the name for the timetable you want to create",
+    "generate_name_placeholder": "Timetable name...",
+    "generating": "Generating...",
+    "generate_success": "Timetable generation request sent successfully",
+    "generate_failed": "Failed to generate timetable",
+    "generate_name_required": "Please enter a timetable name",
+    "cancel": "Cancel"
   },
 
   "landing": {

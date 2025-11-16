@@ -57,6 +57,9 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimetable, setSelectedTimetable] = useState<TimetableEntity | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [generateName, setGenerateName] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [filterClass, setFilterClass] = useState('all');
   const [filterTeacher, setFilterTeacher] = useState('all');
@@ -201,7 +204,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
               {t('timetables.interactive_view')}
             </Button>
           )}
-          <Button>
+          <Button onClick={() => setIsGenerateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('timetables.generate')}
           </Button>
@@ -344,6 +347,69 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
           )}
         </CardContent>
       </Card>
+
+      {/* Generate Timetable Dialog */}
+      <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('timetables.generate_modal_title')}</DialogTitle>
+            <DialogDescription>{t('timetables.generate_modal_description')}</DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <Input
+              placeholder={t('timetables.generate_name_placeholder')}
+              value={generateName}
+              onChange={(e) => setGenerateName(e.target.value)}
+            />
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setIsGenerateOpen(false)}>
+                {t('timetables.cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  // call generate API
+                  if (!generateName.trim()) {
+                    toast.error(t('timetables.generate_name_required'));
+                    return;
+                  }
+                  setIsGenerating(true);
+                  try {
+                    const res = await apiCall<any>('http://localhost:8080/api/timetable/v1/timetable/generate', {
+                      method: 'POST',
+                      body: JSON.stringify({ name: generateName.trim() }),
+                    });
+
+                    if (res.error) {
+                      toast.error(res.error.message || t('timetables.generate_failed'));
+                    } else {
+                      toast.success(t('timetables.generate_success'));
+                      setIsGenerateOpen(false);
+                      setGenerateName('');
+                      // refresh list
+                      await fetchTimetables();
+                      // Optionally navigate to the generated timetable if id returned
+                      if (res.data && res.data.response && res.data.response.timetableId) {
+                        const id = res.data.response.timetableId;
+                        if (onNavigate) onNavigate(`timetable-view-${id}`);
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Generate error', err);
+                    toast.error(t('timetables.generate_failed'));
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
+                disabled={isGenerating}
+              >
+                {isGenerating ? t('timetables.generating') : t('timetables.generate')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* View Timetable Dialog - This is a simplified preview */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

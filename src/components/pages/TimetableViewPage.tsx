@@ -26,9 +26,9 @@ import {
   PopoverTrigger,
 } from "../ui/popover";
 import { Separator } from "../ui/separator";
-import {
-  FileDown,
-  RefreshCw,
+import { 
+  FileDown, 
+  Zap, 
   Lock,
   Unlock,
   Edit,
@@ -991,7 +991,47 @@ export default function TimetableViewPage({
   };
 
   const handleRegenerate = () => {
-    console.log("Regenerate timetable");
+    // delegate to optimize action if timetableId is present
+    handleOptimize();
+  };
+
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const handleOptimize = async () => {
+    if (!timetableId) {
+      console.log('No timetableId provided for optimize');
+      return;
+    }
+
+    setIsOptimizing(true);
+    // lightweight notification (this file doesn't import toast)
+    console.log('Optimizing timetable...', timetableId);
+
+    const body = {
+      applySoftConstraint: true,
+      applyUnScheduledLessons: true,
+      applyContinuityPenaltyTeacher: true,
+      applyContinuityPenaltyClass: true,
+      applyBalancedLoad: true,
+      applyDailySubjectDistribution: true,
+    };
+
+    try {
+      const res = await (await import('@/lib/api')).apiCall<any>(`http://localhost:8080/api/timetable/v1/timetable/optimize/${timetableId}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      if (res.error) {
+        console.error('Optimize failed', res.error);
+      } else {
+        console.log('Optimize request sent');
+      }
+    } catch (err) {
+      console.error('Optimize request error', err);
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   const handleExport = () => {
@@ -1377,12 +1417,12 @@ export default function TimetableViewPage({
 
                 {/* Main Action Buttons */}
                 <Button
-                  onClick={handleRegenerate}
+                  onClick={handleOptimize}
                   size="sm"
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Regenerate
+                  <Zap className="mr-2 h-4 w-4" />
+                  Optimize
                 </Button>
                 <Button
                   variant="outline"

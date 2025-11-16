@@ -30,6 +30,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import {
   FileDown,
   RefreshCw,
+    Zap,
   Lock,
   Unlock,
   Edit,
@@ -1153,8 +1154,51 @@ export default function TimetableViewPageWithAPI({
   };
 
   const handleRegenerate = () => {
-    console.log("Regenerate timetable");
-    toast.info("Regenerating timetable...");
+    // kept for backward compatibility; delegate to optimize
+    handleOptimize();
+  };
+
+  const handleOptimize = async () => {
+    if (!timetableId) {
+      toast.error('No timetable selected for optimization');
+      return;
+    }
+
+    setIsProcessingAction(true);
+    toast.info('Optimizing timetable...');
+
+    const body = {
+      applySoftConstraint: true,
+      applyUnScheduledLessons: true,
+      applyContinuityPenaltyTeacher: true,
+      applyContinuityPenaltyClass: true,
+      applyBalancedLoad: true,
+      applyDailySubjectDistribution: true,
+    };
+
+    try {
+      const res = await apiCall<any>(`http://localhost:8080/api/timetable/v1/timetable/optimize/${timetableId}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      if (res.error) {
+        toast.error('Optimization failed', { description: res.error.message });
+      } else {
+        toast.success('Optimization request sent');
+        // refresh timetable data after optimization
+        try {
+          await fetchTimetableData(timetableId);
+        } catch (e) {
+          // ignore refresh errors
+        }
+      }
+    } catch (err) {
+      console.error('Optimize error:', err);
+      toast.error('Optimization request failed');
+    } finally {
+      setIsProcessingAction(false);
+    }
   };
 
   const handleExport = () => {
@@ -1526,12 +1570,12 @@ export default function TimetableViewPageWithAPI({
 
                 {/* Main Action Buttons */}
                 <Button
-                  onClick={handleRegenerate}
+                  onClick={handleOptimize}
                   size="sm"
                   className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Regenerate
+                  <Zap className="mr-2 h-4 w-4" />
+                  Optimize
                 </Button>
                 <Button variant="outline" onClick={handleExport} size="sm">
                   <FileDown className="mr-2 h-4 w-4" />
