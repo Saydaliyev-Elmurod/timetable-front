@@ -65,17 +65,30 @@ export async function apiCall<T>(
       headers,
     });
 
-    const data = await response.json();
+    const rawData = await response.json();
 
     if (!response.ok) {
-      const error: ApiError = new Error(data.message || 'API call failed');
+      const error: ApiError = new Error(rawData.message || 'API call failed');
       error.status = response.status;
-      error.code = data.code;
+      error.code = rawData.code;
       throw error;
     }
 
+    // Handle new API wrapper format: { error, errorDescription, response }
+    let data = rawData;
+    if (rawData && typeof rawData === 'object' && 'response' in rawData && 'error' in rawData && 'errorDescription' in rawData) {
+      // Check if there's an error in the wrapper
+      if (rawData.error) {
+        const error: ApiError = new Error(rawData.errorDescription || rawData.error || 'API call failed');
+        error.status = response.status;
+        throw error;
+      }
+      // Extract the actual response data
+      data = rawData.response;
+    }
+
     return {
-      data,
+      data: data as T,
       status: response.status
     };
   } catch (error) {

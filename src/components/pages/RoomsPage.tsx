@@ -28,7 +28,7 @@ import {
 } from '../ui/select';
 import { Plus, Trash2, Upload, Download, Copy, Check, X, HelpCircle, Building2, Users, Settings2, Edit, Calendar, ChevronDown, Loader2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,8 +52,11 @@ import {
   RoomService,
   RoomRequest,
   RoomResponse,
-  TimeSlot
+  RoomType,
+  ROOM_TYPE_DEFINITIONS
 } from '@/lib/rooms';
+import { TimeSlot } from '@/lib/teachers';
+import { SubjectService } from '@/lib/subjects';
 import type { PaginatedResponse } from '@/lib/api';
 
 // Using RoomService imported from @/lib/rooms
@@ -98,6 +101,7 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -116,6 +120,8 @@ export default function RoomsPage() {
   const [inlineFormData, setInlineFormData] = useState({
     name: '',
     shortName: '',
+    type: RoomType.SHARED,
+    allowedSubjectIds: [] as number[],
     availability: {
       monday: [1, 2, 3, 4, 5, 6, 7],
       tuesday: [1, 2, 3, 4, 5, 6, 7],
@@ -126,7 +132,7 @@ export default function RoomsPage() {
       sunday: [1, 2, 3, 4, 5, 6, 7],
     },
   });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(false);
+  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   
   // Availability view for existing rooms
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
@@ -139,7 +145,17 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   // Fetch rooms on mount and when pagination changes
   useEffect(() => {
     fetchRooms();
+    fetchSubjects();
   }, [currentPage, itemsPerPage]);
+
+  const fetchSubjects = async () => {
+    try {
+      const data = await SubjectService.getPaginated(0, 1000);
+      setAvailableSubjects(data.content);
+    } catch (error) {
+      console.error('Failed to fetch subjects:', error);
+    }
+  };
 
   const fetchRooms = async () => {
     try {
@@ -178,6 +194,8 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     setInlineFormData({
       name: '',
       shortName: '',
+      type: RoomType.SHARED,
+      allowedSubjectIds: [],
       availability: {
         monday: [1, 2, 3, 4, 5, 6, 7],
         tuesday: [1, 2, 3, 4, 5, 6, 7],
@@ -191,24 +209,17 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     setShowAvailabilityInForm(false);
   };
 
-  const handleEdit = async (room: RoomResponse) => {
-    try {
-      setIsSaving(true);
-      const roomData = await RoomService.getById(room.id);
-      setEditingRoomId(room.id);
-      setInlineFormData({
-        name: roomData.name,
-        shortName: roomData.shortName,
-        availability: convertFromTimeSlots(roomData.availabilities),
-      });
-      setShowInlineForm(true);
-      setShowAvailabilityInForm(false);
-    } catch (error) {
-      toast.error('Failed to load room data');
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
+  const handleEdit = (room: RoomResponse) => {
+    setEditingRoomId(room.id);
+    setInlineFormData({
+      name: room.name,
+      shortName: room.shortName,
+      type: room.type || RoomType.SHARED,
+      allowedSubjectIds: room.allowedSubjectIds || [],
+      availability: convertFromTimeSlots(room.availabilities),
+    });
+    setShowInlineForm(true);
+    setShowAvailabilityInForm(false);
   };
 
   const handleClone = (room: RoomResponse) => {
@@ -217,6 +228,8 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     setInlineFormData({
       name: `${room.name} (Copy)`,
       shortName: `${room.shortName}-C`,
+      type: room.type || RoomType.SHARED,
+      allowedSubjectIds: room.allowedSubjectIds || [],
       availability: convertFromTimeSlots(room.availabilities),
     });
     setShowAvailabilityInForm(false);
@@ -231,7 +244,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     const requestData: RoomRequest = {
       name: inlineFormData.name.trim(),
       shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
+      type: inlineFormData.type,
       availabilities: convertToTimeSlots(inlineFormData.availability),
+      allowedSubjectIds: inlineFormData.type === RoomType.SPECIAL ? inlineFormData.allowedSubjectIds : undefined,
     };
 
     try {
@@ -446,7 +461,30 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                 </div>
               </div>
 
-              {/* Inline Availability Grid */}
+              {/* Room Type Selection */}
+              <div className="space-y-2">
+                <Label>Xona turi</Label>
+                <Select 
+                  value={inlineFormData.type} 
+                  onValueChange={(value) => updateInlineFormField('type', value as RoomType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={RoomType.SHARED}>
+                      {ROOM_TYPE_DEFINITIONS[RoomType.SHARED].label}
+                    </SelectItem>
+                    <SelectItem value={RoomType.SPECIAL}>
+                      {ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].label}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ROOM_TYPE_DEFINITIONS[inlineFormData.type].description}
+                </p>
+              </div>
+
               {showAvailabilityInForm && (
                 <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -559,6 +597,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
               <TableRow className="hover:bg-transparent">
                 <TableHead>Name</TableHead>
                 <TableHead>Short Name</TableHead>
+                <TableHead>Xona turi</TableHead>
                 <TableHead className="text-center">Availability</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -566,7 +605,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
             <TableBody>
               {filteredRooms.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No rooms found
                   </TableCell>
                 </TableRow>
@@ -587,6 +626,20 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{room.shortName}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge 
+                              className={room.type === RoomType.SHARED ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'}
+                            >
+                              {ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].label}
+                            </Badge>
+                            {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {room.allowedSubjectIds.length} fan
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
@@ -638,8 +691,28 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                       {/* Expanded Availability Row */}
                       {isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={4} className="bg-blue-50/30 dark:bg-blue-950/10 p-4">
+                          <TableCell colSpan={5} className="bg-blue-50/30 dark:bg-blue-950/10 p-4">
                             <div className="bg-white dark:bg-gray-950 rounded-lg border border-blue-200 dark:border-blue-900 p-4">
+                              {/* Room Type Info */}
+                              <div className="mb-4">
+                                <h4 className="text-sm font-semibold mb-2">Xona turi: {ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].label}</h4>
+                                {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
+                                  <div>
+                                    <p className="text-sm text-muted-foreground mb-1">Ruxsat etilgan fanlar:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {room.allowedSubjectIds.map(subjectId => {
+                                        const subject = availableSubjects.find(s => s.id === subjectId);
+                                        return (
+                                          <Badge key={subjectId} variant="outline">
+                                            {subject?.name || `Fan #${subjectId}`}
+                                          </Badge>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
                               <div className="flex items-center gap-2 mb-3">
                                 <Calendar className="h-4 w-4 text-blue-600" />
                                 <h4 className="text-blue-800 dark:text-blue-300">Weekly Availability</h4>

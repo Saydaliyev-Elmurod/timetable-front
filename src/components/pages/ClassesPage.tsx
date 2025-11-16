@@ -30,7 +30,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
@@ -45,7 +44,7 @@ import {
 } from '../ui/tooltip';
 import { Switch } from '../ui/switch';
 import { Checkbox } from '../ui/checkbox';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,7 +114,7 @@ export default function ClassesPage({ onNavigate }) {
       sunday: [1, 2, 3, 4, 5, 6, 7],
     },
   });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(false);
+  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   const [editingClassId, setEditingClassId] = useState(null);
   
   // Availability view for existing classes
@@ -397,7 +396,7 @@ export default function ClassesPage({ onNavigate }) {
         name: inlineFormData.name.trim(),
         shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
         availabilities: convertToTimeSlots(inlineFormData.availability),
-        teacherId: null,
+        teacherId: inlineFormData.classTeacher ? parseInt(inlineFormData.classTeacher, 10) : null,
         rooms: []
       };
 
@@ -974,15 +973,19 @@ export default function ClassesPage({ onNavigate }) {
                   </SelectTrigger>
                   <SelectContent>
                     {teachers && teachers.length > 0 ? (
-                      teachers.map((teacher) => (
-                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                          {teacher.name}
-                        </SelectItem>
-                      ))
+                      <>
+                        {teachers.map((teacher) => (
+                          teacher.id ? ( // Ensure teacher.id is not null or undefined
+                            <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                              {teacher.name}
+                            </SelectItem>
+                          ) : null
+                        ))}
+                      </>
                     ) : (
-                      <SelectLabel>
+                      <div className="p-2 text-sm text-muted-foreground text-center">
                         No teachers available
-                      </SelectLabel>
+                      </div>
                     )}
                   </SelectContent>
                 </Select>

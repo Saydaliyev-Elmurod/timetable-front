@@ -1,8 +1,14 @@
 import { InternalLesson } from './lessons';
 
-export interface GroupedData {
+export interface User {
   id: string;
   name: string;
+  email: string;
+}
+
+export interface GroupedData {
+  id: string;
+  name:string;
   lessons: InternalLesson[];
   totalLessons: number;
   totalPeriods: number;
@@ -19,12 +25,15 @@ export interface ConflictDetail {
 export type ViewType = 'classes' | 'teachers' | 'subjects' | 'rooms';
 
 export interface LessonSubmitData {
-  multiClass: boolean;
-  selectedClasses: string[];
-  selectedTeachers: string[];
   subject: string;
+  selectedClasses: string[];
+  selectedTeacher: string;
+  lessonsPerWeek: number;
+  lessonSequence: string;
+  scheduleType: string;
+  enableFixedPlacement: boolean;
   formats: {
     timesPerWeek: number;
-    duration: number;
+    duration: string;
   }[];
 }

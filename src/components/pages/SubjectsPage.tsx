@@ -29,9 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover';
 import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, HelpCircle, Loader2, Edit } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import {
   Tooltip,
   TooltipContent,
@@ -69,9 +74,9 @@ interface SubjectResponse {
   shortName: string;
   name: string;
   availabilities: TimeSlot[];
-  emoji: string;
-  color: string;
-  weight: number;
+  emoji?: string;
+  color?: string;
+  weight?: number;
 }
 
 interface PageResponse<T> {
@@ -86,6 +91,40 @@ interface PageResponse<T> {
 import { SubjectService } from '@/lib/subjects';
 
 // Using SubjectService imported from @/lib/subjects
+
+// Emoji recommendations for subjects - ~30 common subjects
+const EMOJI_RECOMMENDATIONS: { [key: string]: string } = {
+  'Matematika': '🔢',
+  'Ingliz tili': '🇬🇧',
+  'O\'zbek tili': '🇺🇿',
+  'Fizika': '⚛️',
+  'Kimya': '🧪',
+  'Biologiya': '🦠',
+  'Tarix': '📜',
+  'Geografiya': '🌍',
+  'Adabiyot': '📖',
+  'Musiqa': '🎵',
+  'Rasmni chizish': '🎨',
+  'Jismoniy madaniyat': '🏃',
+  'Informatika': '💻',
+  'O\'z vatan tarixi': '🏛️',
+  'Sharqiy tillar': '📚',
+  'Fransuz tili': '🇫🇷',
+  'Nemis tili': '🇩🇪',
+  'Rus tili': '🇷🇺',
+  'Yapon tili': '🇯🇵',
+  'Xitoy tili': '🇨🇳',
+  'Iqtisodiyot': '💼',
+  'Huquq': '⚖️',
+  'Psixologiya': '🧠',
+  'Jamiyat fanlar': '👥',
+  'Ekologiya': '🌱',
+  'Astronomiya': '⭐',
+  'Mehnat': '🔧',
+  'Ruh va axloq': '✨',
+  'Ingliz adabiyoti': '📕',
+  'San\'at': '🖼️',
+};
 
 // Helper function to convert old format to new API format
 const convertToTimeSlots = (availability: any): TimeSlot[] => {
@@ -162,7 +201,7 @@ export default function SubjectsPage() {
       sunday: [1, 2, 3, 4, 5, 6, 7],
     },
   });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(false);
+  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   
   // Availability view for existing subjects
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
@@ -533,14 +572,52 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                 </div>
                 <div className="space-y-2">
                   <Label>Emoji</Label>
-                  <Input
-                    type="text"
-                    placeholder="📖"
-                    value={inlineFormData.emoji}
-                    onChange={(e) => updateInlineFormField('emoji', e.target.value)}
-                    maxLength={2}
-                    className="text-center text-2xl"
-                  />
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="flex-shrink-0"
+                          title="Emoji tanlash"
+                        >
+                          {inlineFormData.emoji}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-3">
+                        <div className="space-y-3">
+                          <div className="text-sm font-medium">Fanga mos emoji tanlang</div>
+                          <div className="grid grid-cols-6 gap-2 max-h-64 overflow-y-auto">
+                            {Object.entries(EMOJI_RECOMMENDATIONS).map(([subject, emoji]) => (
+                              <button
+                                key={emoji}
+                                onClick={() => updateInlineFormField('emoji', emoji)}
+                                className={`p-2 rounded border transition-colors ${
+                                  inlineFormData.emoji === emoji
+                                    ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900'
+                                }`}
+                                title={subject}
+                              >
+                                <span className="text-xl">{emoji}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="text-xs text-muted-foreground border-t pt-2">
+                            Yoki quyida boshqacha emoji kiriting
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Input
+                      type="text"
+                      placeholder="📖"
+                      value={inlineFormData.emoji}
+                      onChange={(e) => updateInlineFormField('emoji', e.target.value)}
+                      maxLength={2}
+                      className="text-center text-2xl flex-1"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Rang</Label>

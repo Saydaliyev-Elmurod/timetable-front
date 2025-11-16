@@ -106,6 +106,8 @@ let mockRooms: any[] = [
     id: 1,
     name: '101-xona',
     shortName: 'R101',
+    type: 'SHARED',
+    allowedSubjectIds: [],
     availabilities: [
       { dayOfWeek: 'MONDAY', lessons: [1, 2, 3, 4, 5, 6, 7] },
       { dayOfWeek: 'TUESDAY', lessons: [1, 2, 3, 4, 5, 6, 7] },
@@ -120,6 +122,8 @@ let mockRooms: any[] = [
     id: 2,
     name: 'Kompyuter xonasi 1',
     shortName: 'COMP1',
+    type: 'SPECIAL',
+    allowedSubjectIds: [1, 2],
     availabilities: [
       { dayOfWeek: 'MONDAY', lessons: [1, 2, 3, 4, 5, 6, 7] },
       { dayOfWeek: 'TUESDAY', lessons: [1, 2, 3, 4, 5, 6, 7] },

@@ -1,7 +1,8 @@
-import axios from '../lib/axios';
+import { apiCall } from '../lib/api';
 import { toast } from 'sonner';
 
-const API_URL = '/api/v1/company';
+const API_BASE_URL = 'http://localhost:8080';
+const API_URL = `${API_BASE_URL}/api/v1/company`;
 
 export interface LessonPeriod {
   name: string;
@@ -26,8 +27,11 @@ export interface CompanyResponse extends CompanyRequest {
 
 const getOrganization = async (): Promise<CompanyResponse> => {
   try {
-    const response = await axios.get(API_URL);
-    return response.data.response;
+    const response = await apiCall<any>(API_URL);
+    if (response.error) {
+      throw new Error('Failed to fetch organization settings');
+    }
+    return response.data?.response || response.data;
   } catch (error) {
     toast.error('Failed to fetch organization settings.');
     throw error;
@@ -36,7 +40,13 @@ const getOrganization = async (): Promise<CompanyResponse> => {
 
 const updateOrganization = async (data: CompanyRequest): Promise<void> => {
   try {
-    await axios.put(API_URL, data);
+    const response = await apiCall(API_URL, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (response.error) {
+      throw new Error('Failed to update organization settings');
+    }
     toast.success('Organization settings updated successfully!');
   } catch (error) {
     toast.error('Failed to update organization settings.');

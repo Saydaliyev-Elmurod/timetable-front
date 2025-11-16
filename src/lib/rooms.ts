@@ -2,17 +2,39 @@ import API, { PaginatedResponse } from './api';
 import { mockRoomApi } from '../components/api/mockApi';
 import { TimeSlot } from './teachers';
 
+// Room Type Enum
+export enum RoomType {
+  SHARED = 'SHARED',
+  SPECIAL = 'SPECIAL'
+}
+
+// Enum definitions and descriptions
+export const ROOM_TYPE_DEFINITIONS: Record<RoomType, { label: string; description: string }> = {
+  [RoomType.SHARED]: {
+    label: 'Umumiy Xona',
+    description: 'Bu xonada hamma fan darslarini qoyish mumkin'
+  },
+  [RoomType.SPECIAL]: {
+    label: 'Maxsus Xona',
+    description: 'Bu xonada faqat tanlangan fanlarni qoyish mumkin'
+  }
+};
+
 export interface RoomRequest {
   name: string;
   shortName: string;
+  type: RoomType;
   availabilities: TimeSlot[];
+  allowedSubjectIds?: number[]; // For SPECIAL rooms only
 }
 
 export interface RoomResponse {
   id: number;
   name: string;
   shortName: string;
+  type: RoomType;
   availabilities: TimeSlot[];
+  allowedSubjectIds?: number[];
 }
 
 export const RoomService = {

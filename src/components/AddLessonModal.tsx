@@ -47,17 +47,16 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import { cn } from './ui/utils';
+import { SubjectService } from '@/lib/subjects';
+import { TeacherService } from '@/lib/teachers';
+import { ClassService } from '@/lib/classes';
+import { toast } from 'sonner';
 
 interface AddLessonModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (lessonData: any) => void;
   editingLesson?: any;
-  availableClasses: string[];
-  availableTeachers: string[];
-  availableSubjects: string[];
-  availableRooms?: string[];
-  detectConflicts?: (lessonData: any, excludeId?: number) => any[];
 }
 
 export default function AddLessonModal({
@@ -65,31 +64,53 @@ export default function AddLessonModal({
   onOpenChange,
   onSubmit,
   editingLesson,
-  availableClasses,
-  availableTeachers,
-  availableSubjects,
-  availableRooms = [],
-  detectConflicts
 }: AddLessonModalProps) {
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     subject: '',
     selectedClasses: [] as string[],
-    selectedTeachers: [] as string[],
-    selectedRooms: [] as string[],
+    selectedTeacher: '',
     lessonsPerWeek: 1,
-    lessonSequence: 'single', // 'single', 'double', 'triple'
-    scheduleType: 'weekly', // 'weekly', 'bi-weekly'
+    lessonSequence: 'single',
+    scheduleType: 'weekly',
     enableFixedPlacement: false,
-    formats: [{ timesPerWeek: 1, duration: '45' }] // For compatibility with LessonsPage
+    formats: [{ timesPerWeek: 1, duration: '45' }]
   });
 
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [classesOpen, setClassesOpen] = useState(false);
-  const [teachersOpen, setTeachersOpen] = useState(false);
-  const [roomsOpen, setRoomsOpen] = useState(false);
   const [classSearch, setClassSearch] = useState('');
-  const [teacherSearch, setTeacherSearch] = useState('');
-  const [roomSearch, setRoomSearch] = useState('');
+
+  // Fetch data from API on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [teachersData, subjectsData, classesData] = await Promise.all([
+          TeacherService.getAll(),
+          SubjectService.getAll(),
+          ClassService.getAll()
+        ]);
+        
+        setTeachers(teachersData);
+        setSubjects(subjectsData);
+        setClasses(classesData);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        toast.error('Failed to load teachers, subjects, or classes');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (open) {
+      fetchData();
+    }
+  }, [open]);
 
   // Reset form when modal opens/closes or editing lesson changes
   useEffect(() => {
@@ -97,9 +118,8 @@ export default function AddLessonModal({
       if (editingLesson) {
         setFormData({
           subject: editingLesson.subject || '',
-          selectedClasses: [editingLesson.class] || [],
-          selectedTeachers: [editingLesson.teacher] || [],
-          selectedRooms: editingLesson.rooms || [],
+          selectedClasses: editingLesson.class ? [editingLesson.class] : [],
+          selectedTeacher: editingLesson.teacher || '',
           lessonsPerWeek: editingLesson.lessonsPerWeek || 1,
           lessonSequence: editingLesson.lessonSequence || 'single',
           scheduleType: editingLesson.scheduleType || 'weekly',
@@ -110,8 +130,7 @@ export default function AddLessonModal({
         setFormData({
           subject: '',
           selectedClasses: [],
-          selectedTeachers: [],
-          selectedRooms: [],
+          selectedTeacher: '',
           lessonsPerWeek: 1,
           lessonSequence: 'single',
           scheduleType: 'weekly',
@@ -125,11 +144,11 @@ export default function AddLessonModal({
 
   // Check conflicts when key fields change
   useEffect(() => {
-    if (formData.selectedClasses.length > 0 && formData.selectedTeachers.length > 0 && detectConflicts) {
+    if (formData.selectedClasses.length > 0 && formData.selectedTeacher) {
       const detectedConflicts: any[] = [];
       setConflicts(detectedConflicts);
     }
-  }, [formData.selectedClasses, formData.selectedTeachers, detectConflicts]);
+  }, [formData.selectedClasses, formData.selectedTeacher]);
 
   const handleClassToggle = (className: string) => {
     const newSelected = formData.selectedClasses.includes(className)
@@ -140,19 +159,7 @@ export default function AddLessonModal({
   };
 
   const handleTeacherToggle = (teacherName: string) => {
-    const newSelected = formData.selectedTeachers.includes(teacherName)
-      ? formData.selectedTeachers.filter(t => t !== teacherName)
-      : [...formData.selectedTeachers, teacherName];
-    
-    setFormData(prev => ({ ...prev, selectedTeachers: newSelected }));
-  };
-
-  const handleRoomToggle = (roomName: string) => {
-    const newSelected = formData.selectedRooms.includes(roomName)
-      ? formData.selectedRooms.filter(r => r !== roomName)
-      : [...formData.selectedRooms, roomName];
-    
-    setFormData(prev => ({ ...prev, selectedRooms: newSelected }));
+    setFormData(prev => ({ ...prev, selectedTeacher: teacherName }));
   };
 
   const removeClass = (className: string) => {
@@ -162,40 +169,18 @@ export default function AddLessonModal({
     }));
   };
 
-  const removeTeacher = (teacherName: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      selectedTeachers: prev.selectedTeachers.filter(t => t !== teacherName)
-    }));
-  };
-
-  const removeRoom = (roomName: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      selectedRooms: prev.selectedRooms.filter(r => r !== roomName)
-    }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.subject || formData.selectedClasses.length === 0 || formData.selectedTeachers.length === 0) {
+    if (!formData.subject || formData.selectedClasses.length === 0 || !formData.selectedTeacher) {
       return;
     }
 
     onSubmit(formData);
   };
 
-  const filteredClasses = availableClasses.filter(cls => 
-    cls.toLowerCase().includes(classSearch.toLowerCase())
-  );
-
-  const filteredTeachers = availableTeachers.filter(teacher => 
-    teacher.toLowerCase().includes(teacherSearch.toLowerCase())
-  );
-
-  const filteredRooms = availableRooms.filter(room => 
-    room.toLowerCase().includes(roomSearch.toLowerCase())
+  const filteredClasses = classes.filter((cls: any) => 
+    cls.name.toLowerCase().includes(classSearch.toLowerCase())
   );
 
   return (
@@ -231,244 +216,156 @@ export default function AddLessonModal({
 
             {/* Subject Selection (Required, Single) */}
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject *</Label>
-              <Select 
-                value={formData.subject} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-              >
-                <SelectTrigger id="subject">
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSubjects.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="subject">Subject {editingLesson ? '' : '*'}</Label>
+              {editingLesson ? (
+                // Display-only mode when editing
+                <div className="p-2 border rounded-lg bg-muted/50">
+                  <p className="text-sm">
+                    {formData.subject 
+                      ? subjects.find((s: any) => s.id.toString() === formData.subject)?.name || formData.subject
+                      : 'No subject selected'}
+                  </p>
+                </div>
+              ) : (
+                // Edit mode for new lessons
+                <Select 
+                  value={formData.subject} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+                >
+                  <SelectTrigger id="subject">
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoading ? (
+                      <div className="p-2 text-center text-muted-foreground">Loading...</div>
+                    ) : (
+                      subjects.map((subject: any) => (
+                        <SelectItem key={subject.id} value={subject.id.toString()}>
+                          {subject.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
-            {/* Classes Selection (Multi-Select) */}
+            {/* Classes Selection */}
             <div className="space-y-2">
-              <Label>Classes *</Label>
+              <Label>Classes {editingLesson ? '' : '*'}</Label>
               <p className="text-sm text-muted-foreground">
-                Select which classes this lesson applies to (e.g., 5-A, 5-B, 5-C)
+                {editingLesson 
+                  ? 'Classes cannot be changed when editing a lesson.'
+                  : 'Select which classes this lesson applies to (e.g., 5-A, 5-B, 5-C)'}
               </p>
               
-              {/* Selected Classes Chips */}
-              {formData.selectedClasses.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
-                  {formData.selectedClasses.map((className) => (
-                    <Badge key={className} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                      {className}
-                      <button
-                        type="button"
-                        onClick={() => removeClass(className)}
-                        className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+              {editingLesson ? (
+                // Display-only mode when editing
+                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/50">
+                  {formData.selectedClasses.length > 0 ? (
+                    formData.selectedClasses.map((className) => (
+                      <Badge key={className} variant="secondary" className="px-2 py-1">
+                        {className}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No classes selected</span>
+                  )}
                 </div>
-              )}
-
-              <Popover open={classesOpen} onOpenChange={setClassesOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={classesOpen}
-                    className="w-full justify-between"
-                  >
-                    {formData.selectedClasses.length > 0
-                      ? `${formData.selectedClasses.length} class${formData.selectedClasses.length !== 1 ? 'es' : ''} selected`
-                      : "Select classes..."}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search classes..." 
-                      value={classSearch}
-                      onValueChange={setClassSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No classes found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredClasses.map((className) => (
-                          <CommandItem
-                            key={className}
-                            onSelect={() => handleClassToggle(className)}
+              ) : (
+                // Edit mode for new lessons
+                <>
+                  {/* Selected Classes Chips */}
+                  {formData.selectedClasses.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
+                      {formData.selectedClasses.map((className) => (
+                        <Badge key={className} variant="secondary" className="flex items-center gap-1 px-2 py-1">
+                          {className}
+                          <button
+                            type="button"
+                            onClick={() => removeClass(className)}
+                            className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
                           >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.selectedClasses.includes(className)
-                                  ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {className}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <Popover open={classesOpen} onOpenChange={setClassesOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={classesOpen}
+                        className="w-full justify-between"
+                      >
+                        {formData.selectedClasses.length > 0
+                          ? `${formData.selectedClasses.length} class${formData.selectedClasses.length !== 1 ? 'es' : ''} selected`
+                          : "Select classes..."}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search classes..." 
+                          value={classSearch}
+                          onValueChange={setClassSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No classes found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredClasses.map((cls: any) => (
+                              <CommandItem
+                                key={cls.id}
+                                onSelect={() => handleClassToggle(cls.name)}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    formData.selectedClasses.includes(cls.name)
+                                      ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {cls.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
             </div>
 
             {/* Teachers Selection (Multi-Select) */}
             <div className="space-y-2">
-              <Label>Teachers *</Label>
+              <Label htmlFor="teacher">Teacher *</Label>
               <p className="text-sm text-muted-foreground">
-                Select the teacher(s) for this lesson. Allows for co-teaching.
+                Select the teacher for this lesson.
               </p>
-              
-              {/* Selected Teachers Chips */}
-              {formData.selectedTeachers.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
-                  {formData.selectedTeachers.map((teacherName) => (
-                    <Badge key={teacherName} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                      {teacherName}
-                      <button
-                        type="button"
-                        onClick={() => removeTeacher(teacherName)}
-                        className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <Popover open={teachersOpen} onOpenChange={setTeachersOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={teachersOpen}
-                    className="w-full justify-between"
-                  >
-                    {formData.selectedTeachers.length > 0
-                      ? `${formData.selectedTeachers.length} teacher${formData.selectedTeachers.length !== 1 ? 's' : ''} selected`
-                      : "Select teachers..."}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search teachers..." 
-                      value={teacherSearch}
-                      onValueChange={setTeacherSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No teachers found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredTeachers.map((teacherName) => (
-                          <CommandItem
-                            key={teacherName}
-                            onSelect={() => handleTeacherToggle(teacherName)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.selectedTeachers.includes(teacherName)
-                                  ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {teacherName}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Rooms Selection (Multi-Select) */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label>Allowed Rooms</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger type="button">
-                      <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Select multiple rooms to give the AI scheduler flexibility. The AI will choose the most optimal room from this list when generating the schedule.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              
-              {/* Selected Rooms Chips */}
-              {formData.selectedRooms.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
-                  {formData.selectedRooms.map((roomName) => (
-                    <Badge key={roomName} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                      {roomName}
-                      <button
-                        type="button"
-                        onClick={() => removeRoom(roomName)}
-                        className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <Popover open={roomsOpen} onOpenChange={setRoomsOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={roomsOpen}
-                    className="w-full justify-between"
-                  >
-                    {formData.selectedRooms.length > 0
-                      ? `${formData.selectedRooms.length} room${formData.selectedRooms.length !== 1 ? 's' : ''} selected`
-                      : "Select allowed rooms..."}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Search rooms..." 
-                      value={roomSearch}
-                      onValueChange={setRoomSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No rooms found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredRooms.map((roomName) => (
-                          <CommandItem
-                            key={roomName}
-                            onSelect={() => handleRoomToggle(roomName)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.selectedRooms.includes(roomName)
-                                  ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {roomName}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Select 
+                value={formData.selectedTeacher} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, selectedTeacher: value }))}
+              >
+                <SelectTrigger id="teacher">
+                  <SelectValue placeholder="Select teacher" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoading ? (
+                    <div className="p-2 text-center text-muted-foreground">Loading...</div>
+                  ) : (
+                    teachers.map((teacher: any) => (
+                      <SelectItem key={teacher.id} value={teacher.fullName}>
+                        {teacher.fullName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Number of Lessons per Week */}
@@ -585,7 +482,7 @@ export default function AddLessonModal({
                 <Switch
                   id="enableFixedPlacement"
                   checked={formData.enableFixedPlacement}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     setFormData(prev => ({ ...prev, enableFixedPlacement: checked }))
                   }
                 />
@@ -606,7 +503,7 @@ export default function AddLessonModal({
               disabled={
                 !formData.subject || 
                 formData.selectedClasses.length === 0 || 
-                formData.selectedTeachers.length === 0
+                !formData.selectedTeacher
               }
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             >

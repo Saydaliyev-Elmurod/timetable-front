@@ -10,9 +10,14 @@ import {
   CardTitle,
 } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { User } from '@/types/common';
 
-export default function ProfilePage({ user }) {
+interface ProfilePageProps {
+  user: User | null;
+}
+
+export default function ProfilePage({ user }: ProfilePageProps) {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');

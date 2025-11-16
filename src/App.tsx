@@ -4,13 +4,14 @@ import LoginPage from './components/LoginPage';
 import Dashboard from './components/Dashboard';
 import { Toaster } from './components/ui/sonner';
 import { getToken, removeToken } from './lib/auth';
+import { User } from './types/common';
 
 type AppView = 'landing' | 'login' | 'dashboard';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [language, setLanguage] = useState('en');
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function App() {
     setCurrentView('landing');
   };
 
-  const handleLogin = (userData: any) => {
+  const handleLogin = (userData: User) => {
     setUser(userData);
     setIsAuthenticated(true);
     setCurrentView('dashboard');

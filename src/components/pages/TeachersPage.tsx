@@ -161,7 +161,7 @@ export default function TeachersPage() {
       sunday: [1, 2, 3, 4, 5, 6, 7],
     },
   });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(false);
+  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   const [subjectComboOpen, setSubjectComboOpen] = useState(false);
   
   // Availability view for existing teachers
@@ -200,7 +200,16 @@ export default function TeachersPage() {
     try {
       setIsLoadingSubjects(true);
       const data = await SubjectService.getAll();
-      setAvailableSubjects(data || []);
+      // Be defensive: SubjectService may return different shapes depending on API/mock
+      if (Array.isArray(data)) {
+        setAvailableSubjects(data);
+      } else if (data && Array.isArray((data as any).data)) {
+        setAvailableSubjects((data as any).data);
+      } else if (data && Array.isArray((data as any).content)) {
+        setAvailableSubjects((data as any).content);
+      } else {
+        setAvailableSubjects([]);
+      }
     } catch (error) {
       toast.error('Failed to fetch subjects');
       console.error(error);

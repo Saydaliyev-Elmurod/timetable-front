@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
-// API
-import { apiCall } from '../../lib/api';
-const API_BASE_URL = 'http://localhost:8080';
+// Services
+import { LessonService, LessonResponse, DayOfWeek } from '@/lib/lessons';
+import { SubjectService } from '@/lib/subjects';
+import { TeacherService } from '@/lib/teachers';
+import { ClassService } from '@/lib/classes';
 
 // Types
 import { InternalLesson } from '@/types/lessons';
@@ -94,45 +96,39 @@ export default function LessonsPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
 
-  // Fetch teachers from API
-  const fetchTeachers = useCallback(async () => {
+  // Fetch lessons from API
+  const fetchLessons = useCallback(async () => {
     try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/teachers/v1/all`);
-      if (!response.error && response.data) {
-        const teacherList = Array.isArray(response.data) ? response.data : [];
-        setTeachers(teacherList.map((t: any) => ({
-          id: t?.id,
-          name: t?.fullName || t?.name || 'Unknown'
-        })));
-      }
+      setIsLoading(true);
+      const data = await LessonService.getAll();
+      // Convert API format to internal format
+      const converted = data.map((lesson: LessonResponse) => ({
+        id: lesson.id,
+        subject: lesson.subject?.name || 'Unknown',
+        teacher: lesson.teacher?.fullName || 'Unknown',
+        class: lesson.class?.shortName || lesson.class?.name || 'Unknown',
+        day: lesson.dayOfWeek,
+        startTime: `${lesson.hour}:00`,
+        endTime: `${lesson.hour + 1}:00`,
+        period: lesson.period,
+        frequency: `${lesson.lessonCount}x`,
+        room: lesson.rooms?.map(r => r.name).join(', ') || 'No Room',
+        duration: '45 min'
+      }));
+      setLessons(converted);
+      setTotalElements(data.length);
+      setTotalPages(1);
     } catch (error) {
-      console.error('Error fetching teachers:', error);
-      toast.error('Failed to load teachers');
-    }
-  }, []);
-
-  // Fetch rooms from API
-  const fetchRooms = useCallback(async () => {
-    try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/rooms/v1/all`);
-      if (!response.error && response.data) {
-        const roomList = Array.isArray(response.data) ? response.data : [];
-        setRooms(roomList.map((r: any) => ({
-          id: r?.id,
-          name: r?.name || 'Unknown Room',
-          capacity: r?.capacity || 0
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
-      toast.error('Failed to load rooms');
+      console.error('Error fetching lessons:', error);
+      toast.error('Failed to load lessons');
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchTeachers();
-    fetchRooms();
-  }, [fetchTeachers, fetchRooms]);
+    fetchLessons();
+  }, [fetchLessons]);
 
   const availableClasses = ['1-A', '1-B', '2-A', '2-B', '3-A', '3-B'];
   const availableSubjects = ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'History'];
@@ -231,62 +227,86 @@ export default function LessonsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setLessons(lessons.filter((l) => l.id !== id));
-    toast('Lesson deleted successfully');
+  const handleDelete = async (id: number) => {
+    try {
+      await LessonService.delete(id);
+      setLessons(lessons.filter((l) => l.id !== id));
+      toast.success('Lesson deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete lesson:', error);
+      toast.error('Failed to delete lesson');
+    }
   };
 
-  const handleSubmit = (lessonData: LessonSubmitData) => {
-    if (lessonData.multiClass && lessonData.selectedClasses.length > 1) {
-      // Handle multi-class lesson creation
-      const newLessons = lessonData.selectedClasses.map((className: string, index: number): InternalLesson => ({
-        id: lessons.length + index + 1,
-        subject: lessonData.subject,
-        teacher: lessonData.selectedTeachers[0] || 'TBD',
-        class: className,
-        day: 'Monday', // Default - would be determined by scheduling algorithm
-        startTime: '09:00',
-        endTime: '10:00',
-        period: 1,
-        frequency: `${lessonData.formats[0]?.timesPerWeek || 1}x/week`,
-        room: 'TBD',
-        duration: `${lessonData.formats[0]?.duration || '45'} min`
-      }));
+  const handleSubmit = async (lessonData: LessonSubmitData) => {
+    try {
+      // Fetch data from services
+      const [subjects, teachers, classes] = await Promise.all([
+        SubjectService.getAll(),
+        TeacherService.getAll(),
+        ClassService.getAll()
+      ]);
 
-      setLessons([...lessons, ...newLessons]);
-      toast(`✅ Lesson successfully created for ${lessonData.selectedClasses.length} classes.`);
-    } else {
-      // Handle single lesson creation/update
-      const singleLessonData = {
-        subject: lessonData.subject,
-        teacher: lessonData.selectedTeachers[0] || 'TBD',
-        class: lessonData.selectedClasses[0] || '',
-        day: 'Monday', // Default
-        startTime: '09:00',
-        endTime: '10:00',
-        period: 1,
-        frequency: `${lessonData.formats[0]?.timesPerWeek || 1}x/week`,
-        room: 'TBD',
-        duration: `${lessonData.formats[0]?.duration || '45'} min`
+      // Get IDs for teacher and subject by matching names
+      const subject = subjects.find((s: any) => s.name === lessonData.subject || s.id.toString() === lessonData.subject);
+      const teacher = teachers.find((t: any) => t.fullName === lessonData.selectedTeacher);
+      const classIds = lessonData.selectedClasses.map((className: string) => {
+        const cls = classes.find((c: any) => c.name === className);
+        return cls?.id || 0;
+      }).filter(id => id > 0);
+
+      if (!subject || !teacher || classIds.length === 0) {
+        toast.error('Invalid subject, teacher, or classes selected');
+        return;
+      }
+
+      const lessonRequest = {
+        classId: classIds,
+        teacherId: teacher.id,
+        roomIds: [],
+        subjectId: subject.id,
+        lessonCount: lessonData.lessonsPerWeek,
+        dayOfWeek: DayOfWeek.MONDAY, // Default day
+        hour: 9, // Default hour
+        period: 1 // Default period
       };
 
-      if (editingLesson) {
-        setLessons(
-          lessons.map((l) =>
-            l.id === editingLesson.id ? { ...l, ...singleLessonData } : l
-          )
-        );
-        toast('Lesson updated successfully');
+      // Call the API - create or update
+      if (editingLesson && editingLesson.id) {
+        await LessonService.update(editingLesson.id, lessonRequest);
       } else {
-        const newLesson: InternalLesson = {
-          id: lessons.length + 1,
-          ...singleLessonData,
-        };
-        setLessons([...lessons, newLesson]);
-        toast('Lesson added successfully');
+        await LessonService.create(lessonRequest);
       }
+
+      // Refresh lessons list
+      const updatedLessons = await LessonService.getAll();
+      const convertedLessons = updatedLessons.map((lesson: LessonResponse): InternalLesson => ({
+        id: lesson.id,
+        subject: lesson.subject.name,
+        teacher: lesson.teacher.fullName,
+        class: lesson.class.name,
+        day: lesson.dayOfWeek,
+        startTime: `${lesson.hour}:00`,
+        endTime: `${lesson.hour + 1}:00`,
+        period: lesson.period,
+        frequency: `${lesson.lessonCount}x/week`,
+        room: lesson.rooms.length > 0 ? lesson.rooms[0].name : 'TBD',
+        duration: '45 min'
+      }));
+      
+      setLessons(convertedLessons);
+      
+      if (editingLesson && editingLesson.id) {
+        toast.success('Lesson updated successfully');
+      } else {
+        toast.success('Lesson created successfully');
+      }
+    } catch (error) {
+      console.error('Failed to save lesson:', error);
+      toast.error('Failed to save lesson');
     }
     
+    setEditingLesson(null);
     setIsDialogOpen(false);
   };
 
@@ -697,11 +717,6 @@ export default function LessonsPage() {
         onOpenChange={setIsDialogOpen}
         onSubmit={handleSubmit}
         editingLesson={editingLesson}
-        availableClasses={availableClasses}
-        availableTeachers={teacherNames}
-        availableSubjects={availableSubjects}
-        availableRooms={roomNames}
-        detectConflicts={detectConflicts}
       />
     </div>
   );

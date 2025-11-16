@@ -189,17 +189,17 @@ export default function SettingsPage({ user }) {
             <div className="border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span>Mathematics in morning periods</span>
-                <Switch defaultChecked={false} />
+                <Switch defaultChecked />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
                 <span>Physical Education in afternoon</span>
-                <Switch defaultChecked={false} />
+                <Switch defaultChecked />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
                 <span>Lab subjects in consecutive periods</span>
-                <Switch defaultChecked={false} />
+                <Switch defaultChecked />
               </div>
             </div>
           </div>

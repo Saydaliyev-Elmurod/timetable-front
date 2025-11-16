@@ -2,56 +2,61 @@ import API, { PaginatedResponse } from './api';
 import { SubjectResponse } from './subjects';
 import { TeacherResponse } from './teachers';
 
+// Day of Week Enum
+export enum DayOfWeek {
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+  SUNDAY = 'SUNDAY',
+}
+
 export interface RoomResponse {
   id: number;
   name: string;
   shortName: string;
-  capacity: number;
+  type?: string;
 }
 
 export interface ClassResponse {
   id: number;
   name: string;
-  grade: number;
-  section: string;
+  shortName: string;
 }
 
 export interface LessonRequest {
-  classId: number;
+  classId: number[];
   teacherId: number;
   roomIds: number[];
   subjectId: number;
   lessonCount: number;
-  dayOfWeek: string;
-  hour: number;
-  period: number;
-}
-
-export interface LessonUpdateRequest {
-  id: number;
-  orgId: number;
-  classId: number;
-  teacherId: number;
-  roomIds: number[];
-  subjectId: number;
-  lessonCount: number;
-  dayOfWeek: string;
+  dayOfWeek: DayOfWeek;
   hour: number;
   period: number;
 }
 
 export interface LessonResponse {
   id: number;
-  classInfo: ClassResponse;
+  class: ClassResponse;
   teacher: TeacherResponse;
   rooms: RoomResponse[];
   subject: SubjectResponse;
   lessonCount: number;
-  dayOfWeek: string;
+  dayOfWeek: DayOfWeek;
   hour: number;
   period: number;
   createdDate: string;
   updatedDate: string;
+}
+
+export interface PagedLessonResponse {
+  content: LessonResponse[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
 }
 
 export const LessonService = {
@@ -63,8 +68,8 @@ export const LessonService = {
     return response.data!;
   },
 
-  getPaginated: async (page: number, size: number): Promise<PaginatedResponse<LessonResponse>> => {
-    const response = await API.call<PaginatedResponse<LessonResponse>>(
+  getPaginated: async (page: number, size: number): Promise<PagedLessonResponse> => {
+    const response = await API.call<PagedLessonResponse>(
       `${API.url('LESSONS')}?page=${page}&size=${size}`
     );
     if (response.error) throw response.error;
@@ -90,7 +95,7 @@ export const LessonService = {
     if (response.error) throw response.error;
   },
 
-  update: async (id: number, data: LessonUpdateRequest): Promise<void> => {
+  update: async (id: number, data: LessonRequest): Promise<void> => {
     const response = await API.call(
       `${API.url('LESSONS')}/${id}`,
       {

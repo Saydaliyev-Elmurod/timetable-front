@@ -8,7 +8,7 @@ import {
   CalendarDays,
   Settings,
   LogOut,
-  User,
+  User as UserIcon,
   Languages,
   Check,
   Building2,
@@ -39,8 +39,16 @@ import TimetableViewPage from './pages/TimetableViewPage';
 import TimetableViewPageWithAPI from './pages/TimetableViewPageWithAPI';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
+import { User } from '@/types/common';
 
-export default function Dashboard({ user, onLogout, language, onLanguageChange }) {
+interface DashboardProps {
+  user: User | null;
+  onLogout: () => void;
+  language: string;
+  onLanguageChange: (language: string) => void;
+}
+
+export default function Dashboard({ user, onLogout, language, onLanguageChange }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState('organization');
 
   const languages = [
@@ -88,7 +96,7 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
       case 'timetable-view':
         return <TimetableViewPage onNavigate={setCurrentPage} />;
       case 'settings':
-        return <SettingsPage user={user} />;
+        return <SettingsPage />;
       case 'profile':
         return <ProfilePage user={user} />;
       default:
@@ -241,7 +249,7 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setCurrentPage('profile')}>
-                  <User className="mr-2 h-4 w-4" />
+                  <UserIcon className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setCurrentPage('settings')}>
