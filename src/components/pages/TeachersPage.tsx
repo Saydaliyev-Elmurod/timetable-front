@@ -200,7 +200,7 @@ export default function TeachersPage() {
     try {
       setIsLoadingSubjects(true);
       const data = await SubjectService.getAll();
-      setAvailableSubjects(data);
+      setAvailableSubjects(data || []);
     } catch (error) {
       toast.error('Failed to fetch subjects');
       console.error(error);
@@ -211,7 +211,7 @@ export default function TeachersPage() {
 
   const filteredTeachers = React.useMemo(() => 
     // Defensive: teacher fields (fullName, shortName, subjects) may be undefined from API
-    teachers.filter((teacher) => {
+    (teachers || []).filter((teacher) => {
       const q = searchQuery.trim().toLowerCase();
       if (!q) return true;
       const full = (teacher.fullName || '').toLowerCase();
@@ -258,11 +258,11 @@ export default function TeachersPage() {
       setIsSaving(true);
       const teacherData = await TeacherService.getById(teacher.id);
       setEditingTeacherId(teacher.id);
-      setOriginalSubjectIds(teacherData.subjects.map((s: SubjectResponse) => s.id));
+      setOriginalSubjectIds((teacherData.subjects || []).map((s: SubjectResponse) => s.id));
       setInlineFormData({
         fullName: teacherData.fullName,
         shortName: teacherData.shortName,
-        selectedSubjectIds: teacherData.subjects.map((s: SubjectResponse) => s.id),
+        selectedSubjectIds: (teacherData.subjects || []).map((s: SubjectResponse) => s.id),
         availability: convertFromTimeSlots(teacherData.availabilities),
       });
       setShowInlineForm(true);
@@ -282,7 +282,7 @@ export default function TeachersPage() {
     setInlineFormData({
       fullName: `${teacher.fullName} (Copy)`,
       shortName: `${teacher.shortName}-C`,
-      selectedSubjectIds: teacher.subjects.map((s: SubjectResponse) => s.id),
+      selectedSubjectIds: (teacher.subjects || []).map((s: SubjectResponse) => s.id),
       availability: convertFromTimeSlots(teacher.availabilities),
     });
     setShowAvailabilityInForm(false);

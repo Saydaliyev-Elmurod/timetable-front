@@ -453,6 +453,7 @@ export default function OrganizationPage() {
                           <Label className="text-xs text-muted-foreground">Start:</Label>
                           <Input
                             type="time"
+                            lang="en-GB"
                             value={period.startTime}
                             onChange={(e) => updatePeriod(period.id, 'startTime', e.target.value)}
                             className="bg-white dark:bg-gray-900"
@@ -462,6 +463,7 @@ export default function OrganizationPage() {
                           <Label className="text-xs text-muted-foreground">End:</Label>
                           <Input
                             type="time"
+                            lang="en-GB"
                             value={period.endTime}
                             onChange={(e) => updatePeriod(period.id, 'endTime', e.target.value)}
                             className="bg-white dark:bg-gray-900"
