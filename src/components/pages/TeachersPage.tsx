@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -128,6 +129,7 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[] | null | undefined): any => 
 };
 
 export default function TeachersPage() {
+  const { t } = useTranslation();
   const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<SubjectResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -496,17 +498,17 @@ export default function TeachersPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2>Teachers</h2>
-          <p className="text-muted-foreground">Manage teachers and their subject assignments</p>
+          <h2>{t('teachers.title')}</h2>
+          <p className="text-muted-foreground">{t('teachers.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleImport} size="sm">
             <Upload className="mr-2 h-4 w-4" />
-            Import
+            {t('teachers.import')}
           </Button>
           <Button onClick={handleAddTeacher} size="sm" className="bg-green-600 hover:bg-green-700">
             <Plus className="mr-2 h-4 w-4" />
-            Add Teacher
+            {t('teachers.add_teacher')}
           </Button>
         </div>
       </div>
@@ -514,7 +516,7 @@ export default function TeachersPage() {
       {/* Search */}
       <div className="flex items-center gap-4">
         <Input
-          placeholder="Search teachers..."
+          placeholder={t('teachers.search_placeholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
@@ -528,7 +530,7 @@ export default function TeachersPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
+                  <Label>{t('teachers.full_name')}</Label>
                   <Input
                     placeholder="e.g., John Smith"
                     value={inlineFormData.fullName}
@@ -537,7 +539,7 @@ export default function TeachersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Short Name / Code</Label>
+                  <Label>{t('teachers.short_name_code')}</Label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="Auto-generated"
@@ -559,7 +561,7 @@ export default function TeachersPage() {
 
               {/* Subject Selection */}
               <div className="space-y-2">
-                <Label>Subjects</Label>
+                <Label>{t('teachers.subjects')}</Label>
                 <Popover open={subjectComboOpen} onOpenChange={setSubjectComboOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -570,19 +572,19 @@ export default function TeachersPage() {
                       disabled={isLoadingSubjects}
                     >
                       {isLoadingSubjects ? (
-                        <span className="text-muted-foreground">Loading subjects...</span>
+                        <span className="text-muted-foreground">{t('teachers.loading_subjects')}</span>
                       ) : inlineFormData.selectedSubjectIds.length > 0 ? (
-                        <span>{inlineFormData.selectedSubjectIds.length} subject{inlineFormData.selectedSubjectIds.length > 1 ? 's' : ''} selected</span>
+                        <span>{inlineFormData.selectedSubjectIds.length} {t('teachers.subject_selected')}{inlineFormData.selectedSubjectIds.length > 1 ? 's' : ''}</span>
                       ) : (
-                        <span className="text-muted-foreground">Select subjects...</span>
+                        <span className="text-muted-foreground">{t('teachers.select_subjects_placeholder')}</span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search subjects..." />
-                      <CommandEmpty>No subject found.</CommandEmpty>
+                      <CommandInput placeholder={t('teachers.search_subjects')} />
+                      <CommandEmpty>{t('teachers.no_subject_found')}</CommandEmpty>
                       <CommandGroup className="max-h-64 overflow-auto">
                         {availableSubjects.map((subject) => (
                           <CommandItem
@@ -646,7 +648,7 @@ export default function TeachersPage() {
               {showAvailabilityInForm && (
                 <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Teacher Availability</p>
+                    <p className="text-sm font-medium">{t('teachers.teacher_availability')}</p>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -654,7 +656,7 @@ export default function TeachersPage() {
                         onClick={selectAllInlineAvailability}
                         className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
                       >
-                        Select All
+                        {t('teachers.select_all')}
                       </Button>
                       <Button
                         variant="outline"
@@ -662,7 +664,7 @@ export default function TeachersPage() {
                         onClick={clearAllInlineAvailability}
                         className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
                       >
-                        Clear All
+                        {t('teachers.clear_all')}
                       </Button>
                     </div>
                   </div>
@@ -724,18 +726,18 @@ export default function TeachersPage() {
                   {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      {t('teachers.saving')}
                     </>
                   ) : (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      {editingTeacherId ? 'Update Teacher' : 'Save Teacher'}
+                      {editingTeacherId ? t('teachers.update_teacher') : t('teachers.save_teacher')}
                     </>
                   )}
                 </Button>
                 <Button onClick={handleCancelInlineForm} variant="outline" size="sm" disabled={isSaving}>
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('teachers.cancel')}
                 </Button>
               </div>
             </div>
@@ -753,18 +755,18 @@ export default function TeachersPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Short Name</TableHead>
-                <TableHead>Subjects</TableHead>
-                <TableHead className="text-center">Availability</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('teachers.table.name')}</TableHead>
+                <TableHead>{t('teachers.table.short_name')}</TableHead>
+                <TableHead>{t('teachers.table.subjects')}</TableHead>
+                <TableHead className="text-center">{t('teachers.table.availability')}</TableHead>
+                <TableHead className="text-right">{t('teachers.table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTeachers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No teachers found
+                    {t('teachers.no_teachers_found')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -783,7 +785,7 @@ export default function TeachersPage() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {(!Array.isArray(teacher.subjects) || teacher.subjects.length === 0) ? (
-                              <span className="text-sm text-muted-foreground">No subjects</span>
+                              <span className="text-sm text-muted-foreground">{t('teachers.no_subjects')}</span>
                             ) : (
                               (teacher.subjects as SubjectResponse[]).map((subject: SubjectResponse) => (
                                 <Badge

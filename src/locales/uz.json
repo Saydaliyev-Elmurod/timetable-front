@@ -29,5 +29,268 @@
     "signup": "Ro'yxatdan o'tish",
     "getCode": "Tasdiqlash kodini olish",
     "createAccount": "Hisob yaratish"
+  },
+  "lessons": {
+    "title": "Darslar",
+    "description": "Har bir sinf uchun darslarni fan(lar), o'qituvchi(lar) va haftasiga chastotasi bilan qo'shing.",
+    "expand_all": "Barchasini yoyish",
+    "collapse_all": "Barchasini yig'ish",
+    "classes": "Sinflar",
+    "teachers": "O'qituvchilar",
+    "subjects": "Fanlar",
+    "rooms": "Xonalar",
+    "add_lesson": "Yangi dars qo'shish",
+    "export_csv": "CSV eksport qilish",
+    "bulk_import": "Ommaviy import",
+    "lessons_count": "{{count}} dars",
+    "total_periods": "{{count}} jami dars",
+    "teachers_count": "{{count}} o'qituvchi",
+    "subjects_count": "{{count}} fan",
+    "classes_count": "{{count}} sinf",
+    "add_lesson_for_class": "Sinf uchun dars qo'shish",
+    "subject": "Fan",
+    "teacher": "O'qituvchi",
+    "frequency": "Chastota",
+    "room": "Xona",
+    "duration": "Davomiyligi",
+    "actions": "Harakatlar",
+    "edit": "Tahrirlash",
+    "delete": "O'chirish",
+    "lesson_deleted_successfully": "Dars muvaffaqiyatli o'chirildi",
+    "failed_to_delete_lesson": "Darsni o'chirishda xatolik",
+    "lesson_created_successfully": "Dars muvaffaqiyatli yaratildi",
+    "failed_to_create_lesson": "Darsni yaratishda xatolik",
+    "lesson_updated_successfully": "Dars muvaffaqiyatli yangilandi",
+    "failed_to_update_lesson": "Darsni yangilashda xatolik",
+    "failed_to_load_lessons": "Darslarni yuklashda xatolik"
+  },
+  "dashboard": {
+    "organization": "Tashkilot",
+    "classes": "Sinflar",
+    "teachers": "O'qituvchilar",
+    "subjects": "Fanlar",
+    "rooms": "Xonalar",
+    "lessons": "Darslar",
+    "templates": "Andozalar",
+    "timetables": "Dars jadvallari",
+    "management": "Boshqaruv",
+    "settings": "Sozlamalar",
+    "profile": "Profil",
+    "select_language": "Tilni tanlang",
+    "my_account": "Mening hisobim",
+    "logout": "Chiqish"
+  },
+  "organization": {
+    "title": "Tashkilot sozlamalari",
+    "description": "Maktabingiz tashkiloti tafsilotlari va konfiguratsiyalarini boshqaring",
+    "saving": "Saqlanmoqda...",
+    "save_changes": "O'zgarishlarni saqlash",
+    "unsaved_changes": "Sizda saqlanmagan o'zgarishlar mavjud",
+    "information_title": "Tashkilot ma'lumotlari",
+    "information_description": "Ta'lim muassasangiz haqida asosiy ma'lumotlar",
+    "name_label": "Tashkilot nomi",
+    "name_placeholder": "Tashkilot nomini kiriting...",
+    "description_label": "Tavsif",
+    "description_placeholder": "Tashkilot tavsifini kiriting...",
+    "working_days_title": "Maktab ish kunlari",
+    "working_days_description": "Maktabingiz haftaning qaysi kunlari ishlashini sozlang",
+    "days_selected": "{{count}} of {{total}} kun tanlandi",
+    "clear_all": "Barchasini tozalash",
+    "select_all": "Barchasini tanlash",
+    "days": {
+      "monday": "Dushanba",
+      "tuesday": "Seshanba",
+      "wednesday": "Chorshanba",
+      "thursday": "Payshanba",
+      "friday": "Juma",
+      "saturday": "Shanba",
+      "sunday": "Yakshanba"
+    }
+    ,
+    "period": "Dars",
+    "break": "Tanaffus",
+    "period_name_placeholder": "Dars nomi...",
+    "break_name_placeholder": "Tanaffus nomi...",
+    "start_time": "Boshlanish vaqti",
+    "end_time": "Tugash vaqti",
+    "time_management_title": "Vaqt boshqaruvi",
+    "time_management_description": "Dars davrlarini va tanaffuslarni sozlang",
+    "periods_and_breaks": "{{periods}} dars, {{breaks}} tanaffus",
+    "add_period": "Dars qo'shish",
+    "add_break": "Tanaffus qo'shish",
+    "duration": "Davomiylik",
+    "minutes": "daqiqa",
+    "no_periods_configured": "Hech qanday dars konfiguratsiyasi yo'q",
+    "click_add_period": "Qo'shish tugmasini bosing va birinchi darsni yarating"
+  }
+  ,
+  "classes": {
+    "title": "Sinflar",
+    "description": "Sinflar jadvali va mavjudligini boshqaring",
+    "refresh": "Yangilash",
+    "import": "Import",
+    "batch_create": "Ommaviy yaratish",
+    "add_class": "Sinf qo'shish",
+    "search_placeholder": "Sinflarni qidirish...",
+    "edit_class": "Sinfni tahrirlash",
+    "add_new_class": "Yangi sinf qo'shish",
+    "class_name": "Sinf nomi",
+    "short_name": "Qisqa nom",
+    "class_teacher": "Sinfdosh o'qituvchi",
+    "rooms_optional": "Xonalar (ixtiyoriy)",
+    "no_rooms": "Xonalar mavjud emas",
+    "no_rooms_assigned": "Xonalar tayinlanmagan",
+    "not_assigned": "Tayinlanmagan",
+    "class_availability": "Sinf mavjudligi",
+    "select_all": "Hammasini tanlash",
+    "clear_all": "Hammasini tozalash",
+    "save_class": "Sinfni saqlash",
+    "update_class": "Sinfni yangilash",
+    "cancel": "Bekor qilish",
+    "table": {
+      "name": "Nomi",
+      "short_name": "Qisqa nom",
+      "teacher": "O'qituvchi",
+      "rooms": "Xonalar",
+      "availability": "Mavjudlik",
+      "updated_date": "Yangilangan sana",
+      "actions": "Harakatlar"
+    },
+    "no_classes_found": "Qidiruvga mos sinf topilmadi",
+    "no_classes_yet": "Hozircha sinflar yo'q",
+    "add_your_first_class": "Birinchi sinfni qo'shish",
+    "items_per_page": "Sahifada elementlar soni:"
+  },
+  "teachers": {
+    "title": "O'qituvchilar",
+    "description": "O'qituvchilar va ularga biriktirilgan fanlarni boshqaring",
+    "import": "Import",
+    "add_teacher": "O'qituvchi qo'shish",
+    "search_placeholder": "O'qituvchilarni qidirish...",
+    "full_name": "To'liq ism",
+    "short_name_code": "Qisqa ism / Kod",
+    "subjects": "Fanlar",
+    "loading_subjects": "Fanlar yuklanmoqda...",
+    "subject_selected": "fan tanlandi",
+    "select_subjects_placeholder": "Fanlarni tanlang...",
+    "search_subjects": "Fanlarni qidirish...",
+    "no_subject_found": "Fan topilmadi.",
+    "teacher_availability": "O'qituvchi mavjudligi",
+    "select_all": "Hammasini tanlash",
+    "clear_all": "Hammasini tozalash",
+    "saving": "Saqlanmoqda...",
+    "save_teacher": "O'qituvchini saqlash",
+    "update_teacher": "O'qituvchini yangilash",
+    "cancel": "Bekor qilish",
+    "table": {
+      "name": "Nomi",
+      "short_name": "Qisqa nom",
+      "subjects": "Fanlar",
+      "availability": "Mavjudlik",
+      "actions": "Harakatlar"
+    },
+    "no_teachers_found": "O'qituvchi topilmadi",
+    "no_subjects": "Fanlar yo'q",
+    "download_template": "Shablonni yuklab olish",
+    "import_teachers": "O'qituvchilarni import qilish"
+  },
+
+  "timetables": {
+    "title": "Dars jadvallari",
+    "description": "Yaratilgan dars jadvallarini ko'rish va boshqarish",
+    "interactive_view": "Interfaol jadval ko'rinishi",
+    "generate": "Jadval yaratish",
+    "showing_demo": "Demo ma'lumotlar ko'rsatilmoqda.",
+    "all_title": "Barcha jadvallar",
+    "all_description": "Yaratilgan barcha dars jadvallari ro'yxati",
+    "search_placeholder": "Nomi bo'yicha qidirish...",
+    "loading": "Jadvallar yuklanmoqda...",
+    "deleted_success": "Jadval muvaffaqiyatli o'chirildi",
+    "delete_failed": "Jadvallarni o'chirishda xatolik",
+    "exporting_excel": "{{name}} Excel-ga eksport qilinmoqda...",
+    "exporting_pdf": "{{name}} PDF-ga eksport qilinmoqda...",
+    "opening_print": "Chop etish oynasi ochilmoqda..."
+  },
+
+  "landing": {
+    "hero": {
+      "badge": "🎓 Dunyo bo'ylab 500+ maktab ishonadi",
+      "titlePrefix": "Maktabingiz jadvalini soddalashtiring",
+      "titleHighlight": "Timetable.uz",
+      "subtitle": "Sinflaringizni, o'qituvchilarni va xonalarni bitta aqlli platformada boshqaring. Ideal jadvalni daqiqalarda yarating.",
+      "start": "Bepul boshlash",
+      "demo": "Demonsterni ko'rish"
+    },
+    "features": {
+      "smart": {
+        "title": "Aqlli sinf boshqaruvi",
+        "description": "Sinflarni qo'shing, tahrir qiling va kuzatib boring. Talabalar, fanlar va jadval bir joyda."
+      },
+      "automatic": {
+        "title": "Avtomatik rejalashtirish",
+        "description": "Tizim o'qituvchi va xona mavjudligiga qarab eng yaxshi jadvalni taklif qiladi va konfliktlarni bartaraf etadi."
+      },
+      "availability": {
+        "title": "Xona va o'qituvchi mavjudligi",
+        "description": "Vizual mavjudlik taqvimlari bilan konfliktlardan qoching. Kim va qachon bo'sh ekanligini ko'ring."
+      },
+      "notifications": {
+        "title": "Real vaqtda bildirishnomalar",
+        "description": "Dars o'zgartirilganida, ko'chirilganda yoki bekor qilinganda darhol xabar oling."
+      }
+    },
+    "userTypes": {
+      "schools": {
+        "title": "Maktablar",
+        "description": "Ma'muriy vositalar bilan jadval va sinflarni boshqaring."
+      },
+      "teachers": {
+        "title": "O'qituvchilar",
+        "description": "Ajoyib interfeyslar bilan dars va fanlarni samarali boshqaring."
+      },
+      "students": {
+        "title": "O'quvchilar",
+        "description": "Yangi jadvalni istalgan vaqtda mobil qurilmadan ko'ring."
+      }
+    },
+    "pricing": {
+      "free": {
+        "name": "Bepul",
+        "period": "abadiy",
+        "description": "Kichik maktablar uchun ajoyib boshlanish",
+        "features": {
+          "1": "5 gacha sinf",
+          "2": "Asosiy rejalashtirish",
+          "3": "Email bilan qo'llab-quvvatlash",
+          "4": "Standart shablonlar"
+        }
+      },
+      "pro": {
+        "name": "Pro",
+        "period": "oyiga",
+        "description": "O'sayotgan maktablar uchun rivojlangan funksiyalar",
+        "features": {
+          "1": "Cheksiz sinflar",
+          "2": "Rivojlangan rejalashtirish",
+          "3": "Ustuvor qo'llab-quvvatlash",
+          "4": "Moslashtirilgan shablonlar",
+          "5": "Konflikt aniqlash",
+          "6": "Eksport qilish imkoniyatlari"
+        }
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "period": "oyiga",
+        "description": "Katta muassasalar uchun to'liq yechim",
+        "features": {
+          "1": "Pro dagi hamma narsalar",
+          "2": "Bir nechta kampuslar",
+          "3": "Rivojlangan tahlillar",
+          "4": "24/7 telefon qo'llab-quvvatlash",
+          "5": "Moslashtirilgan integratsiyalar",
+          "6": "Ajratilgan menejer"
+        }
+      }
+    }
   }
 }

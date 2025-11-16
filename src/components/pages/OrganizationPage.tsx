@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/index';
 import { organizationApi, CompanyResponse, LessonPeriod as ApiLessonPeriod } from '@/api/organizationApi';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -365,7 +365,7 @@ export default function OrganizationPage() {
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
-              {t('organization.days_selected', { count: selectedDaysCount, total: days.length })}
+              {t('organization.days_selected').replace('{{count}}', String(selectedDaysCount)).replace('{{total}}', String(days.length))}
             </span>
             <Button
               variant="outline"
@@ -415,7 +415,9 @@ export default function OrganizationPage() {
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
-              {t('organization.periods_and_breaks', { periods: periods.filter(p => p.type === 'period').length, breaks: periods.filter(p => p.type === 'break').length })}
+              {t('organization.periods_and_breaks')
+                .replace('{{periods}}', String(periods.filter(p => p.type === 'period').length))
+                .replace('{{breaks}}', String(periods.filter(p => p.type === 'break').length))}
             </span>
             <Button
               variant="outline"

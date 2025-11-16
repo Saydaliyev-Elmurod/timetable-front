@@ -29,5 +29,269 @@
     "signup": "Sign Up",
     "getCode": "Get Verification Code",
     "createAccount": "Create Account"
+  },
+  "lessons": {
+    "title": "Lessons",
+    "description": "Add lessons with subject, teacher and weekly frequency.",
+    "expand_all": "Expand all",
+    "collapse_all": "Collapse all",
+    "classes": "Classes",
+    "teachers": "Teachers",
+    "subjects": "Subjects",
+    "rooms": "Rooms",
+    "add_lesson": "Add lesson",
+    "export_csv": "Export CSV",
+    "bulk_import": "Bulk import",
+    "lessons_count": "{{count}} lesson",
+    "total_periods": "{{count}} total periods",
+    "teachers_count": "{{count}} teacher",
+    "subjects_count": "{{count}} subject",
+    "classes_count": "{{count}} class",
+    "add_lesson_for_class": "Add lesson for class",
+    "subject": "Subject",
+    "teacher": "Teacher",
+    "frequency": "Frequency",
+    "room": "Room",
+    "duration": "Duration",
+    "actions": "Actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "lesson_deleted_successfully": "Lesson deleted successfully",
+    "failed_to_delete_lesson": "Failed to delete lesson",
+    "lesson_created_successfully": "Lesson created successfully",
+    "failed_to_create_lesson": "Failed to create lesson",
+    "lesson_updated_successfully": "Lesson updated successfully",
+    "failed_to_update_lesson": "Failed to update lesson",
+    "failed_to_load_lessons": "Failed to load lessons"
+  },
+  "dashboard": {
+    "organization": "Organization",
+    "classes": "Classes",
+    "teachers": "Teachers",
+    "subjects": "Subjects",
+    "rooms": "Rooms",
+    "lessons": "Lessons",
+    "templates": "Templates",
+    "timetables": "Timetables",
+    "management": "Management",
+    "settings": "Settings",
+    "profile": "Profile",
+    "select_language": "Select language",
+    "my_account": "My account",
+    "logout": "Logout"
+  },
+  "organization": {
+    "title": "Organization settings",
+    "description": "Manage your school's organization details and configuration",
+    "saving": "Saving...",
+    "save_changes": "Save changes",
+    "unsaved_changes": "You have unsaved changes",
+    "information_title": "Organization information",
+    "information_description": "Basic info about your institution",
+    "name_label": "Organization name",
+    "name_placeholder": "Enter organization name...",
+    "description_label": "Description",
+    "description_placeholder": "Enter organization description...",
+    "working_days_title": "Working days",
+    "working_days_description": "Configure which weekdays your school operates",
+    "days_selected": "{{count}} of {{total}} days selected",
+    "clear_all": "Clear all",
+    "select_all": "Select all",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+    ,
+    "period": "Period",
+    "break": "Break",
+    "period_name_placeholder": "Period name...",
+    "break_name_placeholder": "Break name...",
+    "start_time": "Start time",
+    "end_time": "End time",
+    "time_management_title": "Time management",
+    "time_management_description": "Configure lesson periods and breaks",
+    "periods_and_breaks": "{{periods}} periods, {{breaks}} breaks",
+    "add_period": "Add period",
+    "add_break": "Add break",
+    "duration": "Duration",
+    "minutes": "minutes",
+    "no_periods_configured": "No periods configured",
+    "click_add_period": "Click add period to create your first period"
+  }
+  ,
+  "classes": {
+    "title": "Classes",
+    "description": "Manage class schedules and availability",
+    "refresh": "Refresh",
+    "import": "Import",
+    "batch_create": "Batch Create",
+    "add_class": "Add Class",
+    "search_placeholder": "Search classes...",
+    "edit_class": "Edit Class",
+    "add_new_class": "Add New Class",
+    "class_name": "Class Name",
+    "short_name": "Short Name",
+    "class_teacher": "Class Teacher",
+    "rooms_optional": "Rooms (optional)",
+    "no_rooms": "No rooms available",
+    "no_rooms_assigned": "No rooms assigned",
+    "not_assigned": "Not assigned",
+    "class_availability": "Class Availability",
+    "select_all": "Select All",
+    "clear_all": "Clear All",
+    "save_class": "Save Class",
+    "update_class": "Update Class",
+    "cancel": "Cancel",
+    "table": {
+      "name": "Name",
+      "short_name": "Short Name",
+      "teacher": "Teacher",
+      "rooms": "Rooms",
+      "availability": "Availability",
+      "updated_date": "Updated Date",
+      "actions": "Actions"
+    },
+    "no_classes_found": "No classes found matching your search",
+    "no_classes_yet": "No classes yet",
+    "add_your_first_class": "Add your first class",
+    "items_per_page": "Items per page:"
+  },
+  "teachers": {
+    "title": "Teachers",
+    "description": "Manage teachers and their subject assignments",
+    "import": "Import",
+    "add_teacher": "Add Teacher",
+    "search_placeholder": "Search teachers...",
+    "full_name": "Full Name",
+    "short_name_code": "Short Name / Code",
+    "subjects": "Subjects",
+    "loading_subjects": "Loading subjects...",
+    "subject_selected": "subject selected",
+    "select_subjects_placeholder": "Select subjects...",
+    "search_subjects": "Search subjects...",
+    "no_subject_found": "No subject found.",
+    "teacher_availability": "Teacher Availability",
+    "select_all": "Select All",
+    "clear_all": "Clear All",
+    "saving": "Saving...",
+    "save_teacher": "Save Teacher",
+    "update_teacher": "Update Teacher",
+    "cancel": "Cancel",
+    "table": {
+      "name": "Name",
+      "short_name": "Short Name",
+      "subjects": "Subjects",
+      "availability": "Availability",
+      "actions": "Actions"
+    },
+    "no_teachers_found": "No teachers found",
+    "no_subjects": "No subjects",
+    "download_template": "Download Template",
+    "import_teachers": "Import Teachers"
+  }
+
+  ,
+  "timetables": {
+    "title": "Timetables",
+    "description": "View and manage generated timetables",
+    "interactive_view": "Interactive Timetable View",
+    "generate": "Generate Timetable",
+    "showing_demo": "Showing demo data instead.",
+    "all_title": "All Timetables",
+    "all_description": "List of all generated timetables",
+    "search_placeholder": "Search by name...",
+    "loading": "Loading timetables...",
+    "deleted_success": "Timetable deleted successfully",
+    "delete_failed": "Failed to delete timetable",
+    "exporting_excel": "Exporting {{name}} to Excel...",
+    "exporting_pdf": "Exporting {{name}} to PDF...",
+    "opening_print": "Opening print dialog..."
+  },
+
+  "landing": {
+    "hero": {
+      "badge": "🎓 Trusted by 500+ Schools Worldwide",
+      "titlePrefix": "Simplify Your School Scheduling with",
+      "titleHighlight": "Timetable.uz",
+      "subtitle": "Manage your classes, teachers, and rooms all in one smart platform. Create perfect timetables in minutes, not hours.",
+      "start": "Start Free",
+      "demo": "See Demo"
+    },
+    "features": {
+      "smart": {
+        "title": "Smart Class Management",
+        "description": "Add, edit, and track classes with ease. Organize students, subjects, and schedules in one unified platform."
+      },
+      "automatic": {
+        "title": "Automatic Scheduling",
+        "description": "System suggests the best timetable based on teacher and room availability, eliminating conflicts automatically."
+      },
+      "availability": {
+        "title": "Room & Teacher Availability",
+        "description": "Avoid conflicts with visual availability calendars. See who's free and when at a glance."
+      },
+      "notifications": {
+        "title": "Real-time Notifications",
+        "description": "Get instant updates when lessons are changed, moved, or canceled. Keep everyone informed."
+      }
+    },
+    "userTypes": {
+      "schools": {
+        "title": "Schools",
+        "description": "Organize schedules and classrooms easily with comprehensive administrative tools."
+      },
+      "teachers": {
+        "title": "Teachers",
+        "description": "Manage lessons and subjects efficiently with intuitive scheduling interfaces."
+      },
+      "students": {
+        "title": "Students",
+        "description": "Access updated timetables anytime, anywhere with mobile-friendly design."
+      }
+    },
+    "pricing": {
+      "free": {
+        "name": "Free",
+        "period": "forever",
+        "description": "Perfect for small schools getting started",
+        "features": {
+          "1": "Up to 5 classes",
+          "2": "Basic scheduling",
+          "3": "Email support",
+          "4": "Standard templates"
+        }
+      },
+      "pro": {
+        "name": "Pro",
+        "period": "per month",
+        "description": "Advanced features for growing schools",
+        "features": {
+          "1": "Unlimited classes",
+          "2": "Advanced scheduling",
+          "3": "Priority support",
+          "4": "Custom templates",
+          "5": "Conflict detection",
+          "6": "Export options"
+        }
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "period": "per month",
+        "description": "Complete solution for large institutions",
+        "features": {
+          "1": "Everything in Pro",
+          "2": "Multiple campuses",
+          "3": "Advanced analytics",
+          "4": "24/7 phone support",
+          "5": "Custom integrations",
+          "6": "Dedicated manager"
+        }
+      }
+    }
   }
 }

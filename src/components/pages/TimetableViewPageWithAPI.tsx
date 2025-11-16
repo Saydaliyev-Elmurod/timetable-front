@@ -59,6 +59,7 @@ import {
   ValidationResponse,
   initializeMockLessons
 } from "../api/timetableActionApi";
+import { apiCall } from '@/lib/api';
 
 // API Types based on backend entities
 interface TimeSlot {
@@ -844,13 +845,13 @@ export default function TimetableViewPageWithAPI({
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/${id}`);
+      const res = await apiCall<TimetableDataEntity[]>(`http://localhost:8080/api/timetable/v1/timetable/${id}`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch timetable data: ${response.statusText}`);
+      if (res.error) {
+        throw res.error;
       }
 
-      const data: TimetableDataEntity[] = await response.json();
+      const data: TimetableDataEntity[] = res.data || [];
       setTimetableData(data);
 
       // Process the data

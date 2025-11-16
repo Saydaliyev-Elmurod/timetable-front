@@ -1,5 +1,6 @@
 import { apiCall } from '../../lib/api';
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import {
@@ -48,6 +49,7 @@ interface TimetableEntity {
 }
 
 export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const { t } = useTranslation();
   const [timetables, setTimetables] = useState<TimetableEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,23 +149,23 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       // In a real implementation, you would call DELETE API
       // For now, we'll just remove from the list
       setTimetables(timetables.filter((t) => t.id !== id));
-      toast.success('Timetable deleted successfully');
+      toast.success(t('timetables.deleted_success'));
     } catch (err) {
-      toast.error('Failed to delete timetable');
+      toast.error(t('timetables.delete_failed'));
     }
   };
 
   const handleExportExcel = (timetable: TimetableEntity) => {
-    toast(`Exporting ${timetable.name} to Excel...`);
+    toast(t('timetables.exporting_excel').replace('{{name}}', timetable.name));
   };
 
   const handleExportPDF = (timetable: TimetableEntity) => {
-    toast(`Exporting ${timetable.name} to PDF...`);
+    toast(t('timetables.exporting_pdf').replace('{{name}}', timetable.name));
   };
 
   const handlePrint = () => {
     window.print();
-    toast('Opening print dialog...');
+    toast(t('timetables.opening_print'));
   };
 
   const formatDate = (dateString: string) => {
@@ -185,10 +187,8 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2>Timetables</h2>
-          <p className="text-muted-foreground">
-            View and manage generated timetables
-          </p>
+          <h2>{t('timetables.title')}</h2>
+          <p className="text-muted-foreground">{t('timetables.description')}</p>
         </div>
         <div className="flex gap-3">
           {onNavigate && (
@@ -198,12 +198,12 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
               className="border-blue-300 text-blue-700 hover:bg-blue-50"
             >
               <Eye className="mr-2 h-4 w-4" />
-              Interactive Timetable View
+              {t('timetables.interactive_view')}
             </Button>
           )}
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Generate Timetable
+            {t('timetables.generate')}
           </Button>
         </div>
       </div>
@@ -212,7 +212,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error} - Showing demo data instead.
+            {error} - {t('timetables.showing_demo')}
           </AlertDescription>
         </Alert>
       )}
@@ -221,13 +221,11 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>All Timetables</CardTitle>
-              <CardDescription>
-                List of all generated timetables
-              </CardDescription>
+              <CardTitle>{t('timetables.all_title')}</CardTitle>
+              <CardDescription>{t('timetables.all_description')}</CardDescription>
             </div>
             <Input
-              placeholder="Search by name..."
+              placeholder={t('timetables.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-sm"
@@ -238,7 +236,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-3 text-muted-foreground">Loading timetables...</span>
+              <span className="ml-3 text-muted-foreground">{t('timetables.loading')}</span>
             </div>
           ) : (
             <>

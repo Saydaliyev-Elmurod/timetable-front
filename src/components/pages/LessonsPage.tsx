@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n/index';
 
 // ... (other imports)
 
@@ -103,19 +103,19 @@ export default function LessonsPage() {
                       <>
                         <span className="flex items-center gap-1">
                           <BookOpen className="h-4 w-4" />
-                          {t('lessons.lessons_count', { count: item.totalLessons })}
+                          {t('lessons.lessons_count').replace('{{count}}', String(item.totalLessons))}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {t('lessons.total_periods', { count: item.totalPeriods })}
+                          {t('lessons.total_periods').replace('{{count}}', String(item.totalPeriods))}
                         </span>
                         <span className="flex items-center gap-1">
                           <GraduationCap className="h-4 w-4" />
-                          {t('lessons.teachers_count', { count: item.teachers })}
+                          {t('lessons.teachers_count').replace('{{count}}', String(item.teachers))}
                         </span>
                         <span className="flex items-center gap-1">
                           <FileText className="h-4 w-4" />
-                          {t('lessons.subjects_count', { count: item.subjects })}
+                          {t('lessons.subjects_count').replace('{{count}}', String(item.subjects))}
                         </span>
                       </>
                     )}
@@ -123,15 +123,15 @@ export default function LessonsPage() {
                       <>
                         <span className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
-                          {t('lessons.classes_count', { count: item.classes })}
+                          {t('lessons.classes_count').replace('{{count}}', String(item.classes))}
                         </span>
                         <span className="flex items-center gap-1">
                           <BookOpen className="h-4 w-4" />
-                          {t('lessons.lessons_count', { count: item.totalLessons })}
+                          {t('lessons.lessons_count').replace('{{count}}', String(item.totalLessons))}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {t('lessons.total_periods', { count: item.totalPeriods })}
+                          {t('lessons.total_periods').replace('{{count}}', String(item.totalPeriods))}
                         </span>
                       </>
                     )}
@@ -139,15 +139,15 @@ export default function LessonsPage() {
                       <>
                         <span className="flex items-center gap-1">
                           <GraduationCap className="h-4 w-4" />
-                          {t('lessons.teachers_count', { count: item.teachers })}
+                          {t('lessons.teachers_count').replace('{{count}}', String(item.teachers))}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
-                          {t('lessons.classes_count', { count: item.classes })}
+                          {t('lessons.classes_count').replace('{{count}}', String(item.classes))}
                         </span>
                         <span className="flex items-center gap-1">
                           <BookOpen className="h-4 w-4" />
-                          {t('lessons.lessons_count', { count: item.totalLessons })}
+                          {t('lessons.lessons_count').replace('{{count}}', String(item.totalLessons))}
                         </span>
                       </>
                     )}

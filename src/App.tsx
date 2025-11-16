@@ -79,19 +79,6 @@ export default function App() {
   return (
     <>
       {renderCurrentView()}
-      <div className="fixed top-4 right-4 z-50">
-        <label className="sr-only">Language</label>
-        <select
-          value={locale}
-          onChange={(e) => setLocale(e.target.value as any)}
-          className="bg-white/80 border rounded p-1 text-sm"
-          aria-label="Language"
-        >
-          <option value="uz">UZ</option>
-          <option value="ru">RU</option>
-          <option value="en">EN</option>
-        </select>
-      </div>
       <Toaster />
     </>
   );

@@ -32,41 +32,41 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
   const features = [
     {
       icon: <GraduationCap className="h-8 w-8 text-blue-600" />,
-      title: "Smart Class Management",
-      description: "Add, edit, and track classes with ease. Organize students, subjects, and schedules in one unified platform."
+      title: t('landing.features.smart.title'),
+      description: t('landing.features.smart.description')
     },
     {
       icon: <Calendar className="h-8 w-8 text-emerald-600" />,
-      title: "Automatic Scheduling",
-      description: "System suggests the best timetable based on teacher and room availability, eliminating conflicts automatically."
+      title: t('landing.features.automatic.title'),
+      description: t('landing.features.automatic.description')
     },
     {
       icon: <Clock className="h-8 w-8 text-violet-600" />,
-      title: "Room & Teacher Availability",
-      description: "Avoid conflicts with visual availability calendars. See who's free and when at a glance."
+      title: t('landing.features.availability.title'),
+      description: t('landing.features.availability.description')
     },
     {
       icon: <Bell className="h-8 w-8 text-orange-600" />,
-      title: "Real-time Notifications",
-      description: "Get instant updates when lessons are changed, moved, or canceled. Keep everyone informed."
+      title: t('landing.features.notifications.title'),
+      description: t('landing.features.notifications.description')
     }
   ];
 
   const userTypes = [
     {
       icon: <School className="h-12 w-12 text-blue-600" />,
-      title: "Schools",
-      description: "Organize schedules and classrooms easily with comprehensive administrative tools."
+      title: t('landing.userTypes.schools.title'),
+      description: t('landing.userTypes.schools.description')
     },
     {
       icon: <Users className="h-12 w-12 text-emerald-600" />,
-      title: "Teachers",
-      description: "Manage lessons and subjects efficiently with intuitive scheduling interfaces."
+      title: t('landing.userTypes.teachers.title'),
+      description: t('landing.userTypes.teachers.description')
     },
     {
       icon: <UserCheck className="h-12 w-12 text-violet-600" />,
-      title: "Students",
-      description: "Access updated timetables anytime, anywhere with mobile-friendly design."
+      title: t('landing.userTypes.students.title'),
+      description: t('landing.userTypes.students.description')
     }
   ];
 
@@ -93,45 +93,45 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
 
   const pricingPlans = [
     {
-      name: "Free",
+      name: t('landing.pricing.free.name'),
       price: "0",
-      period: "forever",
-      description: "Perfect for small schools getting started",
+      period: t('landing.pricing.free.period'),
+      description: t('landing.pricing.free.description'),
       features: [
-        "Up to 5 classes",
-        "Basic scheduling",
-        "Email support",
-        "Standard templates"
+        t('landing.pricing.free.features.1'),
+        t('landing.pricing.free.features.2'),
+        t('landing.pricing.free.features.3'),
+        t('landing.pricing.free.features.4')
       ],
       popular: false
     },
     {
-      name: "Pro",
+      name: t('landing.pricing.pro.name'),
       price: "29",
-      period: "per month",
-      description: "Advanced features for growing schools",
+      period: t('landing.pricing.pro.period'),
+      description: t('landing.pricing.pro.description'),
       features: [
-        "Unlimited classes",
-        "Advanced scheduling",
-        "Priority support",
-        "Custom templates",
-        "Conflict detection",
-        "Export options"
+        t('landing.pricing.pro.features.1'),
+        t('landing.pricing.pro.features.2'),
+        t('landing.pricing.pro.features.3'),
+        t('landing.pricing.pro.features.4'),
+        t('landing.pricing.pro.features.5'),
+        t('landing.pricing.pro.features.6')
       ],
       popular: true
     },
     {
-      name: "Enterprise",
+      name: t('landing.pricing.enterprise.name'),
       price: "99",
-      period: "per month",
-      description: "Complete solution for large institutions",
+      period: t('landing.pricing.enterprise.period'),
+      description: t('landing.pricing.enterprise.description'),
       features: [
-        "Everything in Pro",
-        "Multiple campuses",
-        "Advanced analytics",
-        "24/7 phone support",
-        "Custom integrations",
-        "Dedicated manager"
+        t('landing.pricing.enterprise.features.1'),
+        t('landing.pricing.enterprise.features.2'),
+        t('landing.pricing.enterprise.features.3'),
+        t('landing.pricing.enterprise.features.4'),
+        t('landing.pricing.enterprise.features.5'),
+        t('landing.pricing.enterprise.features.6')
       ],
       popular: false
     }
@@ -204,19 +204,18 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-4xl mx-auto">
             <Badge className="mb-6 bg-blue-50 text-blue-700 border-blue-200 px-6 py-2">
-              🎓 Trusted by 500+ Schools Worldwide
+              {t('landing.hero.badge')}
             </Badge>
-            
+
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-slate-800 bg-clip-text text-transparent leading-tight mb-6">
-              Simplify Your School Scheduling with{' '}
+              {t('landing.hero.titlePrefix')} {' '}
               <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                Timetable.uz
+                {t('landing.hero.titleHighlight')}
               </span>
             </h1>
-            
+
             <p className="text-xl text-slate-600 leading-relaxed mb-10 max-w-3xl mx-auto">
-              Manage your classes, teachers, and rooms all in one smart platform. 
-              Create perfect timetables in minutes, not hours.
+              {t('landing.hero.subtitle')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -225,7 +224,7 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
                 size="lg" 
                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-xl hover:shadow-2xl transition-all text-lg px-8 py-6"
               >
-                Start Free
+                {t('landing.hero.start')}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button 
@@ -233,7 +232,7 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
                 size="lg"
                 className="border-slate-300 hover:bg-slate-50 text-lg px-8 py-6"
               >
-                See Demo
+                {t('landing.hero.demo')}
               </Button>
             </div>
           </div>

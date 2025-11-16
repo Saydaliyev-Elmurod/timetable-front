@@ -1,5 +1,6 @@
 import { apiCall } from '../../lib/api';
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -65,6 +66,7 @@ import {
 const API_BASE_URL = 'http://localhost:8080';
 
 export default function ClassesPage({ onNavigate }) {
+  const { t } = useTranslation();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -863,8 +865,8 @@ export default function ClassesPage({ onNavigate }) {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h2>Classes</h2>
-            <p className="text-muted-foreground">Manage class schedules and availability</p>
+            <h2>{t('classes.title')}</h2>
+            <p className="text-muted-foreground">{t('classes.description')}</p>
           </div>
           <div>
             <div className="flex gap-2">
@@ -875,47 +877,47 @@ export default function ClassesPage({ onNavigate }) {
                 disabled={loading}
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
+                {t('classes.refresh')}
               </Button>
               <Button variant="outline" onClick={handleImport} size="sm">
                 <Upload className="mr-2 h-4 w-4" />
-                Import
+                {t('classes.import')}
               </Button>
               <Button variant="outline" onClick={() => setIsBatchCreateOpen(true)} size="sm" className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100">
                 <Sparkles className="mr-2 h-4 w-4" />
-                Batch Create
+                {t('classes.batch_create')}
               </Button>
               <Button onClick={handleAddClass} size="sm" className="bg-green-600 hover:bg-green-700">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Class
+                {t('classes.add_class')}
               </Button>
             </div>
           </div>
-      </div>
+        </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search classes..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
+        {/* Search */}
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder={t('classes.search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
 
       {/* Inline Add/Clone/Edit Form */}
       {showInlineForm && (
         <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
-          <CardHeader className="pb-3">
+            <CardHeader className="pb-3">
             <CardTitle className="text-lg">
-              {editingClassId ? 'Edit Class' : 'Add New Class'}
+              {editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Class Name</Label>
+                  <Label>{t('classes.class_name')}</Label>
                   <Input
                     placeholder="e.g., Grade 10 Mathematics"
                     value={inlineFormData.name}
@@ -924,7 +926,7 @@ export default function ClassesPage({ onNavigate }) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Short Name</Label>
+                  <Label>{t('classes.short_name')}</Label>
                   <div className="flex gap-2">
                     <Input
                       placeholder="Auto-generated"
@@ -945,9 +947,9 @@ export default function ClassesPage({ onNavigate }) {
               </div>
 
               {/* Class Teacher Field */}
-              <div className="space-y-2">
+                <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Label>Class Teacher</Label>
+                  <Label>{t('classes.class_teacher')}</Label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -969,8 +971,8 @@ export default function ClassesPage({ onNavigate }) {
                   disabled={!teachers || teachers.length === 0} // Disable if no teachers
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a teacher (optional)" />
-                  </SelectTrigger>
+                      <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
+                    </SelectTrigger>
                   <SelectContent>
                     {teachers && teachers.length > 0 ? (
                       <>
@@ -993,7 +995,7 @@ export default function ClassesPage({ onNavigate }) {
 
               {/* Rooms Field (Multi-select) */}
               <div className="space-y-2">
-                <Label>Rooms (optional)</Label>
+                <Label>{t('classes.rooms_optional')}</Label>
                 <div className="border rounded-lg p-3 bg-card max-h-48 overflow-y-auto">
                   <div className="space-y-2">
                     {rooms && rooms.length > 0 ? (
@@ -1021,13 +1023,13 @@ export default function ClassesPage({ onNavigate }) {
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No rooms available</p>
+                      <p className="text-sm text-muted-foreground">{t('classes.no_rooms')}</p>
                     )}
                   </div>
                 </div>
                 {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {inlineFormData.roomIds.length} room{inlineFormData.roomIds.length !== 1 ? 's' : ''} selected
+                    {inlineFormData.roomIds.length} {t('classes.table.rooms').toLowerCase()} {inlineFormData.roomIds.length !== 1 ? '' : ''} selected
                   </p>
                 )}
               </div>
@@ -1036,7 +1038,7 @@ export default function ClassesPage({ onNavigate }) {
               {showAvailabilityInForm && (
                 <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Class Availability</p>
+                    <p className="text-sm font-medium">{t('classes.class_availability')}</p>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
@@ -1044,7 +1046,7 @@ export default function ClassesPage({ onNavigate }) {
                         onClick={selectAllInlineAvailability}
                         className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
                       >
-                        Select All
+                        {t('classes.select_all')}
                       </Button>
                       <Button
                         variant="outline"
@@ -1052,7 +1054,7 @@ export default function ClassesPage({ onNavigate }) {
                         onClick={clearAllInlineAvailability}
                         className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
                       >
-                        Clear All
+                        {t('classes.clear_all')}
                       </Button>
                     </div>
                   </div>
@@ -1104,7 +1106,7 @@ export default function ClassesPage({ onNavigate }) {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
+                    <div className="flex gap-2">
                 <Button 
                   onClick={handleSaveInlineForm} 
                   size="sm" 
@@ -1114,12 +1116,12 @@ export default function ClassesPage({ onNavigate }) {
                   {loading ? (
                     <>
                       <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      {editingClassId ? 'Updating...' : 'Saving...'}
+                      {editingClassId ? t('classes.update_class') : t('classes.save_class')}
                     </>
                   ) : (
                     <>
                       <Check className="mr-2 h-4 w-4" />
-                      {editingClassId ? 'Update Class' : 'Save Class'}
+                      {editingClassId ? t('classes.update_class') : t('classes.save_class')}
                     </>
                   )}
                 </Button>
@@ -1130,7 +1132,7 @@ export default function ClassesPage({ onNavigate }) {
                   disabled={loading}
                 >
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('classes.cancel')}
                 </Button>
               </div>
             </div>
@@ -1139,16 +1141,17 @@ export default function ClassesPage({ onNavigate }) {
       )}
 
       {/* Table */}
-      <Card>
+        <div>
         <Table>
-          <TableHeader>
+        <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead>Short Name</TableHead>
-              <TableHead>Teacher of Class</TableHead>
-              <TableHead>Rooms</TableHead>
+              <TableHead>{t('classes.table.name')}</TableHead>
+              <TableHead>{t('classes.table.short_name')}</TableHead>
+              <TableHead>{t('classes.table.teacher')}</TableHead>
+              <TableHead>{t('classes.table.rooms')}</TableHead>
               <TableHead className="text-center">
                 <div className="flex items-center justify-center gap-2">
+                  <span>{t('classes.table.availability')}</span>
                   <span>Availability</span>
                   <TooltipProvider>
                     <Tooltip>
@@ -1159,7 +1162,7 @@ export default function ClassesPage({ onNavigate }) {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          "Availability" defines the class time slots when lessons can be scheduled. You can configure which days and periods this class is available for lessons. For example, you might allow classes from Monday to Friday, 08:00–14:00, excluding breaks. These time slots will appear automatically when you create or edit lessons for this class.
+                          {t('classes.class_availability')} - {t('classes.description')}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -1426,7 +1429,7 @@ export default function ClassesPage({ onNavigate }) {
             </div>
           </div>
         )}
-      </Card>
+        </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteDialogClass} onOpenChange={() => setDeleteDialogClass(null)}>
