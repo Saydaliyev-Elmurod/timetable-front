@@ -51,6 +51,7 @@ import { SubjectService } from '@/lib/subjects';
 import { TeacherService } from '@/lib/teachers';
 import { ClassService } from '@/lib/classes';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/index';
 
 interface AddLessonModalProps {
   open: boolean;

@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Timetable.uz",
+    "getStarted": "Get Started",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "backToHome": "Back to Home"
+  },
+  "nav": {
+    "features": "Features",
+    "forWho": "For Schools",
+    "testimonials": "Testimonials",
+    "pricing": "Pricing",
+    "contact": "Contact"
+  },
+  "lesson": {
+    "save": "Save Lesson",
+    "delete": "Delete",
+    "edit": "Edit",
+    "teacher": "Teacher",
+    "class": "Class",
+    "subject": "Subject",
+    "lessonsPerWeek": "Lessons per Week"
+  },
+  "login": {
+    "welcome": "Welcome to Timetable.uz",
+    "description": "Sign in to manage your school's timetable",
+    "login": "Sign In",
+    "signup": "Sign Up",
+    "getCode": "Get Verification Code",
+    "createAccount": "Create Account"
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@/i18n/index';
 import {
   BookOpen,
   Users,
@@ -44,11 +45,10 @@ import { User } from '@/types/common';
 interface DashboardProps {
   user: User | null;
   onLogout: () => void;
-  language: string;
-  onLanguageChange: (language: string) => void;
 }
 
-export default function Dashboard({ user, onLogout, language, onLanguageChange }: DashboardProps) {
+export default function Dashboard({ user, onLogout }: DashboardProps) {
+  const { t, locale, setLocale } = useTranslation();
   const [currentPage, setCurrentPage] = useState('organization');
 
   const languages = [
@@ -58,17 +58,17 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
   ];
 
   const organizationItems = [
-    { id: 'organization', label: 'Organization', icon: Building2 },
+    { id: 'organization', label: t('dashboard.organization'), icon: Building2 },
   ];
 
   const navigationItems = [
-    { id: 'classes', label: 'Classes', icon: BookOpen },
-    { id: 'teachers', label: 'Teachers', icon: Users },
-    { id: 'subjects', label: 'Subjects', icon: GraduationCap },
-    { id: 'rooms', label: 'Rooms', icon: DoorOpen },
-    { id: 'lessons', label: 'Lessons', icon: Calendar },
-    { id: 'templates', label: 'Templates', icon: FileText },
-    { id: 'timetables', label: 'Timetables', icon: CalendarDays },
+    { id: 'classes', label: t('dashboard.classes'), icon: BookOpen },
+    { id: 'teachers', label: t('dashboard.teachers'), icon: Users },
+    { id: 'subjects', label: t('dashboard.subjects'), icon: GraduationCap },
+    { id: 'rooms', label: t('dashboard.rooms'), icon: DoorOpen },
+    { id: 'lessons', label: t('dashboard.lessons'), icon: Calendar },
+    { id: 'templates', label: t('dashboard.templates'), icon: FileText },
+    { id: 'timetables', label: t('dashboard.timetables'), icon: CalendarDays },
   ];
 
   const renderPage = React.useMemo(() => {
@@ -124,7 +124,7 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
           <div className="space-y-1">
             <div className="px-3 py-2">
               <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                Organization
+                {t('dashboard.organization')}
               </h3>
             </div>
             {organizationItems.map((item) => {
@@ -152,7 +152,7 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
           <div className="space-y-1">
             <div className="px-3 py-2">
               <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                Management
+                {t('dashboard.management')}
               </h3>
             </div>
             {navigationItems.map((item) => {
@@ -186,7 +186,7 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
             }`}
           >
             <Settings className="h-5 w-5" />
-            <span>Settings</span>
+            <span>{t('dashboard.settings')}</span>
           </button>
         </div>
       </aside>
@@ -198,8 +198,9 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
           <div>
             <h1 className="text-foreground">
               {navigationItems.find(item => item.id === currentPage)?.label || 
-               currentPage === 'settings' ? 'Settings' : 
-               currentPage === 'profile' ? 'Profile' : ''}
+               organizationItems.find(item => item.id === currentPage)?.label ||
+               (currentPage === 'settings' ? t('dashboard.settings') : 
+               currentPage === 'profile' ? t('dashboard.profile') : '')}
             </h1>
           </div>
 
@@ -212,19 +213,19 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('dashboard.select_language')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {languages.map((lang) => (
                   <DropdownMenuItem
                     key={lang.code}
-                    onClick={() => onLanguageChange(lang.code)}
+                    onClick={() => setLocale(lang.code as any)}
                     className="flex items-center justify-between cursor-pointer"
                   >
                     <span className="flex items-center gap-2">
                       <span>{lang.flag}</span>
                       <span>{lang.name}</span>
                     </span>
-                    {language === lang.code && (
+                    {locale === lang.code && (
                       <Check className="h-4 w-4 text-primary" />
                     )}
                   </DropdownMenuItem>
@@ -246,20 +247,20 @@ export default function Dashboard({ user, onLogout, language, onLanguageChange }
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('dashboard.my_account')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setCurrentPage('profile')}>
                   <UserIcon className="mr-2 h-4 w-4" />
-                  Profile
+                  {t('dashboard.profile')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setCurrentPage('settings')}>
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('dashboard.settings')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  {t('dashboard.logout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

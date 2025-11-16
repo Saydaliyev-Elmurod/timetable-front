@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -26,6 +27,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const features = [
     {
@@ -153,20 +155,20 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-slate-600 hover:text-blue-600 transition-colors">Features</a>
-              <a href="#for-whom" className="text-slate-600 hover:text-blue-600 transition-colors">For Schools</a>
-              <a href="#testimonials" className="text-slate-600 hover:text-blue-600 transition-colors">Testimonials</a>
-              <a href="#pricing" className="text-slate-600 hover:text-blue-600 transition-colors">Pricing</a>
-              <a href="#contact" className="text-slate-600 hover:text-blue-600 transition-colors">Contact</a>
+              <a href="#features" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.features')}</a>
+              <a href="#for-whom" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.forWho')}</a>
+              <a href="#testimonials" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.testimonials')}</a>
+              <a href="#pricing" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.pricing')}</a>
+              <a href="#contact" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.contact')}</a>
             </nav>
 
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center gap-4">
               <Button variant="ghost" onClick={onSignIn} className="text-slate-600 hover:text-blue-600">
-                Sign In
+                {t('app.signIn')}
               </Button>
               <Button onClick={onGetStarted} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg">
-                Get Started
+                {t('app.getStarted')}
               </Button>
             </div>
 
@@ -183,13 +185,13 @@ export default function LandingPage({ onGetStarted, onSignIn }: LandingPageProps
           {isMobileMenuOpen && (
             <div className="md:hidden py-4 border-t border-slate-200">
               <div className="flex flex-col gap-4">
-                <a href="#features" className="text-slate-600 hover:text-blue-600 transition-colors">Features</a>
-                <a href="#for-whom" className="text-slate-600 hover:text-blue-600 transition-colors">For Schools</a>
-                <a href="#testimonials" className="text-slate-600 hover:text-blue-600 transition-colors">Testimonials</a>
-                <a href="#pricing" className="text-slate-600 hover:text-blue-600 transition-colors">Pricing</a>
+                <a href="#features" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.features')}</a>
+                <a href="#for-whom" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.forWho')}</a>
+                <a href="#testimonials" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.testimonials')}</a>
+                <a href="#pricing" className="text-slate-600 hover:text-blue-600 transition-colors">{t('nav.pricing')}</a>
                 <div className="flex gap-2 pt-2">
-                  <Button variant="ghost" onClick={onSignIn} size="sm">Sign In</Button>
-                  <Button onClick={onGetStarted} size="sm">Get Started</Button>
+                  <Button variant="ghost" onClick={onSignIn} size="sm">{t('app.signIn')}</Button>
+                  <Button onClick={onGetStarted} size="sm">{t('app.getStarted')}</Button>
                 </div>
               </div>
             </div>

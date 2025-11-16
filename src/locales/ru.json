@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Timetable.uz",
+    "getStarted": "Начать",
+    "signIn": "Войти",
+    "signUp": "Зарегистрироваться",
+    "backToHome": "Вернуться на главную"
+  },
+  "nav": {
+    "features": "Особенности",
+    "forWho": "Для школ",
+    "testimonials": "Отзывы",
+    "pricing": "Цены",
+    "contact": "Контакты"
+  },
+  "lesson": {
+    "save": "Сохранить урок",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "teacher": "Учитель",
+    "class": "Класс",
+    "subject": "Предмет",
+    "lessonsPerWeek": "Уроков в неделю"
+  },
+  "login": {
+    "welcome": "Добро пожаловать на Timetable.uz",
+    "description": "Войдите, чтобы управлять расписанием вашей школы",
+    "login": "Вход",
+    "signup": "Регистрация",
+    "getCode": "Получить код подтверждения",
+    "createAccount": "Создать аккаунт"
+  }
+}

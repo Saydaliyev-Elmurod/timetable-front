@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard';
 import { Toaster } from './components/ui/sonner';
 import { getToken, removeToken } from './lib/auth';
 import { User } from './types/common';
+import { useTranslation } from './i18n/index';
 
 type AppView = 'landing' | 'login' | 'dashboard';
 
@@ -12,7 +13,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [language, setLanguage] = useState('en');
+  const { locale, setLocale, t } = useTranslation();
 
   useEffect(() => {
     document.documentElement.classList.add('light');
@@ -28,17 +29,7 @@ export default function App() {
       localStorage.removeItem('user');
       removeToken();
     }
-
-    const savedLanguage = localStorage.getItem('language');
-    if (savedLanguage) {
-      setLanguage(savedLanguage);
-    }
   }, []);
-
-  const handleLanguageChange = (newLanguage: string) => {
-    setLanguage(newLanguage);
-    localStorage.setItem('language', newLanguage);
-  };
 
   const handleGetStarted = () => {
     setCurrentView('login');
@@ -78,8 +69,6 @@ export default function App() {
           <Dashboard 
             user={user} 
             onLogout={handleLogout}
-            language={language}
-            onLanguageChange={handleLanguageChange}
           />
         );
       default:
@@ -90,6 +79,19 @@ export default function App() {
   return (
     <>
       {renderCurrentView()}
+      <div className="fixed top-4 right-4 z-50">
+        <label className="sr-only">Language</label>
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as any)}
+          className="bg-white/80 border rounded p-1 text-sm"
+          aria-label="Language"
+        >
+          <option value="uz">UZ</option>
+          <option value="ru">RU</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
       <Toaster />
     </>
   );

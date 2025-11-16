@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { organizationApi, CompanyResponse, LessonPeriod as ApiLessonPeriod } from '@/api/organizationApi';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -24,69 +25,73 @@ import {
   Calendar
 } from 'lucide-react';
 
-const LoadingSkeleton = () => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <div>
-        <Skeleton className="h-8 w-64 mb-2" />
-        <Skeleton className="h-4 w-80" />
+const LoadingSkeleton = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <Skeleton className="h-10 w-32" />
       </div>
-      <Skeleton className="h-10 w-32" />
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="grid gap-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-48 mb-2" />
-        <Skeleton className="h-4 w-64" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="grid gap-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-48 mb-2" />
-        <Skeleton className="h-4 w-64" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-48 mb-2" />
-        <Skeleton className="h-4 w-64" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-);
+  );
+};
 
 export default function OrganizationPage() {
+  const { t } = useTranslation();
   const [organizationData, setOrganizationData] = useState({
     name: '',
     description: '',
@@ -152,13 +157,13 @@ export default function OrganizationPage() {
   }, []);
 
   const days = [
-    { key: 'monday', label: 'Monday' },
-    { key: 'tuesday', label: 'Tuesday' },
-    { key: 'wednesday', label: 'Wednesday' },
-    { key: 'thursday', label: 'Thursday' },
-    { key: 'friday', label: 'Friday' },
-    { key: 'saturday', label: 'Saturday' },
-    { key: 'sunday', label: 'Sunday' },
+    { key: 'monday', label: t('organization.days.monday') },
+    { key: 'tuesday', label: t('organization.days.tuesday') },
+    { key: 'wednesday', label: t('organization.days.wednesday') },
+    { key: 'thursday', label: t('organization.days.thursday') },
+    { key: 'friday', label: t('organization.days.friday') },
+    { key: 'saturday', label: t('organization.days.saturday') },
+    { key: 'sunday', label: t('organization.days.sunday') },
   ];
 
   const updateOrganizationData = useCallback((field: string, value: string) => {
@@ -186,26 +191,26 @@ export default function OrganizationPage() {
     const newPeriod = {
       id: periods.length > 0 ? Math.max(...periods.map(p => p.id)) + 1 : 1,
       type: 'period',
-      name: `Period ${periods.filter(p => p.type === 'period').length + 1}`,
+      name: `${t('organization.period')} ${periods.filter(p => p.type === 'period').length + 1}`,
       startTime: '15:00',
       endTime: '15:45'
     };
     setPeriods(prev => [...prev, newPeriod]);
     setUnsavedChanges(true);
-  }, [periods]);
+  }, [periods, t]);
 
   const addBreak = useCallback((afterIndex: number) => {
     const newBreak = {
       id: periods.length > 0 ? Math.max(...periods.map(p => p.id)) + 1 : 1,
       type: 'break',
-      name: 'Break',
+      name: t('organization.break'),
       duration: 15
     };
     const newPeriods = [...periods];
     newPeriods.splice(afterIndex + 1, 0, newBreak);
     setPeriods(newPeriods);
     setUnsavedChanges(true);
-  }, [periods]);
+  }, [periods, t]);
 
   const updatePeriod = useCallback((id: number, field: string, value: string | number) => {
     setPeriods(prev => prev.map(period => 
@@ -288,9 +293,9 @@ export default function OrganizationPage() {
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold">
             <Building2 className="h-6 w-6" />
-            Organization Settings
+            {t('organization.title')}
           </h2>
-          <p className="text-muted-foreground">Manage your school organization details and configurations</p>
+          <p className="text-muted-foreground">{t('organization.description')}</p>
         </div>
         <Button 
           onClick={saveChanges} 
@@ -300,12 +305,12 @@ export default function OrganizationPage() {
           {isSaving ? (
             <>
               <Save className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {t('organization.saving')}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Save Changes
+              {t('organization.save_changes')}
             </>
           )}
         </Button>
@@ -314,7 +319,7 @@ export default function OrganizationPage() {
       {unsavedChanges && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-2">
           <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-          <span className="text-amber-800">You have unsaved changes</span>
+          <span className="text-amber-800">{t('organization.unsaved_changes')}</span>
         </div>
       )}
 
@@ -322,25 +327,25 @@ export default function OrganizationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Organization Information
+            {t('organization.information_title')}
           </CardTitle>
-          <CardDescription>Basic information about your educational institution</CardDescription>
+          <CardDescription>{t('organization.information_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
-            <Label htmlFor="orgName">Organization Name</Label>
+            <Label htmlFor="orgName">{t('organization.name_label')}</Label>
             <Input
               id="orgName"
-              placeholder="Enter organization name..."
+              placeholder={t('organization.name_placeholder')}
               value={organizationData.name}
               onChange={(e) => updateOrganizationData('name', e.target.value)}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="orgDescription">Description</Label>
+            <Label htmlFor="orgDescription">{t('organization.description_label')}</Label>
             <Textarea
               id="orgDescription"
-              placeholder="Enter organization description..."
+              placeholder={t('organization.description_placeholder')}
               value={organizationData.description}
               onChange={(e) => updateOrganizationData('description', e.target.value)}
               rows={3}
@@ -353,21 +358,21 @@ export default function OrganizationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            School Working Days
+            {t('organization.working_days_title')}
           </CardTitle>
-          <CardDescription>Configure which days of the week your school operates</CardDescription>
+          <CardDescription>{t('organization.working_days_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
-              {selectedDaysCount} of {days.length} days selected
+              {t('organization.days_selected', { count: selectedDaysCount, total: days.length })}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={selectAllDays}
             >
-              {allDaysSelected ? 'Clear All' : 'Select All'}
+              {allDaysSelected ? t('organization.clear_all') : t('organization.select_all')}
             </Button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -403,14 +408,14 @@ export default function OrganizationPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Class Time Management
+            {t('organization.time_management_title')}
           </CardTitle>
-          <CardDescription>Configure daily periods and breaks with precise timing</CardDescription>
+          <CardDescription>{t('organization.time_management_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
-              {periods.filter(p => p.type === 'period').length} periods, {periods.filter(p => p.type === 'break').length} breaks
+              {t('organization.periods_and_breaks', { periods: periods.filter(p => p.type === 'period').length, breaks: periods.filter(p => p.type === 'break').length })}
             </span>
             <Button
               variant="outline"
@@ -418,7 +423,7 @@ export default function OrganizationPage() {
               className="text-blue-600 border-blue-200 hover:bg-blue-50"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Add Period
+              {t('organization.add_period')}
             </Button>
           </div>
 
@@ -444,13 +449,13 @@ export default function OrganizationPage() {
                       <Clock className="h-4 w-4 text-blue-600" />
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
                         <Input
-                          placeholder="Period name"
+                          placeholder={t('organization.period_name_placeholder')}
                           value={period.name}
                           onChange={(e) => updatePeriod(period.id, 'name', e.target.value)}
                           className="bg-white dark:bg-gray-900"
                         />
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-muted-foreground">Start:</Label>
+                          <Label className="text-xs text-muted-foreground">{t('organization.start_time')}:</Label>
                           <Input
                             type="time"
                             lang="en-GB"
@@ -460,7 +465,7 @@ export default function OrganizationPage() {
                           />
                         </div>
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-muted-foreground">End:</Label>
+                          <Label className="text-xs text-muted-foreground">{t('organization.end_time')}:</Label>
                           <Input
                             type="time"
                             lang="en-GB"
@@ -477,7 +482,7 @@ export default function OrganizationPage() {
                             className="text-orange-600 border-orange-200 hover:bg-orange-50"
                           >
                             <Coffee className="mr-1 h-3 w-3" />
-                            Add Break
+                            {t('organization.add_break')}
                           </Button>
                           <Button
                             variant="ghost"
@@ -495,13 +500,13 @@ export default function OrganizationPage() {
                       <Coffee className="h-4 w-4 text-orange-600" />
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                         <Input
-                          placeholder="Break name"
+                          placeholder={t('organization.break_name_placeholder')}
                           value={period.name}
                           onChange={(e) => updatePeriod(period.id, 'name', e.target.value)}
                           className="bg-white dark:bg-gray-900"
                         />
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-muted-foreground">Duration:</Label>
+                          <Label className="text-xs text-muted-foreground">{t('organization.duration')}:</Label>
                           <Input
                             type="number"
                             min="5"
@@ -510,7 +515,7 @@ export default function OrganizationPage() {
                             onChange={(e) => updatePeriod(period.id, 'duration', parseInt(e.target.value, 10))}
                             className="bg-white dark:bg-gray-900"
                           />
-                          <span className="text-xs text-muted-foreground">minutes</span>
+                          <span className="text-xs text-muted-foreground">{t('organization.minutes')}</span>
                         </div>
                         <Button
                           variant="ghost"
@@ -531,8 +536,8 @@ export default function OrganizationPage() {
           {periods.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No periods configured yet</p>
-              <p className="text-sm">Click "Add Period" to get started</p>
+              <p>{t('organization.no_periods_configured')}</p>
+              <p className="text-sm">{t('organization.click_add_period')}</p>
             </div>
           )}
         </CardContent>

@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Timetable.uz",
+    "getStarted": "Boshlash",
+    "signIn": "Kirish",
+    "signUp": "Ro'yxatdan o'tish",
+    "backToHome": "Bosh sahifaga qaytish"
+  },
+  "nav": {
+    "features": "Xususiyatlar",
+    "forWho": "Maktablar uchun",
+    "testimonials": "Fikrlar",
+    "pricing": "Narxlar",
+    "contact": "Bog'lanish"
+  },
+  "lesson": {
+    "save": "Darsni saqlash",
+    "delete": "O'chirish",
+    "edit": "Tahrirlash",
+    "teacher": "O'qituvchi",
+    "class": "Sinflar",
+    "subject": "Fan",
+    "lessonsPerWeek": "Haftadagi darslar soni"
+  },
+  "login": {
+    "welcome": "Timetable.uz ga xush kelibsiz",
+    "description": "Maktab jadvalingizni boshqarish uchun tizimga kiring",
+    "login": "Kirish",
+    "signup": "Ro'yxatdan o'tish",
+    "getCode": "Tasdiqlash kodini olish",
+    "createAccount": "Hisob yaratish"
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -109,7 +110,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
           className="absolute top-6 left-6 text-slate-600 hover:text-blue-600"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
+          {useTranslation().t('app.backToHome')}
         </Button>
       )}
 
@@ -122,10 +123,10 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
           </div>
           <div>
             <CardTitle className="text-2xl bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              Welcome to Timetable.uz
+              {useTranslation().t('login.welcome')}
             </CardTitle>
             <CardDescription className="text-slate-600 mt-2">
-              Sign in to manage your school's timetable efficiently
+              {useTranslation().t('login.description')}
             </CardDescription>
           </div>
         </CardHeader>
@@ -137,8 +138,8 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
           )}
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="login">{useTranslation().t('login.login')}</TabsTrigger>
+              <TabsTrigger value="signup">{useTranslation().t('login.signup')}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
@@ -168,7 +169,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" disabled={loading}>
-                  {loading ? 'Signing In...' : 'Sign In'}
+                  {loading ? useTranslation().t('login.login') + '...' : useTranslation().t('login.login')}
                 </Button>
               </form>
             </TabsContent>
@@ -189,7 +190,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                     />
                   </div>
                   <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700" disabled={loading}>
-                    {loading ? 'Sending Code...' : 'Get Verification Code'}
+                    {loading ? useTranslation().t('login.getCode') + '...' : useTranslation().t('login.getCode')}
                   </Button>
                 </form>
               ) : (
@@ -231,7 +232,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                     />
                   </div>
                   <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700" disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
+                    {loading ? useTranslation().t('login.createAccount') + '...' : useTranslation().t('login.createAccount')}
                   </Button>
                 </form>
               )}
