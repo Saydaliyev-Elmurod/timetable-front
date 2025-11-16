@@ -68,7 +68,7 @@ export default function AddLessonModal({
   availableClasses,
   availableTeachers,
   availableSubjects,
-  availableRooms = ['Room 101', 'Room 102', 'Room 103', 'Lab A', 'Lab B', 'Gym'],
+  availableRooms = [],
   detectConflicts
 }: AddLessonModalProps) {
   const [formData, setFormData] = useState({

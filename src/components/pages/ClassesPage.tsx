@@ -30,6 +30,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
@@ -55,36 +56,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '../ui/alert-dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../ui/accordion';
 
 const API_BASE_URL = 'http://localhost:8080';
 
 export default function ClassesPage({ onNavigate }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // Mock teachers data
-  const mockTeachers = [
-    { id: 1, name: 'John Smith' },
-    { id: 2, name: 'Sarah Johnson' },
-    { id: 3, name: 'Michael Brown' },
-    { id: 4, name: 'Emily Davis' },
-    { id: 5, name: 'David Wilson' },
-    { id: 6, name: 'Lisa Anderson' },
-  ];
-
-  // Mock rooms data (simulating GET /api/rooms)
-  const mockRooms = [
-    { id: 1, name: 'Room 101', capacity: 30 },
-    { id: 2, name: 'Room 102', capacity: 25 },
-    { id: 3, name: 'Room 201', capacity: 35 },
-    { id: 4, name: 'Room 202', capacity: 30 },
-    { id: 5, name: 'Science Lab A', capacity: 20 },
-    { id: 6, name: 'Science Lab B', capacity: 20 },
-    { id: 7, name: 'Computer Lab', capacity: 25 },
-    { id: 8, name: 'Music Room', capacity: 15 },
-    { id: 9, name: 'Art Studio', capacity: 20 },
-    { id: 10, name: 'Gymnasium', capacity: 50 },
-  ];
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -111,7 +96,7 @@ export default function ClassesPage({ onNavigate }) {
   const [selectedClassesForApply, setSelectedClassesForApply] = useState([]);
   
   // Tips & Tricks sidebar state
-  const [isTipsSidebarOpen, setIsTipsSidebarOpen] = useState(true);
+  const [isTipsSidebarOpen, setIsTipsSidebarOpen] = useState(false);
   
   // Inline form state
   const [showInlineForm, setShowInlineForm] = useState(false);
@@ -209,6 +194,39 @@ export default function ClassesPage({ onNavigate }) {
     });
   };
 
+  // Fetch teachers from API
+  const fetchTeachers = useCallback(async () => {
+    try {
+      const response = await apiCall<any>(`${API_BASE_URL}/api/teachers/v1/all`);
+      if (!response.error && response.data) {
+        const teacherList = Array.isArray(response.data) ? response.data : [];
+        setTeachers(teacherList.map((t: any) => ({
+          id: t?.id,
+          name: t?.fullName || t?.name || 'Unknown'
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    }
+  }, []);
+
+  // Fetch rooms from API
+  const fetchRooms = useCallback(async () => {
+    try {
+      const response = await apiCall<any>(`${API_BASE_URL}/api/rooms/v1/all`);
+      if (!response.error && response.data) {
+        const roomList = Array.isArray(response.data) ? response.data : [];
+        setRooms(roomList.map((r: any) => ({
+          id: r?.id,
+          name: r?.name || 'Unknown Room',
+          capacity: r?.capacity || 0
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+    }
+  }, []);
+
   // Fetch classes from API
   const fetchClasses = useCallback(async () => {
     setLoading(true);
@@ -252,10 +270,12 @@ export default function ClassesPage({ onNavigate }) {
     }
   }, [currentPage, itemsPerPage]);
 
-  // Fetch classes on mount and when pagination changes
+  // Fetch data on mount and when pagination changes
   useEffect(() => {
     fetchClasses();
-  }, [fetchClasses]);
+    fetchTeachers();
+    fetchRooms();
+  }, [fetchClasses, fetchTeachers, fetchRooms]);
 
   const filteredClasses = React.useMemo(() => 
     classes.filter(
@@ -847,29 +867,31 @@ export default function ClassesPage({ onNavigate }) {
             <h2>Classes</h2>
             <p className="text-muted-foreground">Manage class schedules and availability</p>
           </div>
-          <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={fetchClasses} 
-            size="sm"
-            disabled={loading}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button variant="outline" onClick={handleImport} size="sm">
-            <Upload className="mr-2 h-4 w-4" />
-            Import
-          </Button>
-          <Button variant="outline" onClick={() => setIsBatchCreateOpen(true)} size="sm" className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100">
-            <Sparkles className="mr-2 h-4 w-4" />
-            Batch Create
-          </Button>
-          <Button onClick={handleAddClass} size="sm" className="bg-green-600 hover:bg-green-700">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Class
-          </Button>
-        </div>
+          <div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={fetchClasses} 
+                size="sm"
+                disabled={loading}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button variant="outline" onClick={handleImport} size="sm">
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Button>
+              <Button variant="outline" onClick={() => setIsBatchCreateOpen(true)} size="sm" className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Batch Create
+              </Button>
+              <Button onClick={handleAddClass} size="sm" className="bg-green-600 hover:bg-green-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Class
+              </Button>
+            </div>
+          </div>
       </div>
 
       {/* Search */}
@@ -945,16 +967,23 @@ export default function ClassesPage({ onNavigate }) {
                 <Select
                   value={inlineFormData.classTeacher || undefined}
                   onValueChange={(value) => updateInlineFormField('classTeacher', value)}
+                  disabled={!teachers || teachers.length === 0} // Disable if no teachers
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a teacher (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockTeachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                        {teacher.name}
-                      </SelectItem>
-                    ))}
+                    {teachers && teachers.length > 0 ? (
+                      teachers.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                          {teacher.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectLabel>
+                        No teachers available
+                      </SelectLabel>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -964,29 +993,33 @@ export default function ClassesPage({ onNavigate }) {
                 <Label>Rooms (optional)</Label>
                 <div className="border rounded-lg p-3 bg-card max-h-48 overflow-y-auto">
                   <div className="space-y-2">
-                    {mockRooms.map((room) => (
-                      <div key={room.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`room-${room.id}`}
-                          checked={inlineFormData.roomIds?.includes(room.id.toString())}
-                          onCheckedChange={(checked) => {
-                            const currentRooms = inlineFormData.roomIds || [];
-                            const roomIdStr = room.id.toString();
-                            if (checked) {
-                              updateInlineFormField('roomIds', [...currentRooms, roomIdStr]);
-                            } else {
-                              updateInlineFormField('roomIds', currentRooms.filter(id => id !== roomIdStr));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`room-${room.id}`}
-                          className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {room.name} <span className="text-muted-foreground">(Capacity: {room.capacity})</span>
-                        </label>
-                      </div>
-                    ))}
+                    {rooms && rooms.length > 0 ? (
+                      rooms.map((room) => (
+                        <div key={room.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`room-${room.id}`}
+                            checked={inlineFormData.roomIds?.includes(room.id.toString())}
+                            onCheckedChange={(checked) => {
+                              const currentRooms = inlineFormData.roomIds || [];
+                              const roomIdStr = room.id.toString();
+                              if (checked) {
+                                updateInlineFormField('roomIds', [...currentRooms, roomIdStr]);
+                              } else {
+                                updateInlineFormField('roomIds', currentRooms.filter(id => id !== roomIdStr));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`room-${room.id}`}
+                            className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {room.name} <span className="text-muted-foreground">(Capacity: {room.capacity})</span>
+                          </label>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No rooms available</p>
+                    )}
                   </div>
                 </div>
                 {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
@@ -1154,7 +1187,7 @@ export default function ClassesPage({ onNavigate }) {
                     </TableCell>
                     <TableCell>
                       {classItem.classTeacher ? (
-                        <span>{mockTeachers.find(t => t.id.toString() === classItem.classTeacher)?.name || 'Unknown Teacher'}</span>
+                        <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || 'Unknown Teacher'}</span>
                       ) : (
                         <span className="text-muted-foreground italic">Not assigned</span>
                       )}
@@ -1163,7 +1196,7 @@ export default function ClassesPage({ onNavigate }) {
                       {classItem.roomIds && classItem.roomIds.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {classItem.roomIds.map(roomId => {
-                            const room = mockRooms.find(r => r.id.toString() === roomId);
+                            const room = rooms.find(r => r.id?.toString() === roomId);
                             return room ? (
                               <Badge key={roomId} variant="outline" className="text-xs">
                                 {room.name}

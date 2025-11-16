@@ -1,4 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+
+// API
+import { apiCall } from '../../lib/api';
+const API_BASE_URL = 'http://localhost:8080';
 
 // Types
 import { InternalLesson } from '@/types/lessons';
@@ -87,9 +91,54 @@ export default function LessonsPage() {
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+
+  // Fetch teachers from API
+  const fetchTeachers = useCallback(async () => {
+    try {
+      const response = await apiCall<any>(`${API_BASE_URL}/api/teachers/v1/all`);
+      if (!response.error && response.data) {
+        const teacherList = Array.isArray(response.data) ? response.data : [];
+        setTeachers(teacherList.map((t: any) => ({
+          id: t?.id,
+          name: t?.fullName || t?.name || 'Unknown'
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+      toast.error('Failed to load teachers');
+    }
+  }, []);
+
+  // Fetch rooms from API
+  const fetchRooms = useCallback(async () => {
+    try {
+      const response = await apiCall<any>(`${API_BASE_URL}/api/rooms/v1/all`);
+      if (!response.error && response.data) {
+        const roomList = Array.isArray(response.data) ? response.data : [];
+        setRooms(roomList.map((r: any) => ({
+          id: r?.id,
+          name: r?.name || 'Unknown Room',
+          capacity: r?.capacity || 0
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      toast.error('Failed to load rooms');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTeachers();
+    fetchRooms();
+  }, [fetchTeachers, fetchRooms]);
+
   const availableClasses = ['1-A', '1-B', '2-A', '2-B', '3-A', '3-B'];
-  const availableTeachers = ['Mr. Karimov', 'Ms. Aliyeva', 'Ms. Rustamova', 'Dr. Nazarov', 'Ms. Tursunova'];
   const availableSubjects = ['Mathematics', 'English', 'Physics', 'Chemistry', 'Biology', 'History'];
+
+  const teacherNames = useMemo(() => teachers.map(t => t.name), [teachers]);
+  const roomNames = useMemo(() => rooms.map(r => r.name), [rooms]);
 
   const lessonsByClass = useMemo(() => getLessonsByClass(lessons), [lessons]);
 
@@ -127,7 +176,6 @@ export default function LessonsPage() {
       case 'teachers':
         return lessonsByTeacher;
       case 'subjects':
-        return lessonsBySubject;
       case 'rooms':
         return lessonsByRoom;
       default:
@@ -300,7 +348,7 @@ export default function LessonsPage() {
                         </span>
                       </>
                     )}
-                    {type === 'subjects' && (
+                      {type === 'subjects' && (
                       <>
                         <span className="flex items-center gap-1">
                           <GraduationCap className="h-4 w-4" />
@@ -470,8 +518,7 @@ export default function LessonsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
+                  ))}n                </TableBody>
               </Table>
               
               <div className="flex justify-between items-center mt-4 pt-4 border-t">
@@ -651,8 +698,9 @@ export default function LessonsPage() {
         onSubmit={handleSubmit}
         editingLesson={editingLesson}
         availableClasses={availableClasses}
-        availableTeachers={availableTeachers}
+        availableTeachers={teacherNames}
         availableSubjects={availableSubjects}
+        availableRooms={roomNames}
         detectConflicts={detectConflicts}
       />
     </div>
