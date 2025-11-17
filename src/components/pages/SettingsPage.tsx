@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -22,6 +23,7 @@ import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner@2.0.3';
 
 export default function SettingsPage({ user }) {
+  const { t } = useTranslation();
   const [schoolName, setSchoolName] = useState('Springfield High School');
   const [academicYear, setAcademicYear] = useState('2024-2025');
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -63,8 +65,8 @@ export default function SettingsPage({ user }) {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2>Settings</h2>
-        <p className="text-muted-foreground">Manage your application settings</p>
+        <h2>{t('dashboard.settings')}</h2>
+        <p className="text-muted-foreground">{t('settings.description')}</p>
       </div>
 
       <Card>

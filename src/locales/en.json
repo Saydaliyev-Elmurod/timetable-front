@@ -161,6 +161,31 @@
     "add_your_first_class": "Add your first class",
     "items_per_page": "Items per page:"
   },
+  "subjects": {
+    "title": "Subjects",
+    "description": "Manage subjects and their availability",
+    "import": "Import",
+    "add_subject": "Add Subject",
+    "search_placeholder": "Search subjects..."
+  },
+  "rooms": {
+    "title": "Rooms",
+    "description": "Manage school rooms",
+    "import": "Import",
+    "add_room": "Add Room"
+  },
+  "profile": {
+    "description": "Manage your personal information"
+  },
+  "settings": {
+    "description": "Manage your application settings"
+  },
+  "templates": {
+    "title": "Templates",
+    "description": "Create and manage timetable templates for classes and subjects",
+    "import": "Import Excel",
+    "add_template": "Add Template"
+  },
   "teachers": {
     "title": "Teachers",
     "description": "Manage teachers and their subject assignments",

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -100,6 +101,7 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
 };
 
 export default function RoomsPage() {
+  const { t } = useTranslation();
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -400,17 +402,17 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2>Xonalar</h2>
-          <p className="text-muted-foreground">Maktab xonalarini boshqarish</p>
+          <h2>{t('rooms.title')}</h2>
+          <p className="text-muted-foreground">{t('rooms.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleImport} size="sm">
             <Upload className="mr-2 h-4 w-4" />
-            Import
+            {t('rooms.import')}
           </Button>
           <Button onClick={handleAddRoom} size="sm" className="bg-green-600 hover:bg-green-700">
             <Plus className="mr-2 h-4 w-4" />
-            Add Room
+            {t('rooms.add_room')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -169,6 +170,7 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[] | null | undefined): any => 
 };
 
 export default function SubjectsPage() {
+  const { t } = useTranslation();
   const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -480,29 +482,29 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2>Subjects</h2>
-          <p className="text-muted-foreground">Manage subjects and their availability</p>
+          <h2>{t('subjects.title')}</h2>
+          <p className="text-muted-foreground">{t('subjects.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleImport} size="sm">
             <Upload className="mr-2 h-4 w-4" />
-            Import
+            {t('subjects.import')}
           </Button>
           <Button onClick={handleAddSubject} size="sm" className="bg-green-600 hover:bg-green-700">
             <Plus className="mr-2 h-4 w-4" />
-            Add Subject
+            {t('subjects.add_subject')}
           </Button>
         </div>
       </div>
 
       {/* Search */}
       <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search subjects..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
+          <Input
+            placeholder={t('subjects.search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm"
+          />
       </div>
 
       {/* Inline Add/Clone Form */}

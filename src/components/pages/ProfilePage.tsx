@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -18,6 +19,7 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ user }: ProfilePageProps) {
+  const { t } = useTranslation();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
@@ -30,8 +32,8 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h2>Profile</h2>
-        <p className="text-muted-foreground">Manage your personal information</p>
+        <h2>{t('dashboard.profile')}</h2>
+        <p className="text-muted-foreground">{t('profile.description')}</p>
       </div>
 
       <Card>

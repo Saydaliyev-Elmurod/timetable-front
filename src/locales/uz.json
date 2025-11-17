@@ -161,6 +161,31 @@
     "add_your_first_class": "Birinchi sinfni qo'shish",
     "items_per_page": "Sahifada elementlar soni:"
   },
+  "subjects": {
+    "title": "Fanlar",
+    "description": "Fanlar va ularning mavjudligini boshqaring",
+    "import": "Import",
+    "add_subject": "Fan qo'shish",
+    "search_placeholder": "Fanlarni qidirish..."
+  },
+  "rooms": {
+    "title": "Xonalar",
+    "description": "Maktab xonalarini boshqarish",
+    "import": "Import",
+    "add_room": "Xona qo'shish"
+  },
+  "profile": {
+    "description": "Shaxsiy ma'lumotlaringizni boshqaring"
+  },
+  "settings": {
+    "description": "Ilova sozlamalarini boshqaring"
+  },
+  "templates": {
+    "title": "Andozalar",
+    "description": "Sinflar va fanlar uchun jadval shablonlarini yarating va boshqaring",
+    "import": "Excel import qilish",
+    "add_template": "Andoza qo'shish"
+  },
   "teachers": {
     "title": "O'qituvchilar",
     "description": "O'qituvchilar va ularga biriktirilgan fanlarni boshqaring",

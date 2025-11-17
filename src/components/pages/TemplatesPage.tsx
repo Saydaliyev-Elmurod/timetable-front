@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -31,6 +32,7 @@ import { Badge } from '../ui/badge';
 import { toast } from 'sonner@2.0.3';
 
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState([
     {
       id: 1,
@@ -199,19 +201,17 @@ export default function TemplatesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2>Templates</h2>
-          <p className="text-muted-foreground">
-            Create and manage timetable templates for classes and subjects
-          </p>
+          <h2>{t('templates.title')}</h2>
+          <p className="text-muted-foreground">{t('templates.description')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
-            Import Excel
+            {t('templates.import')}
           </Button>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Template
+            {t('templates.add_template')}
           </Button>
         </div>
       </div>
