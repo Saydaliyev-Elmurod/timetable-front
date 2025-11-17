@@ -160,6 +160,11 @@
     "no_classes_yet": "No classes yet",
     "add_your_first_class": "Add your first class",
     "items_per_page": "Items per page:"
+  ,
+    "failed_to_load_classes": "Failed to load classes",
+    "deleted_success": "Class deleted successfully",
+    "delete_failed": "Failed to delete class",
+    "name_required": "Please enter a class name"
   },
   "subjects": {
     "title": "Subjects",
@@ -173,6 +178,8 @@
     "description": "Manage school rooms",
     "import": "Import",
     "add_room": "Add Room"
+    ,
+    "unknown": "Unknown Room"
   },
   "profile": {
     "description": "Manage your personal information"
@@ -215,6 +222,7 @@
       "actions": "Actions"
     },
     "no_teachers_found": "No teachers found",
+    "unknown": "Unknown Teacher",
     "no_subjects": "No subjects",
     "download_template": "Download Template",
     "import_teachers": "Import Teachers"

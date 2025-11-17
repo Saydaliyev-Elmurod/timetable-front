@@ -203,13 +203,13 @@ export default function ClassesPage({ onNavigate }) {
         const teacherList = Array.isArray(response.data) ? response.data : [];
         setTeachers(teacherList.map((t: any) => ({
           id: t?.id,
-          name: t?.fullName || t?.name || 'Unknown'
+          name: t?.fullName || t?.name || t('teachers.unknown')
         })));
       }
     } catch (error) {
       console.error('Error fetching teachers:', error);
     }
-  }, []);
+  }, [t]);
 
   // Fetch rooms from API
   const fetchRooms = useCallback(async () => {
@@ -219,14 +219,14 @@ export default function ClassesPage({ onNavigate }) {
         const roomList = Array.isArray(response.data) ? response.data : [];
         setRooms(roomList.map((r: any) => ({
           id: r?.id,
-          name: r?.name || 'Unknown Room',
+          name: r?.name || t('rooms.unknown'),
           capacity: r?.capacity || 0
         })));
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
     }
-  }, []);
+  }, [t]);
 
   // Fetch classes from API
   const fetchClasses = useCallback(async () => {
@@ -265,7 +265,7 @@ export default function ClassesPage({ onNavigate }) {
       setClasses(convertedClasses);
     } catch (error) {
       console.error('Error fetching classes:', error);
-      toast.error('Failed to load classes');
+      toast.error(t('classes.failed_to_load_classes'));
     } finally {
       setLoading(false);
     }
@@ -537,12 +537,12 @@ export default function ClassesPage({ onNavigate }) {
         throw new Error('Failed to delete class');
       }
 
-      toast.success('Class deleted successfully');
+      toast.success(t('classes.deleted_success'));
       setDeleteDialogClass(null);
       fetchClasses();
     } catch (error) {
       console.error('Error deleting class:', error);
-      toast.error('Failed to delete class');
+      toast.error(t('classes.delete_failed'));
     } finally {
       setLoading(false);
     }
@@ -974,7 +974,7 @@ export default function ClassesPage({ onNavigate }) {
                       <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
                     </SelectTrigger>
                   <SelectContent>
-                    {teachers && teachers.length > 0 ? (
+                      {teachers && teachers.length > 0 ? (
                       <>
                         {teachers.map((teacher) => (
                           teacher.id ? ( // Ensure teacher.id is not null or undefined
@@ -986,7 +986,7 @@ export default function ClassesPage({ onNavigate }) {
                       </>
                     ) : (
                       <div className="p-2 text-sm text-muted-foreground text-center">
-                        No teachers available
+                        {t('teachers.no_teachers_found')}
                       </div>
                     )}
                   </SelectContent>
@@ -1193,9 +1193,9 @@ export default function ClassesPage({ onNavigate }) {
                     </TableCell>
                     <TableCell>
                       {classItem.classTeacher ? (
-                        <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || 'Unknown Teacher'}</span>
+                        <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || t('teachers.unknown')}</span>
                       ) : (
-                        <span className="text-muted-foreground italic">Not assigned</span>
+                        <span className="text-muted-foreground italic">{t('classes.not_assigned')}</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -1211,7 +1211,7 @@ export default function ClassesPage({ onNavigate }) {
                           })}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground italic">No rooms assigned</span>
+                        <span className="text-muted-foreground italic">{t('classes.no_rooms_assigned')}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
@@ -1336,15 +1336,15 @@ export default function ClassesPage({ onNavigate }) {
 
             {paginatedClasses.length === 0 && !loading && (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <p className="text-muted-foreground">
-                      {searchQuery ? 'No classes found matching your search' : 'No classes yet'}
+                      {searchQuery ? t('classes.no_classes_found') : t('classes.no_classes_yet')}
                     </p>
                     {!searchQuery && (
                       <Button onClick={handleAddClass} size="sm" variant="outline">
                         <Plus className="mr-2 h-4 w-4" />
-                        Add your first class
+                        {t('classes.add_your_first_class')}
                       </Button>
                     )}
                   </div>

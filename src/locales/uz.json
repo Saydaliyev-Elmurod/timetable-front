@@ -159,7 +159,11 @@
     "no_classes_found": "Qidiruvga mos sinf topilmadi",
     "no_classes_yet": "Hozircha sinflar yo'q",
     "add_your_first_class": "Birinchi sinfni qo'shish",
-    "items_per_page": "Sahifada elementlar soni:"
+    "items_per_page": "Sahifada elementlar soni:",
+    "failed_to_load_classes": "Sinflarni yuklashda xatolik",
+    "deleted_success": "Sinf muvaffaqiyatli o'chirildi",
+    "delete_failed": "Sinfni o'chirishda xatolik",
+    "name_required": "Iltimos, sinf nomini kiriting"
   },
   "subjects": {
     "title": "Fanlar",
@@ -173,6 +177,8 @@
     "description": "Maktab xonalarini boshqarish",
     "import": "Import",
     "add_room": "Xona qo'shish"
+    ,
+    "unknown": "Noma'lum xona"
   },
   "profile": {
     "description": "Shaxsiy ma'lumotlaringizni boshqaring"
@@ -215,6 +221,7 @@
       "actions": "Harakatlar"
     },
     "no_teachers_found": "O'qituvchi topilmadi",
+    "unknown": "Noma'lum o'qituvchi",
     "no_subjects": "Fanlar yo'q",
     "download_template": "Shablonni yuklab olish",
     "import_teachers": "O'qituvchilarni import qilish"

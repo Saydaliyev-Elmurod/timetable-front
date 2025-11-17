@@ -104,6 +104,11 @@ export default function LessonsPage() {
     }
   }, [t]);
 
+  // Load lessons on mount
+  useEffect(() => {
+    fetchLessons();
+  }, [fetchLessons]);
+
   // ... (useEffect and other functions)
 
   const handleDelete = async (id: number) => {

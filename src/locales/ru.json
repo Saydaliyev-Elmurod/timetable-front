@@ -159,7 +159,11 @@
     "no_classes_found": "Классы не найдены",
     "no_classes_yet": "Пока нет классов",
     "add_your_first_class": "Добавить первый класс",
-    "items_per_page": "Элементов на странице:"
+    "items_per_page": "Элементов на странице:",
+    "failed_to_load_classes": "Не удалось загрузить классы",
+    "deleted_success": "Класс успешно удалён",
+    "delete_failed": "Не удалось удалить класс",
+    "name_required": "Пожалуйста, введите название класса"
   },
   "subjects": {
     "title": "Предметы",
@@ -173,6 +177,8 @@
     "description": "Управление кабинетами школы",
     "import": "Импорт",
     "add_room": "Добавить кабинет"
+    ,
+    "unknown": "Неизвестный кабинет"
   },
   "profile": {
     "description": "Управляйте вашей личной информацией"
@@ -215,6 +221,7 @@
       "actions": "Действия"
     },
     "no_teachers_found": "Учителя не найдены",
+    "unknown": "Неизвестный учитель",
     "no_subjects": "Нет предметов",
     "download_template": "Скачать шаблон",
     "import_teachers": "Импортировать учителей"
