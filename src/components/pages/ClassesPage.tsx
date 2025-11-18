@@ -1251,28 +1251,31 @@ export default function ClassesPage({ onNavigate }) {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(classItem)}
-                          className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          title={t('actions.edit')}
+                          aria-label={t('actions.edit')}
                         >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleClone(classItem)}
-                          className="h-8 px-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                          title={t('actions.clone')}
+                          aria-label={t('actions.clone')}
                         >
-                          <Copy className="h-4 w-4 mr-1" />
-                          Clone
+                          <Copy className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(classItem)}
-                          className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title={t('actions.delete')}
+                          aria-label={t('actions.delete')}
                         >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1628,9 +1631,9 @@ export default function ClassesPage({ onNavigate }) {
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Lightbulb className="h-5 w-5 text-amber-600" />
-                      <h3 className="text-base">Tips & Tricks</h3>
-                    </div>
+                        <Lightbulb className="h-5 w-5 text-amber-600" />
+                        <h3 className="text-base">{t('classes.tips.title')}</h3>
+                      </div>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1649,9 +1652,9 @@ export default function ClassesPage({ onNavigate }) {
                           1
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Use the Template</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip1.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Download the CSV template to see the exact format required. It includes examples to guide you.
+                            {t('classes.tips.tip1.desc')}
                           </p>
                         </div>
                       </div>
@@ -1664,9 +1667,9 @@ export default function ClassesPage({ onNavigate }) {
                           2
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Name is Mandatory</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip2.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            The only required field is the class name. All other fields will auto-generate or use defaults.
+                            {t('classes.tips.tip2.desc')}
                           </p>
                         </div>
                       </div>
@@ -1679,9 +1682,9 @@ export default function ClassesPage({ onNavigate }) {
                           3
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Period Format</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip3.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Use semicolons to separate period numbers: <code className="text-xs bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">1;2;3;4;5</code>
+                            {t('classes.tips.tip3.desc')}
                           </p>
                         </div>
                       </div>
@@ -1694,9 +1697,9 @@ export default function ClassesPage({ onNavigate }) {
                           4
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Comma Separated</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip4.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Ensure all fields are separated by commas. Don't use commas within field values.
+                            {t('classes.tips.tip4.desc')}
                           </p>
                         </div>
                       </div>
@@ -1724,9 +1727,9 @@ export default function ClassesPage({ onNavigate }) {
                           6
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Test with Small Batch</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip5.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Import 2-3 classes first to verify the format is correct before importing large datasets.
+                            {t('classes.tips.tip5.desc')}
                           </p>
                         </div>
                       </div>
@@ -1739,9 +1742,9 @@ export default function ClassesPage({ onNavigate }) {
                           7
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-sm mb-1">Empty Fields</h4>
+                          <h4 className="text-sm mb-1">{t('classes.tips.tip6.title')}</h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Leave optional fields empty by using consecutive commas: <code className="text-xs bg-amber-100 dark:bg-amber-900/30 px-1 py-0.5 rounded">name,,,,</code>
+                            {t('classes.tips.tip6.desc')}
                           </p>
                         </div>
                       </div>

@@ -22,6 +22,14 @@
     "subject": "Subject",
     "lessonsPerWeek": "Lessons per Week"
   },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "clone": "Clone",
+    "lock": "Lock",
+    "unlock": "Unlock",
+    "cancel": "Cancel"
+  },
   "login": {
     "welcome": "Welcome to Timetable.uz",
     "description": "Sign in to manage your school's timetable",
@@ -63,6 +71,23 @@
     "lesson_updated_successfully": "Lesson updated successfully",
     "failed_to_update_lesson": "Failed to update lesson",
     "failed_to_load_lessons": "Failed to load lessons"
+    ,
+    "optimize_no_timetable_id": "Please provide a timetable id to optimize",
+    "optimize_invalid_timetable_id": "Invalid timetable id",
+    "optimize_failed": "Failed to start optimization",
+    "optimize_started": "Optimization request sent",
+    "optimize_title": "Optimize Timetable",
+    "optimize_description": "Select soft-constraint options and start optimization for a timetable.",
+    "timetable_id": "Timetable ID",
+    "timetable_id_placeholder": "Enter timetable id (numeric)",
+    "apply_soft_constraint": "Apply soft constraints",
+    "apply_unscheduled": "Include unscheduled lessons",
+    "apply_unscheduled_penalty": "Unscheduled lessons penalty",
+    "apply_continuity_teacher": "Continuity penalty (teacher)",
+    "apply_continuity_class": "Continuity penalty (class)",
+    "apply_balanced_load": "Balanced load",
+    "apply_daily_subject_distribution": "Daily subject distribution",
+    "optimizing": "Optimizing..."
   },
   "dashboard": {
     "organization": "Organization",
@@ -124,6 +149,10 @@
     "click_add_period": "Click add period to create your first period"
   }
   ,
+  "availability": {
+    "period_prefix": "P"
+  }
+  ,
   "classes": {
     "title": "Classes",
     "description": "Manage class schedules and availability",
@@ -165,6 +194,34 @@
     "deleted_success": "Class deleted successfully",
     "delete_failed": "Failed to delete class",
     "name_required": "Please enter a class name"
+  ,
+    "tips": {
+      "title": "Tips & Tricks",
+      "tip1": {
+        "title": "Use the Template",
+        "desc": "Download the CSV template to see the exact format required. It includes examples to guide you."
+      },
+      "tip2": {
+        "title": "Name is Mandatory",
+        "desc": "The only required field is the class name. All other fields will auto-generate or use defaults."
+      },
+      "tip3": {
+        "title": "Period Format",
+        "desc": "Use semicolons to separate period numbers: 1;2;3;4;5"
+      },
+      "tip4": {
+        "title": "Comma Separated",
+        "desc": "Ensure all fields are separated by commas. Don't use commas within field values."
+      },
+      "tip5": {
+        "title": "Test with Small Batch",
+        "desc": "Import 2-3 classes first to verify the format is correct before importing large datasets."
+      },
+      "tip6": {
+        "title": "Empty Fields",
+        "desc": "Leave optional fields empty by using consecutive commas: name,,,,"
+      }
+    }
   },
   "subjects": {
     "title": "Subjects",
@@ -180,6 +237,18 @@
     "add_room": "Add Room"
     ,
     "unknown": "Unknown Room"
+    ,
+    "type": {
+      "label_prefix": "Room Type",
+      "shared": {
+        "label": "Shared Room",
+        "description": "This room can be used for lessons of any subject"
+      },
+      "special": {
+        "label": "Special Room",
+        "description": "This room can only be used for selected subjects"
+      }
+    }
   },
   "profile": {
     "description": "Manage your personal information"

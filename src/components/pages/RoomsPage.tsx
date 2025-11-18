@@ -474,17 +474,17 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={RoomType.SHARED}>
-                      {ROOM_TYPE_DEFINITIONS[RoomType.SHARED].label}
-                    </SelectItem>
-                    <SelectItem value={RoomType.SPECIAL}>
-                      {ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].label}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {ROOM_TYPE_DEFINITIONS[inlineFormData.type].description}
-                </p>
+                      <SelectItem value={RoomType.SHARED}>
+                        {t(ROOM_TYPE_DEFINITIONS[RoomType.SHARED].labelKey)}
+                      </SelectItem>
+                      <SelectItem value={RoomType.SPECIAL}>
+                        {t(ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].labelKey)}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t(ROOM_TYPE_DEFINITIONS[inlineFormData.type].descriptionKey)}
+                  </p>
               </div>
 
               {showAvailabilityInForm && (
@@ -515,13 +515,13 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                     {/* Period headers */}
                     <div className="grid grid-cols-8 gap-1">
                       <div className="p-1"></div>
-                      {periods.map((period) => (
+                        {periods.map((period) => (
                         <button
                           key={period}
                           onClick={() => toggleInlinePeriodAcrossDays(period)}
                           className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                         >
-                          P{period}
+                          {t('availability.period_prefix')}{period}
                         </button>
                       ))}
                     </div>
@@ -634,7 +634,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                             <Badge 
                               className={room.type === RoomType.SHARED ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'}
                             >
-                              {ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].label}
+                              {t(ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].labelKey)}
                             </Badge>
                             {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
                               <span className="text-xs text-muted-foreground">
@@ -663,28 +663,31 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(room)}
-                              className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              title={t('actions.edit')}
+                              aria-label={t('actions.edit')}
                             >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleClone(room)}
-                              className="h-8 px-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              title={t('actions.clone')}
+                              aria-label={t('actions.clone')}
                             >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Clone
+                              <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(room)}
-                              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title={t('actions.delete')}
+                              aria-label={t('actions.delete')}
                             >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -697,7 +700,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                             <div className="bg-white dark:bg-gray-950 rounded-lg border border-blue-200 dark:border-blue-900 p-4">
                               {/* Room Type Info */}
                               <div className="mb-4">
-                                <h4 className="text-sm font-semibold mb-2">Xona turi: {ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].label}</h4>
+                                <h4 className="text-sm font-semibold mb-2">{t('rooms.type.label_prefix')}: {t(ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].labelKey)}</h4>
                                 {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
                                   <div>
                                     <p className="text-sm text-muted-foreground mb-1">Ruxsat etilgan fanlar:</p>
@@ -729,7 +732,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                       key={period}
                                       className="p-1 text-center text-xs font-medium text-muted-foreground"
                                     >
-                                      P{period}
+                                      {t('availability.period_prefix')}{period}
                                     </div>
                                   ))}
                                 </div>

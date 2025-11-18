@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from '@/i18n/index';
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import {
@@ -159,6 +160,7 @@ const DraggableLessonCard = ({
   );
 
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const { t } = useTranslation();
 
   const subjectColor =
     SUBJECT_COLORS[
@@ -265,55 +267,55 @@ const DraggableLessonCard = ({
           </div>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-2" align="start">
-        <div className="space-y-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => {
-              onEdit(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => {
-              onToggleLock(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            {lesson.isLocked ? (
-              <>
-                <Unlock className="mr-2 h-4 w-4" />
-                Unlock
-              </>
-            ) : (
-              <>
-                <Lock className="mr-2 h-4 w-4" />
-                Lock
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => {
-              onDelete(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-      </PopoverContent>
+        <PopoverContent className="w-48 p-2" align="start">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onEdit(lesson);
+                  setPopoverOpen(false);
+                }}
+                title={t('actions.edit')}
+                aria-label={t('actions.edit')}
+                className="p-1"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onToggleLock(lesson);
+                  setPopoverOpen(false);
+                }}
+                className="p-1"
+                title={lesson.isLocked ? t('actions.unlock') || 'Unlock' : t('actions.lock') || 'Lock'}
+                aria-label={lesson.isLocked ? t('actions.unlock') || 'Unlock' : t('actions.lock') || 'Lock'}
+              >
+                {lesson.isLocked ? (
+                  <Unlock className="h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => {
+                  onDelete(lesson);
+                  setPopoverOpen(false);
+                }}
+                title={t('actions.delete')}
+                aria-label={t('actions.delete')}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
     </Popover>
   );
 };

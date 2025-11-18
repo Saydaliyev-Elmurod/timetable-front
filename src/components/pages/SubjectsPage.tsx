@@ -176,7 +176,7 @@ export default function SubjectsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+  const [currentPage, setCurrentPage] = useState(1); // UI uses 1-based; service calls use currentPage-1
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -223,10 +223,14 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   const fetchSubjects = async () => {
     try {
       setIsLoading(true);
-      const data = await SubjectService.getPaginated(currentPage, itemsPerPage);
-      setSubjects(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
+      const data = await SubjectService.getPaginated(currentPage - 1, itemsPerPage);
+      setSubjects(data.content || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalElements(data.totalElements || (data.content ? data.content.length : 0));
+      if (typeof (data as any).number === 'number') {
+        const backendPage = (data as any).number + 1;
+        if (backendPage !== currentPage) setCurrentPage(backendPage);
+      }
     } catch (error) {
       toast.error('Failed to fetch subjects');
       console.error(error);
@@ -474,7 +478,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(parseInt(value));
-    setCurrentPage(0);
+    setCurrentPage(1);
   };
 
   return (
@@ -837,28 +841,31 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(subject)}
-                              className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              title={t('actions.edit')}
+                              aria-label={t('actions.edit')}
                             >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleClone(subject)}
-                              className="h-8 px-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              title={t('actions.clone')}
+                              aria-label={t('actions.clone')}
                             >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Clone
+                              <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(subject)}
-                              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title={t('actions.delete')}
+                              aria-label={t('actions.delete')}
                             >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -946,22 +953,11 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
               </SelectContent>
             </Select>
             <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                disabled={currentPage === 0}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                disabled={currentPage >= totalPages - 1}
-              >
-                Next
-              </Button>
+              {React.createElement(require('../ui/pagination').default, {
+                currentPage,
+                totalPages,
+                onPageChange: (p: number) => setCurrentPage(p),
+              })}
             </div>
           </div>
         </div>

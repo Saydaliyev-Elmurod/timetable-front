@@ -24,7 +24,17 @@ import {
   TableRow,
 } from '../ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { Plus, Download, Upload, Pencil, Trash2, BookOpen, Clock, GraduationCap, FileText, Users, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, MapPin } from 'lucide-react';
+import { Plus, Download, Upload, Pencil, Trash2, BookOpen, Clock, GraduationCap, FileText, Users, ChevronDown, ChevronRight, ChevronsDown, ChevronsUp, MapPin, Zap } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 // Lightweight local types to keep the page functional until stricter typings are added
@@ -45,6 +55,20 @@ export default function LessonsPage() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ViewType>('classes');
   const [allExpanded, setAllExpanded] = useState(false);
+  const [optimizeOpen, setOptimizeOpen] = useState(false);
+  const [optTimetableId, setOptTimetableId] = useState<string>('');
+  const [applySoftConstraint, setApplySoftConstraint] = useState(true);
+  const [applyUnScheduledLessons, setApplyUnScheduledLessons] = useState(true);
+  const [applyUnScheduledLessonsPenalty, setApplyUnScheduledLessonsPenalty] = useState<number>(100);
+  const [applyContinuityPenaltyTeacher, setApplyContinuityPenaltyTeacher] = useState(true);
+  const [applyContinuityPenaltyTeacherPenalty, setApplyContinuityPenaltyTeacherPenalty] = useState<number>(20);
+  const [applyContinuityPenaltyClass, setApplyContinuityPenaltyClass] = useState(true);
+  const [applyContinuityPenaltyClassPenalty, setApplyContinuityPenaltyClassPenalty] = useState<number>(50);
+  const [applyBalancedLoad, setApplyBalancedLoad] = useState(true);
+  const [applyBalancedLoadPenalty, setApplyBalancedLoadPenalty] = useState<number>(30);
+  const [applyDailySubjectDistribution, setApplyDailySubjectDistribution] = useState(true);
+  const [applyDailySubjectDistributionPenalty, setApplyDailySubjectDistributionPenalty] = useState<number>(30);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const toggleCardExpansion = (id: string) => {
     setExpandedCards((prev) => {
@@ -148,6 +172,56 @@ export default function LessonsPage() {
     
     setEditingLesson(null);
     setIsDialogOpen(false);
+  };
+
+  const handleOptimizeSubmit = async () => {
+    if (!optTimetableId) {
+      toast.error(t('lessons.optimize_no_timetable_id'));
+      return;
+    }
+
+    const timetableIdNum = parseInt(optTimetableId, 10);
+    if (isNaN(timetableIdNum)) {
+      toast.error(t('lessons.optimize_invalid_timetable_id'));
+      return;
+    }
+
+    const body = {
+      applySoftConstraint,
+      applyUnScheduledLessons,
+      applyUnScheduledLessonsPenalty,
+      applyContinuityPenaltyTeacher,
+      applyContinuityPenaltyTeacherPenalty,
+      applyContinuityPenaltyClass,
+      applyContinuityPenaltyClassPenalty,
+      applyBalancedLoad,
+      applyBalancedLoadPenalty,
+      applyDailySubjectDistribution,
+      applyDailySubjectDistributionPenalty,
+    } as any;
+
+    setIsOptimizing(true);
+    try {
+      const res = await (await import('@/lib/api')).apiCall<any>(`http://localhost:8080/api/timetable/v1/timetable/optimize/${timetableIdNum}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+
+      if (res?.error) {
+        console.error('Optimize failed', res);
+        toast.error(t('lessons.optimize_failed'));
+      } else {
+        toast.success(t('lessons.optimize_started'));
+        // refresh lessons after an optimization attempt
+        fetchLessons();
+      }
+    } catch (err) {
+      console.error('Optimize request error', err);
+      toast.error(t('lessons.optimize_failed'));
+    } finally {
+      setIsOptimizing(false);
+      setOptimizeOpen(false);
+    }
   };
 
   const renderLessonCard = (item: GroupedData, type: ViewType) => {
@@ -419,14 +493,107 @@ export default function LessonsPage() {
               {t('lessons.bulk_import')}
             </Button>
           </div>
-          <Button onClick={() => handleAdd()}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('lessons.add_lesson')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setOptimizeOpen(true)}
+              variant="secondary"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Zap className="h-4 w-4" />
+              {t('lessons.optimize')}
+            </Button>
+            <Button onClick={() => handleAdd()}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('lessons.add_lesson')}
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* ... (Tips & Tricks Sidebar) */}
+        <Dialog open={optimizeOpen} onOpenChange={setOptimizeOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('lessons.optimize_title')}</DialogTitle>
+              <DialogDescription>
+                {t('lessons.optimize_description')}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 mt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">{t('lessons.timetable_id')}</Label>
+                  <Input value={optTimetableId} onChange={(e) => setOptTimetableId(e.target.value)} placeholder={t('lessons.timetable_id_placeholder')} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm">{t('lessons.apply_soft_constraint')}</Label>
+                  </div>
+                  <Switch checked={applySoftConstraint} onCheckedChange={(v: any) => setApplySoftConstraint(!!v)} />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm">{t('lessons.apply_unscheduled')}</Label>
+                  </div>
+                  <Switch checked={applyUnScheduledLessons} onCheckedChange={(v: any) => setApplyUnScheduledLessons(!!v)} />
+                </div>
+
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_unscheduled_penalty')}</Label>
+                  <Input type="number" value={String(applyUnScheduledLessonsPenalty)} onChange={(e) => setApplyUnScheduledLessonsPenalty(Number(e.target.value || 0))} />
+                </div>
+
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_continuity_teacher')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={applyContinuityPenaltyTeacher} onCheckedChange={(v: any) => setApplyContinuityPenaltyTeacher(!!v)} />
+                    <Input type="number" value={String(applyContinuityPenaltyTeacherPenalty)} onChange={(e) => setApplyContinuityPenaltyTeacherPenalty(Number(e.target.value || 0))} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_continuity_class')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={applyContinuityPenaltyClass} onCheckedChange={(v: any) => setApplyContinuityPenaltyClass(!!v)} />
+                    <Input type="number" value={String(applyContinuityPenaltyClassPenalty)} onChange={(e) => setApplyContinuityPenaltyClassPenalty(Number(e.target.value || 0))} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_balanced_load')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={applyBalancedLoad} onCheckedChange={(v: any) => setApplyBalancedLoad(!!v)} />
+                    <Input type="number" value={String(applyBalancedLoadPenalty)} onChange={(e) => setApplyBalancedLoadPenalty(Number(e.target.value || 0))} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_daily_subject_distribution')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={applyDailySubjectDistribution} onCheckedChange={(v: any) => setApplyDailySubjectDistribution(!!v)} />
+                    <Input type="number" value={String(applyDailySubjectDistributionPenalty)} onChange={(e) => setApplyDailySubjectDistributionPenalty(Number(e.target.value || 0))} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <div className="flex gap-2 w-full justify-end">
+                <Button variant="ghost" onClick={() => setOptimizeOpen(false)}>{t('actions.cancel')}</Button>
+                <Button onClick={handleOptimizeSubmit} disabled={isOptimizing}>
+                  {isOptimizing ? t('lessons.optimizing') : t('lessons.optimize')}
+                </Button>
+              </div>
+            </DialogFooter>
+            <DialogClose />
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

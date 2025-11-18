@@ -9,14 +9,14 @@ export enum RoomType {
 }
 
 // Enum definitions and descriptions
-export const ROOM_TYPE_DEFINITIONS: Record<RoomType, { label: string; description: string }> = {
+export const ROOM_TYPE_DEFINITIONS: Record<RoomType, { labelKey: string; descriptionKey: string }> = {
   [RoomType.SHARED]: {
-    label: 'Umumiy Xona',
-    description: 'Bu xonada hamma fan darslarini qoyish mumkin'
+    labelKey: 'rooms.type.shared.label',
+    descriptionKey: 'rooms.type.shared.description'
   },
   [RoomType.SPECIAL]: {
-    label: 'Maxsus Xona',
-    description: 'Bu xonada faqat tanlangan fanlarni qoyish mumkin'
+    labelKey: 'rooms.type.special.label',
+    descriptionKey: 'rooms.type.special.description'
   }
 };
 

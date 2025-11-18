@@ -22,6 +22,14 @@
     "subject": "Fan",
     "lessonsPerWeek": "Haftadagi darslar soni"
   },
+  "actions": {
+    "edit": "Tahrirlash",
+    "delete": "O'chirish",
+    "clone": "Klonlash",
+    "lock": "Qulflash",
+    "unlock": "Qulfni ochish",
+    "cancel": "Bekor qilish"
+  },
   "login": {
     "welcome": "Timetable.uz ga xush kelibsiz",
     "description": "Maktab jadvalingizni boshqarish uchun tizimga kiring",
@@ -63,6 +71,23 @@
     "lesson_updated_successfully": "Dars muvaffaqiyatli yangilandi",
     "failed_to_update_lesson": "Darsni yangilashda xatolik",
     "failed_to_load_lessons": "Darslarni yuklashda xatolik"
+    ,
+    "optimize_no_timetable_id": "Iltimos, optimallashtirish uchun jadval id sini kiriting",
+    "optimize_invalid_timetable_id": "Jadval id noto'g'ri",
+    "optimize_failed": "Optimallashtirishni boshlashda xatolik",
+    "optimize_started": "Optimallashtirish so'rovi yuborildi",
+    "optimize_title": "Jadvalni optimallashtirish",
+    "optimize_description": "Yumshoq cheklovlarni tanlang va jadval uchun optimallashtirishni boshlang.",
+    "timetable_id": "Jadval ID",
+    "timetable_id_placeholder": "Jadval id ni kiriting (raqam)",
+    "apply_soft_constraint": "Yumshoq cheklovlarni qo'llash",
+    "apply_unscheduled": "Joylashtirilmagan darslarni qo'shish",
+    "apply_unscheduled_penalty": "Joylashtirilmagan darslar jarimasi",
+    "apply_continuity_teacher": "Davomiylik jarimasi (o'qituvchi)",
+    "apply_continuity_class": "Davomiylik jarimasi (sinf)",
+    "apply_balanced_load": "Yukni muvozanatlashtirish",
+    "apply_daily_subject_distribution": "Kunlik fan taqsimoti",
+    "optimizing": "Optimallashtirilmoqda..."
   },
   "dashboard": {
     "organization": "Tashkilot",
@@ -124,6 +149,10 @@
     "click_add_period": "Qo'shish tugmasini bosing va birinchi darsni yarating"
   }
   ,
+  "availability": {
+    "period_prefix": "P"
+  }
+  ,
   "classes": {
     "title": "Sinflar",
     "description": "Sinflar jadvali va mavjudligini boshqaring",
@@ -164,6 +193,34 @@
     "deleted_success": "Sinf muvaffaqiyatli o'chirildi",
     "delete_failed": "Sinfni o'chirishda xatolik",
     "name_required": "Iltimos, sinf nomini kiriting"
+    ,
+    "tips": {
+      "title": "Maslahatlar va fokuslar",
+      "tip1": {
+        "title": "Shablondan foydalaning",
+        "desc": "CSV shablonni yuklab oling — u talab qilinadigan formatni va misollarni beradi."
+      },
+      "tip2": {
+        "title": "Nomi majburiy",
+        "desc": "Yagona talab qilingan maydon — sinf nomi. Boshqa maydonlar avtomatik to'ldiriladi yoki standart qiymatlar ishlatiladi."
+      },
+      "tip3": {
+        "title": "Davr formati",
+        "desc": "Davr raqamlarini nuqta-vergul bilan ajrating: 1;2;3;4;5."
+      },
+      "tip4": {
+        "title": "Vergul bilan ajratish",
+        "desc": "Maydonlarni vergul bilan ajrating. Maydon ichida vergul ishlatmang."
+      },
+      "tip5": {
+        "title": "Kichik paket bilan sinov qiling",
+        "desc": "Formatni tekshirish uchun avval 2-3 sinfni import qilib ko'ring."
+      },
+      "tip6": {
+        "title": "Bo'sh maydonlar",
+        "desc": "Ixtiyoriy maydonlarni bo'sh qoldiring: name,,,,"
+      }
+    }
   },
   "subjects": {
     "title": "Fanlar",
@@ -179,6 +236,18 @@
     "add_room": "Xona qo'shish"
     ,
     "unknown": "Noma'lum xona"
+    ,
+    "type": {
+      "label_prefix": "Xona turi",
+      "shared": {
+        "label": "Umumiy Xona",
+        "description": "Bu xonada hamma fan darslarini qo'yish mumkin"
+      },
+      "special": {
+        "label": "Maxsus Xona",
+        "description": "Bu xonada faqat tanlangan fanlarni qo'yish mumkin"
+      }
+    }
   },
   "profile": {
     "description": "Shaxsiy ma'lumotlaringizni boshqaring"

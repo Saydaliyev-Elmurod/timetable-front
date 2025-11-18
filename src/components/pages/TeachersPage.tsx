@@ -137,7 +137,7 @@ export default function TeachersPage() {
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
+  const [currentPage, setCurrentPage] = useState(1); // UI uses 1-based; service calls use currentPage-1
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -186,10 +186,15 @@ export default function TeachersPage() {
   const fetchTeachers = async () => {
     try {
       setIsLoading(true);
-      const data = await TeacherService.getPaginated(currentPage, itemsPerPage);
-      setTeachers(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
+      const data = await TeacherService.getPaginated(currentPage - 1, itemsPerPage);
+      setTeachers(data.content || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalElements(data.totalElements || (data.content ? data.content.length : 0));
+      // sync currentPage in case backend returned a different page number (data.number is 0-based)
+      if (typeof (data as any).number === 'number') {
+        const backendPage = (data as any).number + 1;
+        if (backendPage !== currentPage) setCurrentPage(backendPage);
+      }
     } catch (error) {
       toast.error('Failed to fetch teachers');
       console.error(error);
@@ -490,7 +495,7 @@ export default function TeachersPage() {
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(parseInt(value));
-    setCurrentPage(0);
+    setCurrentPage(1);
   };
 
   return (
@@ -825,28 +830,31 @@ export default function TeachersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(teacher)}
-                              className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              title={t('actions.edit')}
+                              aria-label={t('actions.edit')}
                             >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleClone(teacher)}
-                              className="h-8 px-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                              title={t('actions.clone')}
+                              aria-label={t('actions.clone')}
                             >
-                              <Copy className="h-4 w-4 mr-1" />
-                              Clone
+                              <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(teacher)}
-                              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title={t('actions.delete')}
+                              aria-label={t('actions.delete')}
                             >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Delete
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -918,7 +926,7 @@ export default function TeachersPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} teachers
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} teachers
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -934,22 +942,13 @@ export default function TeachersPage() {
               </SelectContent>
             </Select>
             <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                disabled={currentPage === 0}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                disabled={currentPage >= totalPages - 1}
-              >
-                Next
-              </Button>
+              {/* use new pagination component */}
+              {/* Lazy-load to avoid circular import issues */}
+              {React.createElement(require('../ui/pagination').default, {
+                currentPage,
+                totalPages,
+                onPageChange: (p: number) => setCurrentPage(p),
+              })}
             </div>
           </div>
         </div>
