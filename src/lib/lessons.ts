@@ -61,11 +61,28 @@ export interface PagedLessonResponse {
 
 export const LessonService = {
   getAll: async (): Promise<LessonResponse[]> => {
-    const response = await API.call<LessonResponse[]>(
+    const response = await API.call<any>(
       `${API.url('LESSONS')}/all`
     );
     if (response.error) throw response.error;
-    return response.data!;
+
+    const data = response.data;
+    if (!data) return [];
+
+    // Normalize possible shapes:
+    // - Array of LessonResponse
+    // - Paginated { content: LessonResponse[] }
+    // - Wrapped { response: [...] } (if apiCall didn't unwrap for some reason)
+    if (Array.isArray(data)) return data as LessonResponse[];
+    if (Array.isArray(data.content)) return data.content as LessonResponse[];
+    if (Array.isArray(data.response)) return data.response as LessonResponse[];
+    if (data.response && Array.isArray(data.response.content)) return data.response.content as LessonResponse[];
+
+    // Last-resort: try to find a content-like field
+    const maybeContent = data.content || (data.response && data.response.content);
+    if (Array.isArray(maybeContent)) return maybeContent as LessonResponse[];
+
+    return [];
   },
 
   getPaginated: async (page: number, size: number): Promise<PagedLessonResponse> => {
