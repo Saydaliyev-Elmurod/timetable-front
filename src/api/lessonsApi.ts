@@ -1,13 +1,14 @@
-import axios from 'axios';
-import { 
-  LessonRequest, 
-  LessonUpdateRequest, 
-  LessonResponse, 
-  PageResponse 
+import axiosInstance from '@/lib/axios';
+import { API_CONFIG } from '@/config/api';
+import {
+  LessonRequest,
+  LessonUpdateRequest,
+  LessonResponse,
+  PageResponse
 } from '@/types/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
-const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
+const USE_MOCK_API = API_CONFIG.USE_MOCK;
+const LESSONS_ENDPOINT = API_CONFIG.ENDPOINTS.LESSONS;
 
 // Mock data for development
 const mockLessons: LessonResponse[] = [
@@ -76,7 +77,7 @@ export const lessonsApi = USE_MOCK_API ? {
   // Real API implementations
   // Get paginated lessons
   getLessons: async (page: number, size: number = 10): Promise<PageResponse<LessonResponse>> => {
-    const response = await axios.get(`${API_BASE}/api/lessons/v1`, {
+    const response = await axiosInstance.get(LESSONS_ENDPOINT, {
       params: { page, size }
     });
     return response.data;
@@ -84,25 +85,25 @@ export const lessonsApi = USE_MOCK_API ? {
 
   // Get all lessons
   getAllLessons: async (): Promise<LessonResponse[]> => {
-    const response = await axios.get(`${API_BASE}/api/lessons/v1/all`);
+    const response = await axiosInstance.get(`${LESSONS_ENDPOINT}/all`);
     return response.data;
   },
 
   // Create new lesson
   createLesson: async (lesson: LessonRequest): Promise<LessonResponse> => {
-    const response = await axios.post(`${API_BASE}/api/lessons/v1`, lesson);
+    const response = await axiosInstance.post(LESSONS_ENDPOINT, lesson);
     return response.data;
   },
 
   // Update lesson
   updateLesson: async (lesson: LessonUpdateRequest): Promise<LessonResponse> => {
-    const response = await axios.put(`${API_BASE}/api/lessons/v1`, lesson);
+    const response = await axiosInstance.put(LESSONS_ENDPOINT, lesson);
     return response.data;
   },
 
   // Delete lesson
   deleteLesson: async (id: number): Promise<void> => {
-    await axios.delete(`${API_BASE}/api/lessons/v1/${id}`);
+    await axiosInstance.delete(`${LESSONS_ENDPOINT}/${id}`);
   }
 };
 

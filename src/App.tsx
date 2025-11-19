@@ -22,9 +22,15 @@ export default function App() {
     const savedUser = localStorage.getItem('user');
 
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-      setCurrentView('dashboard');
+      try {
+        setUser(JSON.parse(savedUser));
+        setIsAuthenticated(true);
+        setCurrentView('dashboard');
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+        localStorage.removeItem('user');
+        removeToken();
+      }
     } else {
       localStorage.removeItem('user');
       removeToken();
@@ -55,7 +61,7 @@ export default function App() {
     setIsAuthenticated(false);
     setCurrentView('landing');
     localStorage.removeItem('user');
-    removeToken(); 
+    removeToken();
   };
 
   const renderCurrentView = () => {
@@ -66,8 +72,8 @@ export default function App() {
         return <LoginPage onLogin={handleLogin} onBackToLanding={handleBackToLanding} />;
       case 'dashboard':
         return (
-          <Dashboard 
-            user={user} 
+          <Dashboard
+            user={user}
             onLogout={handleLogout}
           />
         );
