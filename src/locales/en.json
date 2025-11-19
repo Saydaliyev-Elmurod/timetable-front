@@ -28,7 +28,8 @@
     "clone": "Clone",
     "lock": "Lock",
     "unlock": "Unlock",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "loading": "Loading..."
   },
   "login": {
     "welcome": "Welcome to Timetable.uz",
@@ -70,7 +71,12 @@
     "failed_to_create_lesson": "Failed to create lesson",
     "lesson_updated_successfully": "Lesson updated successfully",
     "failed_to_update_lesson": "Failed to update lesson",
-    "failed_to_load_lessons": "Failed to load lessons"
+      "failed_to_load_lessons": "Failed to load lessons",
+      "failed_to_load_entity": "Failed to load data",
+      "failed_to_save": "Failed to save",
+      "teacher_updated": "Teacher updated",
+      "subject_updated": "Subject updated",
+      "class_updated": "Class updated"
     ,
     "optimize_no_timetable_id": "Please provide a timetable id to optimize",
     "optimize_invalid_timetable_id": "Invalid timetable id",
@@ -171,6 +177,8 @@
     "rooms_optional": "Rooms (optional)",
     "no_rooms": "No rooms available",
     "no_rooms_assigned": "No rooms assigned",
+    "select_rooms_placeholder": "Select rooms...",
+    "search_rooms": "Search rooms...",
     "not_assigned": "Not assigned",
     "class_availability": "Class Availability",
     "select_all": "Select All",

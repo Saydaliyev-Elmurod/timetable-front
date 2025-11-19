@@ -529,10 +529,22 @@ export default function TeachersPage() {
         />
       </div>
 
-      {/* Inline Add/Clone Form */}
-      {showInlineForm && (
-        <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
-          <CardContent className="pt-6">
+      {/* Add/Edit Teacher Form moved to Dialog */}
+      <Dialog open={showInlineForm} onOpenChange={(open) => setShowInlineForm(open)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>{editingTeacherId ? t('teachers.update_teacher') : t('teachers.add_teacher')}</DialogTitle>
+                <DialogDescription />
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleCancelInlineForm}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -747,9 +759,9 @@ export default function TeachersPage() {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <Card>

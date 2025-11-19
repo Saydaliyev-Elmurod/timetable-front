@@ -372,7 +372,8 @@ export default function ClassesPage({ onNavigate }) {
         sunday: [1, 2, 3, 4, 5, 6, 7],
       },
     });
-    setShowAvailabilityInForm(false);
+    // When opening in modal, show availability calendar by default
+    setShowAvailabilityInForm(true);
   };
 
   const handleEdit = (classItem) => {
@@ -385,7 +386,8 @@ export default function ClassesPage({ onNavigate }) {
       roomIds: classItem.roomIds || [],
       availability: JSON.parse(JSON.stringify(classItem.availability)),
     });
-    setShowAvailabilityInForm(false);
+    // When opening in modal, show availability calendar by default
+    setShowAvailabilityInForm(true);
   };
 
   const handleClone = (classItem) => {
@@ -398,7 +400,8 @@ export default function ClassesPage({ onNavigate }) {
       roomIds: classItem.roomIds || [],
       availability: JSON.parse(JSON.stringify(classItem.availability)),
     });
-    setShowAvailabilityInForm(false);
+    // When opening in modal, show availability calendar by default
+    setShowAvailabilityInForm(true);
   };
 
   const handleSaveInlineForm = async () => {
@@ -920,15 +923,33 @@ export default function ClassesPage({ onNavigate }) {
           />
         </div>
 
-      {/* Inline Add/Clone/Edit Form */}
-      {showInlineForm && (
-        <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
-            <CardHeader className="pb-3">
-            <CardTitle className="text-lg">
-              {editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Add / Edit Form (moved to Dialog) */}
+      <Dialog open={showInlineForm} onOpenChange={(open) => {
+        setShowInlineForm(open);
+        if (!open) {
+          setEditingClassId(null);
+          setShowAvailabilityInForm(false);
+        }
+      }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>{editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}</DialogTitle>
+                <DialogDescription />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setShowInlineForm(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -962,7 +983,7 @@ export default function ClassesPage({ onNavigate }) {
               </div>
 
               {/* Class Teacher Field */}
-                <div className="space-y-2">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Label>{t('classes.class_teacher')}</Label>
                   <TooltipProvider>
@@ -983,16 +1004,16 @@ export default function ClassesPage({ onNavigate }) {
                 <Select
                   value={inlineFormData.classTeacher || undefined}
                   onValueChange={(value) => updateInlineFormField('classTeacher', value)}
-                  disabled={!teachers || teachers.length === 0} // Disable if no teachers
+                  disabled={!teachers || teachers.length === 0}
                 >
                   <SelectTrigger>
-                      <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
-                    </SelectTrigger>
+                    <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
+                  </SelectTrigger>
                   <SelectContent>
-                      {teachers && teachers.length > 0 ? (
+                    {teachers && teachers.length > 0 ? (
                       <>
                         {teachers.map((teacher) => (
-                          teacher.id ? ( // Ensure teacher.id is not null or undefined
+                          teacher.id ? (
                             <SelectItem key={teacher.id} value={teacher.id.toString()}>
                               {teacher.name}
                             </SelectItem>
@@ -1044,7 +1065,7 @@ export default function ClassesPage({ onNavigate }) {
                 </div>
                 {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {inlineFormData.roomIds.length} {t('classes.table.rooms').toLowerCase()} {inlineFormData.roomIds.length !== 1 ? '' : ''} selected
+                    {inlineFormData.roomIds.length} {t('classes.table.rooms').toLowerCase()} selected
                   </p>
                 )}
               </div>
@@ -1075,7 +1096,6 @@ export default function ClassesPage({ onNavigate }) {
                   </div>
 
                   <div className="grid gap-2">
-                    {/* Period headers */}
                     <div className="grid grid-cols-8 gap-1">
                       <div className="p-1"></div>
                       {periods.map((period) => (
@@ -1088,8 +1108,6 @@ export default function ClassesPage({ onNavigate }) {
                         </button>
                       ))}
                     </div>
-                    
-                    {/* Days and periods */}
                     {days.map((day, dayIndex) => (
                       <div key={day} className="grid grid-cols-8 gap-1">
                         <button
@@ -1121,7 +1139,7 @@ export default function ClassesPage({ onNavigate }) {
               )}
 
               {/* Action Buttons */}
-                    <div className="flex gap-2">
+              <div className="flex gap-2">
                 <Button 
                   onClick={handleSaveInlineForm} 
                   size="sm" 
@@ -1151,9 +1169,9 @@ export default function ClassesPage({ onNavigate }) {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
         <div>

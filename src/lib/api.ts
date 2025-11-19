@@ -1,4 +1,5 @@
 import { getToken } from './auth';
+import { toast } from 'sonner';
 
 // API Configuration
 const API_CONFIG = {
@@ -57,7 +58,7 @@ export async function apiCall<T>(
     };
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      (headers as any)['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
@@ -68,18 +69,32 @@ export async function apiCall<T>(
     const rawData = await response.json();
 
     if (!response.ok) {
-      const error: ApiError = new Error(rawData.message || 'API call failed');
+      // Prefer structured server message when available
+      const serverMessage = rawData?.errorDescription || rawData?.error || rawData?.message || response.statusText || 'API call failed';
+      // show user-facing alert/toast for 4xx/5xx
+      try {
+        toast.error(String(serverMessage));
+      } catch (e) {
+        // ignore toast errors
+      }
+      const error: ApiError = new Error(serverMessage);
       error.status = response.status;
-      error.code = rawData.code;
+      error.code = rawData?.code;
       throw error;
     }
 
     // Handle new API wrapper format: { error, errorDescription, response }
     let data = rawData;
     if (rawData && typeof rawData === 'object' && 'response' in rawData && 'error' in rawData && 'errorDescription' in rawData) {
-      // Check if there's an error in the wrapper
+      // If the backend wrapper contains an error field, surface it to the user
       if (rawData.error) {
-        const error: ApiError = new Error(rawData.errorDescription || rawData.error || 'API call failed');
+        const serverMessage = rawData.errorDescription || rawData.error || 'API call failed';
+        try {
+          toast.error(String(serverMessage));
+        } catch (e) {
+          // ignore toast errors
+        }
+        const error: ApiError = new Error(serverMessage);
         error.status = response.status;
         throw error;
       }
@@ -93,6 +108,13 @@ export async function apiCall<T>(
     };
   } catch (error) {
     console.error('API call failed:', error);
+    // Show a generic toast if the error has a message
+    try {
+      const msg = (error as ApiError)?.message || 'Request failed';
+      if (msg) toast.error(String(msg));
+    } catch (e) {
+      // ignore
+    }
     return {
       error: error as ApiError,
       status: (error as ApiError).status || 500

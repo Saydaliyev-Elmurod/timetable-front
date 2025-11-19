@@ -1,9 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from '@/i18n/index';
 import { LessonService } from '@/lib/lessons';
+import { TeacherService } from '@/lib/teachers';
+import { SubjectService } from '@/lib/subjects';
+import { apiCall, getApiUrl } from '@/lib/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import { Checkbox } from '../ui/checkbox';
 import {
   Card,
   CardContent,
@@ -34,6 +45,11 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandGroup, CommandInput, CommandItem, CommandEmpty } from '../ui/command';
+import { Badge } from '../ui/badge';
+import { Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
@@ -74,6 +90,96 @@ export default function LessonsPage() {
   const [applyDailySubjectDistribution, setApplyDailySubjectDistribution] = useState(true);
   const [applyDailySubjectDistributionPenalty, setApplyDailySubjectDistributionPenalty] = useState<number>(30);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  // Entity edit (class / teacher / subject) state
+  const [entityEditOpen, setEntityEditOpen] = useState(false);
+  const [entityEditType, setEntityEditType] = useState<'class' | 'teacher' | 'subject' | null>(null);
+  const [entityEditId, setEntityEditId] = useState<number | null>(null);
+  const [entityEditData, setEntityEditData] = useState<any>(null);
+  const [entityLoading, setEntityLoading] = useState(false);
+  const [entitySaving, setEntitySaving] = useState(false);
+  const [entityTeachers, setEntityTeachers] = useState<any[]>([]);
+  const [entityRooms, setEntityRooms] = useState<any[]>([]);
+  const [entitySubjects, setEntitySubjects] = useState<any[]>([]);
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const periods = [1, 2, 3, 4, 5, 6, 7];
+
+  const toggleEntityAvailability = (day: string, period: number) => {
+    setEntityEditData((prev: any) => {
+      const availability = { ...(prev.availability || {}) };
+      availability[day] = availability[day] || [];
+      availability[day] = availability[day].includes(period)
+        ? availability[day].filter((p: number) => p !== period)
+        : [...availability[day], period].sort((a: number, b: number) => a - b);
+      return { ...prev, availability };
+    });
+  };
+
+  const toggleEntityDay = (day: string) => {
+    setEntityEditData((prev: any) => {
+      const availability = { ...(prev.availability || {}) };
+      const dayPeriods = availability[day] || [];
+      const allSelected = periods.every(p => dayPeriods.includes(p));
+      availability[day] = allSelected ? [] : [...periods];
+      return { ...prev, availability };
+    });
+  };
+
+  const toggleEntityPeriodAcrossDays = (period: number) => {
+    setEntityEditData((prev: any) => {
+      const availability = { ...(prev.availability || {}) };
+      const isSelected = days.some(day => (availability[day] || []).includes(period));
+      days.forEach(day => {
+        availability[day] = availability[day] || [];
+        if (isSelected) {
+          availability[day] = availability[day].filter((p: number) => p !== period);
+        } else {
+          if (!availability[day].includes(period)) availability[day] = [...availability[day], period].sort((a:number,b:number)=>a-b);
+        }
+      });
+      return { ...prev, availability };
+    });
+  };
+
+  const selectAllEntityAvailability = () => {
+    setEntityEditData((prev: any) => {
+      const availability: any = {};
+      days.forEach(day => availability[day] = [...periods]);
+      return { ...prev, availability };
+    });
+  };
+
+  const clearAllEntityAvailability = () => {
+    setEntityEditData((prev: any) => {
+      const availability: any = {};
+      days.forEach(day => availability[day] = []);
+      return { ...prev, availability };
+    });
+  };
+
+  const toggleEntitySubject = (subjectId: number) => {
+    setEntityEditData((prev: any) => {
+      const current = Array.isArray(prev.selectedSubjectIds) ? [...prev.selectedSubjectIds] : [];
+      const idx = current.indexOf(subjectId);
+      if (idx === -1) current.push(subjectId);
+      else current.splice(idx, 1);
+      return { ...prev, selectedSubjectIds: current };
+    });
+  };
+
+  const removeEntitySubject = (subjectId: number) => {
+    setEntityEditData((prev: any) => ({ ...prev, selectedSubjectIds: (prev.selectedSubjectIds || []).filter((s: any) => s !== subjectId) }));
+  };
+
+  const toggleEntityRoom = (roomId: string) => {
+    setEntityEditData((prev: any) => {
+      const current = Array.isArray(prev.roomIds) ? [...prev.roomIds] : [];
+      const idx = current.indexOf(roomId);
+      if (idx === -1) current.push(roomId);
+      else current.splice(idx, 1);
+      return { ...prev, roomIds: current };
+    });
+  };
 
   const toggleCardExpansion = (id: string) => {
     setExpandedCards((prev) => {
@@ -92,6 +198,195 @@ export default function LessonsPage() {
       }
       return next;
     });
+  };
+
+  const openEntityEditor = async (type: 'class' | 'teacher' | 'subject', id: number) => {
+    setEntityEditOpen(true);
+    setEntityEditType(type);
+    setEntityEditId(id);
+    setEntityLoading(true);
+    setEntityEditData(null);
+
+    try {
+      if (type === 'teacher') {
+        const data = await TeacherService.getById(id);
+        // fetch subjects for selector
+        try {
+          const subs = await SubjectService.getAll();
+          setEntitySubjects(Array.isArray(subs) ? subs : []);
+        } catch (e) {
+          setEntitySubjects([]);
+        }
+
+        setEntityEditData({
+          fullName: data.fullName,
+          shortName: data.shortName,
+          selectedSubjectIds: Array.isArray(data.subjects) ? data.subjects.map((s: any) => s.id) : [],
+          availability: convertFromTimeSlots(data.availabilities),
+          isActive: (data as any).isActive ?? true,
+          updatedDate: (data as any).updatedDate,
+          createdDate: (data as any).createdDate,
+          raw: data
+        });
+      } else if (type === 'subject') {
+        const data = await SubjectService.getById(id);
+        setEntityEditData({ name: data.name, shortName: data.shortName, raw: data });
+      } else if (type === 'class') {
+        const url = `${getApiUrl('CLASSES')}/${id}`;
+        const res = await apiCall<any>(url);
+        if (res.error) throw res.error;
+        const cls = res.data;
+        // fetch teachers and rooms to populate select lists
+        try {
+          const tRes = await TeacherService.getAll();
+          setEntityTeachers(Array.isArray(tRes) ? tRes : []);
+        } catch (e) {
+          setEntityTeachers([]);
+        }
+        try {
+          const roomsRes = await apiCall<any>(`${getApiUrl('ROOMS')}/all`);
+          setEntityRooms(Array.isArray(roomsRes?.data) ? roomsRes.data : []);
+        } catch (e) {
+          setEntityRooms([]);
+        }
+
+        setEntityEditData({
+          name: cls.name,
+          shortName: cls.shortName,
+          classTeacher: cls.teacher?.id ? String(cls.teacher.id) : '',
+          roomIds: Array.isArray(cls.rooms) ? cls.rooms.map((r: any) => String(r.id)) : [],
+          availability: convertFromTimeSlots(cls?.availabilities),
+          isActive: cls.isActive ?? true,
+          updatedDate: cls.updatedDate,
+          createdDate: cls.createdDate,
+          raw: cls
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load entity for edit', err);
+      toast.error(t('lessons.failed_to_load_entity'));
+      setEntityEditOpen(false);
+      setEntityEditType(null);
+      setEntityEditId(null);
+    } finally {
+      setEntityLoading(false);
+    }
+  };
+
+  // Helpers to convert availability/timeSlots (copied from ClassesPage)
+  const convertFromTimeSlots = (timeSlots: any) => {
+    const dayMapping: any = {
+      MONDAY: 'monday',
+      TUESDAY: 'tuesday',
+      WEDNESDAY: 'wednesday',
+      THURSDAY: 'thursday',
+      FRIDAY: 'friday',
+      SATURDAY: 'saturday',
+      SUNDAY: 'sunday'
+    };
+
+    const availability: any = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    };
+
+    if (timeSlots) {
+      timeSlots.forEach((slot: any) => {
+        const day = dayMapping[slot.dayOfWeek];
+        if (day) {
+          availability[day] = slot.lessons || [];
+        }
+      });
+    }
+
+    return availability;
+  };
+
+  const convertToTimeSlots = (availability: any) => {
+    const dayMapping: any = {
+      monday: 'MONDAY',
+      tuesday: 'TUESDAY',
+      wednesday: 'WEDNESDAY',
+      thursday: 'THURSDAY',
+      friday: 'FRIDAY',
+      saturday: 'SATURDAY',
+      sunday: 'SUNDAY'
+    };
+
+    const timeSlots: any[] = [];
+    Object.entries(availability).forEach(([day, lessons]) => {
+      if (lessons && (lessons as any[]).length > 0) {
+        timeSlots.push({
+          dayOfWeek: dayMapping[day],
+          lessons: (lessons as any[]).sort((a: number, b: number) => a - b)
+        });
+      }
+    });
+    return timeSlots;
+  };
+
+  const updateEntityField = (field: string, value: any) => {
+    setEntityEditData((prev: any) => ({ ...(prev || {}), [field]: value }));
+  };
+
+  const saveEntityEdit = async () => {
+    if (!entityEditType || !entityEditId || !entityEditData) return;
+    setEntitySaving(true);
+    try {
+      if (entityEditType === 'teacher') {
+        // TeacherService.update expects TeacherUpdateRequest; provide minimal structure
+        await TeacherService.update(entityEditId, {
+          fullName: entityEditData.fullName,
+          shortName: entityEditData.shortName || '',
+          subjects: Array.isArray(entityEditData.selectedSubjectIds)
+            ? entityEditData.selectedSubjectIds
+            : (entityEditData.raw?.subjects || []).map((s: any) => s.id) || [],
+          deletedSubjects: [],
+          availabilities: convertToTimeSlots(entityEditData.availability || {})
+        });
+        toast.success(t('lessons.teacher_updated'));
+      } else if (entityEditType === 'subject') {
+        await SubjectService.update(entityEditId, {
+          name: entityEditData.name,
+          shortName: entityEditData.shortName || '',
+          availabilities: entityEditData.raw?.availabilities || []
+        });
+        toast.success(t('lessons.subject_updated'));
+      } else if (entityEditType === 'class') {
+          const url = `${getApiUrl('CLASSES')}/${entityEditId}`;
+          const body: any = {
+            name: entityEditData.name,
+            shortName: entityEditData.shortName || '',
+            isActive: entityEditData.isActive ?? true,
+            teacherId: entityEditData.classTeacher ? parseInt(entityEditData.classTeacher, 10) : null,
+            rooms: Array.isArray(entityEditData.roomIds) ? entityEditData.roomIds.map((r: any) => ({ id: parseInt(r, 10) })) : [],
+            availabilities: convertToTimeSlots(entityEditData.availability || {}),
+          };
+
+          await apiCall(url, {
+            method: 'PUT',
+            body: JSON.stringify(body)
+          });
+          toast.success(t('lessons.class_updated'));
+      }
+
+      // refresh lessons and close
+      await fetchLessons();
+      setEntityEditOpen(false);
+      setEntityEditType(null);
+      setEntityEditId(null);
+      setEntityEditData(null);
+    } catch (err) {
+      console.error('Failed to save entity', err);
+      toast.error(t('lessons.failed_to_save'));
+    } finally {
+      setEntitySaving(false);
+    }
   };
 
   const handleAdd = (className?: string) => {
@@ -127,7 +422,7 @@ export default function LessonsPage() {
         duration: '45 min'
       }));
 
-      // Group by class
+      // Group by class and compute unique teacher/subject counts
       const classesMap = new Map<string | number, any>();
       const teachersMap = new Map<string | number, any>();
       const subjectsMap = new Map<string | number, any>();
@@ -145,11 +440,18 @@ export default function LessonsPage() {
             teachers: 0,
             subjects: 0,
             lessons: [] as any[],
+            _teacherIds: new Set<number | string>(),
+            _subjectIds: new Set<number | string>(),
           });
         }
-        const c = classesMap.get(classKey);
-        c.lessons.push(f);
-        c.totalLessons += 1;
+          const c = classesMap.get(classKey);
+          c.lessons.push(f);
+          c.totalLessons += 1;
+          // accumulate totalPeriods from lesson counts when available (default to 1)
+          c.totalPeriods += (f.raw?.lessonCount && Number(f.raw.lessonCount)) ? Number(f.raw.lessonCount) : 1;
+        // record unique teacher/subject ids
+        if (f.raw?.teacher?.id) c._teacherIds.add(f.raw.teacher.id);
+        if (f.raw?.subject?.id) c._subjectIds.add(f.raw.subject.id);
 
         // teachers
         const teacherKey = f.raw.teacher?.id ?? f.teacher ?? `teacher-${f.id}`;
@@ -161,11 +463,15 @@ export default function LessonsPage() {
             totalPeriods: 0,
             classes: 0,
             lessons: [] as any[],
+            _classIds: new Set<number | string>(),
           });
         }
         const tr = teachersMap.get(teacherKey);
         tr.lessons.push(f);
         tr.totalLessons += 1;
+        // count periods for teacher (use lessonCount if present otherwise count as 1)
+        tr.totalPeriods += (f.raw?.lessonCount && Number(f.raw.lessonCount)) ? Number(f.raw.lessonCount) : 1;
+        if (f.classId) tr._classIds.add(f.classId);
 
         // subjects
         const subjectKey = f.raw.subject?.id ?? f.subject ?? `subject-${f.id}`;
@@ -177,11 +483,15 @@ export default function LessonsPage() {
             teachers: 0,
             classes: 0,
             lessons: [] as any[],
+            _classIds: new Set<number | string>(),
+            _teacherIds: new Set<number | string>(),
           });
         }
         const s = subjectsMap.get(subjectKey);
         s.lessons.push(f);
         s.totalLessons += 1;
+        if (f.classId) s._classIds.add(f.classId);
+        if (f.raw?.teacher?.id) s._teacherIds.add(f.raw.teacher.id);
 
         // rooms (a lesson can belong to multiple rooms)
         (f.rooms || []).forEach((r: any) => {
@@ -194,19 +504,47 @@ export default function LessonsPage() {
               teachers: 0,
               classes: 0,
               lessons: [] as any[],
+              _classIds: new Set<number | string>(),
+              _teacherIds: new Set<number | string>(),
             });
           }
           const rm = roomsMap.get(roomKey);
           rm.lessons.push(f);
           rm.totalLessons += 1;
+          if (f.classId) rm._classIds.add(f.classId);
+          if (f.raw?.teacher?.id) rm._teacherIds.add(f.raw.teacher.id);
         });
       });
 
+      // finalize counts by converting internal Sets to numeric fields
+      const finalize = (arr: any[]) => arr.map((it) => {
+        if (it._teacherIds) {
+          it.teachers = it._teacherIds.size;
+          delete it._teacherIds;
+        }
+        if (it._subjectIds) {
+          it.subjects = it._subjectIds.size;
+          delete it._subjectIds;
+        }
+        if (it._classIds) {
+          it.classes = it._classIds.size;
+          delete it._classIds;
+        }
+        if (typeof it.totalPeriods === 'undefined') it.totalPeriods = it.totalPeriods || 0;
+        if (it._teacherIds === undefined && it.teachers === undefined) {
+          it.teachers = it.teachers || 0;
+        }
+        if (it._subjectIds === undefined && it.subjects === undefined) {
+          it.subjects = it.subjects || 0;
+        }
+        return it;
+      });
+
       setLessons({
-        classes: Array.from(classesMap.values()),
-        teachers: Array.from(teachersMap.values()),
-        subjects: Array.from(subjectsMap.values()),
-        rooms: Array.from(roomsMap.values()),
+        classes: finalize(Array.from(classesMap.values())),
+        teachers: finalize(Array.from(teachersMap.values())),
+        subjects: finalize(Array.from(subjectsMap.values())),
+        rooms: finalize(Array.from(roomsMap.values())),
       });
 
       setTotalElements(data.length);
@@ -410,12 +748,54 @@ export default function LessonsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {type === 'classes' && (
-                    <Button size="sm" onClick={(e: React.MouseEvent) => {
+                    <>
+                      <Button size="sm" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleAdd(item.name);
+                      }}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        {t('lessons.add_lesson_for_class')}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        const idNum = Number(item.id);
+                        if (isNaN(idNum)) {
+                          toast.error(t('lessons.cannot_edit_unknown_class'));
+                          return;
+                        }
+                        openEntityEditor('class', idNum);
+                      }}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        {t('lessons.edit_class')}
+                      </Button>
+                    </>
+                  )}
+                  {type === 'teachers' && (
+                    <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
-                      handleAdd(item.name);
+                      const idNum = Number(item.id);
+                      if (isNaN(idNum)) {
+                        toast.error(t('lessons.cannot_edit_unknown_teacher'));
+                        return;
+                      }
+                      openEntityEditor('teacher', idNum);
                     }}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      {t('lessons.add_lesson_for_class')}
+                      <Pencil className="h-4 w-4 mr-1" />
+                      {t('lessons.edit_teacher')}
+                    </Button>
+                  )}
+                  {type === 'subjects' && (
+                    <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      const idNum = Number(item.id);
+                      if (isNaN(idNum)) {
+                        toast.error(t('lessons.cannot_edit_unknown_subject'));
+                        return;
+                      }
+                      openEntityEditor('subject', idNum);
+                    }}>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      {t('lessons.edit_subject')}
                     </Button>
                   )}
                 </div>
@@ -473,7 +853,46 @@ export default function LessonsPage() {
                 <TableBody>
                   {item.lessons.map((lesson: InternalLesson) => (
                     <TableRow key={lesson.id}>
-                      {/* ... (table cells with lesson data) */}
+                      {type === 'classes' && (
+                        <>
+                          <TableCell>{lesson.subject || lesson.raw?.subject?.name || t('lessons.unknown_subject')}</TableCell>
+                          <TableCell>{lesson.teacher || lesson.raw?.teacher?.fullName || t('lessons.unknown_teacher')}</TableCell>
+                          <TableCell>{lesson.frequency || (lesson.lessonCount ? `${lesson.lessonCount}x` : '-')}</TableCell>
+                          <TableCell>{lesson.roomNames || (lesson.rooms && lesson.rooms.length ? lesson.rooms.map((r: any) => r.name).join(', ') : t('lessons.no_room'))}</TableCell>
+                          <TableCell>{lesson.duration || `${lesson.raw?.duration || '45'} min`}</TableCell>
+                        </>
+                      )}
+
+                      {type === 'teachers' && (
+                        <>
+                          <TableCell>{lesson.className || lesson.raw?.class?.shortName || t('lessons.unknown_class')}</TableCell>
+                          <TableCell>{lesson.subject || lesson.raw?.subject?.name || t('lessons.unknown_subject')}</TableCell>
+                          <TableCell>{lesson.frequency || (lesson.lessonCount ? `${lesson.lessonCount}x` : '-')}</TableCell>
+                          <TableCell>{lesson.roomNames || (lesson.rooms && lesson.rooms.length ? lesson.rooms.map((r: any) => r.name).join(', ') : t('lessons.no_room'))}</TableCell>
+                          <TableCell>{lesson.duration || `${lesson.raw?.duration || '45'} min`}</TableCell>
+                        </>
+                      )}
+
+                      {type === 'subjects' && (
+                        <>
+                          <TableCell>{lesson.teacher || lesson.raw?.teacher?.fullName || t('lessons.unknown_teacher')}</TableCell>
+                          <TableCell>{lesson.className || lesson.raw?.class?.shortName || t('lessons.unknown_class')}</TableCell>
+                          <TableCell>{lesson.frequency || (lesson.lessonCount ? `${lesson.lessonCount}x` : '-')}</TableCell>
+                          <TableCell>{lesson.roomNames || (lesson.rooms && lesson.rooms.length ? lesson.rooms.map((r: any) => r.name).join(', ') : t('lessons.no_room'))}</TableCell>
+                          <TableCell>{lesson.duration || `${lesson.raw?.duration || '45'} min`}</TableCell>
+                        </>
+                      )}
+
+                      {type === 'rooms' && (
+                        <>
+                          <TableCell>{lesson.className || lesson.raw?.class?.shortName || t('lessons.unknown_class')}</TableCell>
+                          <TableCell>{lesson.subject || lesson.raw?.subject?.name || t('lessons.unknown_subject')}</TableCell>
+                          <TableCell>{lesson.teacher || lesson.raw?.teacher?.fullName || t('lessons.unknown_teacher')}</TableCell>
+                          <TableCell>{lesson.frequency || (lesson.lessonCount ? `${lesson.lessonCount}x` : '-')}</TableCell>
+                          <TableCell>{lesson.duration || `${lesson.raw?.duration || '45'} min`}</TableCell>
+                        </>
+                      )}
+
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                           <Button
@@ -710,6 +1129,267 @@ export default function LessonsPage() {
               </div>
             </DialogFooter>
             <DialogClose />
+          </DialogContent>
+        </Dialog>
+        {/* Entity Edit Dialog (Class / Teacher / Subject) */}
+        <Dialog open={entityEditOpen} onOpenChange={(open) => {
+          setEntityEditOpen(open);
+          if (!open) {
+            setEntityEditType(null);
+            setEntityEditId(null);
+            setEntityEditData(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {entityEditType === 'class' && t('lessons.edit_class')}
+                {entityEditType === 'teacher' && t('lessons.edit_teacher')}
+                {entityEditType === 'subject' && t('lessons.edit_subject')}
+              </DialogTitle>
+              <DialogDescription />
+            </DialogHeader>
+
+            <div className="py-4">
+              {entityLoading ? (
+                <div className="p-6 text-center">{t('actions.loading')}</div>
+              ) : (
+                entityEditData && (
+                  <div className="space-y-4">
+                    {entityEditType === 'teacher' && (
+                      <>
+                        <Label>{t('teachers.full_name')}</Label>
+                        <Input value={entityEditData.fullName || ''} onChange={(e) => updateEntityField('fullName', e.target.value)} />
+                        <Label>{t('teachers.short_name_code')}</Label>
+                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+
+                        <div className="space-y-2">
+                          <Label>{t('teachers.subjects')}</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between">
+                                {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 ? (
+                                  <span>{entityEditData.selectedSubjectIds.length} selected</span>
+                                ) : (
+                                  <span className="text-muted-foreground">{t('teachers.select_subjects_placeholder')}</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder={t('teachers.search_subjects')} />
+                                <CommandEmpty>{t('teachers.no_subject_found')}</CommandEmpty>
+                                <CommandGroup className="max-h-64 overflow-auto p-2">
+                                  {entitySubjects && entitySubjects.length > 0 && entitySubjects.map((subject) => (
+                                    <CommandItem key={subject.id} value={subject.name} onSelect={() => toggleEntitySubject(subject.id)}>
+                                      <Check className={`mr-2 h-4 w-4 ${entityEditData.selectedSubjectIds?.includes(subject.id) ? 'opacity-100' : 'opacity-0'}`} />
+                                      <span className="mr-2">{subject.emoji || '📖'}</span>
+                                      {subject.name}
+                                      <Badge variant="outline" className="ml-auto">{subject.shortName}</Badge>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+
+                          {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {entityEditData.selectedSubjectIds.map((subjectId: number) => {
+                                const s = entitySubjects.find((x: any) => x.id === subjectId);
+                                if (!s) return null;
+                                return (
+                                  <Badge key={subjectId} variant="secondary" className="pl-2 pr-1">
+                                    <span className="mr-1">{s.emoji || '📖'}</span>
+                                    {s.name}
+                                    <button onClick={() => removeEntitySubject(subjectId)} className="ml-2 text-xs">✕</button>
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Availability for teacher */}
+                        <div className="bg-white rounded-lg border p-3 mt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium">{t('teachers.teacher_availability')}</p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('teachers.select_all')}</Button>
+                              <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('teachers.clear_all')}</Button>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2">
+                            <div className="grid grid-cols-8 gap-1 mb-1">
+                              <div className="p-1"></div>
+                              {periods.map((period) => (
+                                <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
+                                  P{period}
+                                </button>
+                              ))}
+                            </div>
+
+                            {days.map((day, dayIndex) => (
+                              <div key={day} className="grid grid-cols-8 gap-1">
+                                <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
+                                  {dayLabels[dayIndex]}
+                                </button>
+                                {periods.map((period) => {
+                                  const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
+                                  return (
+                                    <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                      {isAvailable ? '✓' : '—'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {entityEditType === 'subject' && (
+                      <>
+                        <Label>{t('subjects.name')}</Label>
+                        <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
+                        <Label>{t('subjects.short_name')}</Label>
+                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+                      </>
+                    )}
+
+                    {entityEditType === 'class' && (
+                      <>
+                        <Label>{t('classes.class_name')}</Label>
+                        <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
+                        <Label>{t('classes.short_name')}</Label>
+                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+
+                        <div className="space-y-2">
+                          <Label>{t('classes.class_teacher')}</Label>
+                          <Select
+                            value={entityEditData.classTeacher || undefined}
+                            onValueChange={(value) => updateEntityField('classTeacher', value)}
+                            disabled={!entityTeachers || entityTeachers.length === 0}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('classes.class_teacher')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {entityTeachers && entityTeachers.length > 0 ? (
+                                entityTeachers.map((teacher: any) => (
+                                  teacher.id ? (
+                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                      {teacher.fullName || teacher.name}
+                                    </SelectItem>
+                                  ) : null
+                                ))
+                              ) : (
+                                <div className="p-2 text-sm text-muted-foreground text-center">{t('teachers.no_teachers_found')}</div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>{t('classes.rooms_optional')}</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between">
+                                {entityEditData.roomIds && entityEditData.roomIds.length > 0 ? (
+                                  <span>{entityEditData.roomIds.length} selected</span>
+                                ) : (
+                                  <span className="text-muted-foreground">{t('classes.select_rooms_placeholder') || 'Select rooms'}</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder={t('classes.search_rooms') || 'Search rooms...'} />
+                                <CommandEmpty>{t('classes.no_rooms')}</CommandEmpty>
+                                <CommandGroup className="max-h-64 overflow-auto p-2">
+                                  {entityRooms && entityRooms.length > 0 ? (
+                                    entityRooms.map((room) => (
+                                      <CommandItem key={room.id} value={room.name} onSelect={() => toggleEntityRoom(String(room.id))}>
+                                        <Check className={`mr-2 h-4 w-4 ${entityEditData.roomIds?.includes(String(room.id)) ? 'opacity-100' : 'opacity-0'}`} />
+                                        <span className="mr-2">{room.name}</span>
+                                        <span className="text-muted-foreground ml-auto text-xs">Cap: {room.capacity || 0}</span>
+                                      </CommandItem>
+                                    ))
+                                  ) : null}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+
+                          {/* Selected rooms badges */}
+                          {entityEditData.roomIds && entityEditData.roomIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {entityEditData.roomIds.map((roomId: string) => {
+                                const room = entityRooms.find(r => String(r.id) === roomId);
+                                if (!room) return null;
+                                return (
+                                  <Badge key={roomId} variant="secondary" className="pl-2 pr-1">
+                                    {room.name}
+                                    <button onClick={() => toggleEntityRoom(roomId)} className="ml-2 text-xs">✕</button>
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Availability */}
+                        <div className="bg-white rounded-lg border p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-medium">{t('classes.class_availability')}</p>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('classes.select_all')}</Button>
+                              <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('classes.clear_all')}</Button>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2">
+                            <div className="grid grid-cols-8 gap-1 mb-1">
+                              <div className="p-1"></div>
+                              {periods.map((period) => (
+                                <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
+                                  P{period}
+                                </button>
+                              ))}
+                            </div>
+
+                            {days.map((day, dayIndex) => (
+                              <div key={day} className="grid grid-cols-8 gap-1">
+                                <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
+                                  {dayLabels[dayIndex]}
+                                </button>
+                                {periods.map((period) => {
+                                  const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
+                                  return (
+                                    <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                      {isAvailable ? '✓' : '—'}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+
+            <DialogFooter>
+              <div className="flex gap-2 w-full justify-end">
+                <Button variant="ghost" onClick={() => setEntityEditOpen(false)}>{t('actions.cancel')}</Button>
+                <Button onClick={saveEntityEdit} disabled={entitySaving}>{entitySaving ? t('actions.saving') : t('actions.save')}</Button>
+              </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
     </div>

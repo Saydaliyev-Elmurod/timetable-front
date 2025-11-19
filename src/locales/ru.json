@@ -28,7 +28,8 @@
     "clone": "Клонировать",
     "lock": "Заблокировать",
     "unlock": "Разблокировать",
-    "cancel": "Отмена"
+    "cancel": "Отмена",
+    "loading": "Загрузка..."
   },
   "login": {
     "welcome": "Добро пожаловать на Timetable.uz",
@@ -70,8 +71,12 @@
     "failed_to_create_lesson": "Ошибка создания урока",
     "lesson_updated_successfully": "Урок успешно обновлён",
     "failed_to_update_lesson": "Ошибка обновления урока",
-    "failed_to_load_lessons": "Не удалось загрузить уроки"
-    ,
+    "failed_to_load_lessons": "Не удалось загрузить уроки",
+    "failed_to_load_entity": "Ошибка загрузки данных",
+    "failed_to_save": "Не удалось сохранить",
+    "teacher_updated": "Учитель обновлён",
+    "subject_updated": "Предмет обновлён",
+    "class_updated": "Класс обновлён",
     "optimize_no_timetable_id": "Пожалуйста, укажите id расписания для оптимизации",
     "optimize_invalid_timetable_id": "Неверный id расписания",
     "optimize_failed": "Не удалось начать оптимизацию",
@@ -171,6 +176,8 @@
     "rooms_optional": "Кабинеты (необязательно)",
     "no_rooms": "Кабинетов нет",
     "no_rooms_assigned": "Кабинеты не назначены",
+      "select_rooms_placeholder": "Выберите комнаты...",
+      "search_rooms": "Поиск комнат...",
     "not_assigned": "Не назначено",
     "class_availability": "Доступность класса",
     "select_all": "Выбрать всё",

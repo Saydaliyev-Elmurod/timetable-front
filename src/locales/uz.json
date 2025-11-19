@@ -28,7 +28,8 @@
     "clone": "Klonlash",
     "lock": "Qulflash",
     "unlock": "Qulfni ochish",
-    "cancel": "Bekor qilish"
+    "cancel": "Bekor qilish",
+    "loading": "Yuklanmoqda..."
   },
   "login": {
     "welcome": "Timetable.uz ga xush kelibsiz",
@@ -70,8 +71,12 @@
     "failed_to_create_lesson": "Darsni yaratishda xatolik",
     "lesson_updated_successfully": "Dars muvaffaqiyatli yangilandi",
     "failed_to_update_lesson": "Darsni yangilashda xatolik",
-    "failed_to_load_lessons": "Darslarni yuklashda xatolik"
-    ,
+    "failed_to_load_lessons": "Darslarni yuklashda xatolik",
+    "failed_to_load_entity": "Ma'lumotni yuklashda xatolik",
+    "failed_to_save": "Saqlashda xatolik",
+    "teacher_updated": "O'qituvchi yangilandi",
+    "subject_updated": "Fan yangilandi",
+    "class_updated": "Sinf yangilandi",
     "optimize_no_timetable_id": "Iltimos, optimallashtirish uchun jadval id sini kiriting",
     "optimize_invalid_timetable_id": "Jadval id noto'g'ri",
     "optimize_failed": "Optimallashtirishni boshlashda xatolik",
@@ -171,6 +176,8 @@
     "rooms_optional": "Xonalar (ixtiyoriy)",
     "no_rooms": "Xonalar mavjud emas",
     "no_rooms_assigned": "Xonalar tayinlanmagan",
+    "select_rooms_placeholder": "Xonalarni tanlang...",
+    "search_rooms": "Xonalarni qidirish...",
     "not_assigned": "Tayinlanmagan",
     "class_availability": "Sinf mavjudligi",
     "select_all": "Hammasini tanlash",
