@@ -116,29 +116,33 @@ export default function AddLessonModal({
   // Reset form when modal opens/closes or editing lesson changes
   useEffect(() => {
     if (open) {
+      const initialFormData = {
+        subject: '',
+        selectedClasses: [] as string[],
+        selectedTeacher: '',
+        lessonsPerWeek: 1,
+        lessonSequence: 'single',
+        scheduleType: 'weekly',
+        enableFixedPlacement: false,
+        formats: [{ timesPerWeek: 1, duration: '45' }]
+      };
+
       if (editingLesson) {
-        setFormData({
-          subject: editingLesson.subject || '',
-          selectedClasses: editingLesson.class ? [editingLesson.class] : [],
-          selectedTeacher: editingLesson.teacher || '',
-          lessonsPerWeek: editingLesson.lessonsPerWeek || 1,
-          lessonSequence: editingLesson.lessonSequence || 'single',
-          scheduleType: editingLesson.scheduleType || 'weekly',
-          enableFixedPlacement: editingLesson.enableFixedPlacement || false,
-          formats: [{ timesPerWeek: editingLesson.lessonsPerWeek || 1, duration: '45' }]
-        });
-      } else {
-        setFormData({
-          subject: '',
-          selectedClasses: [],
-          selectedTeacher: '',
-          lessonsPerWeek: 1,
-          lessonSequence: 'single',
-          scheduleType: 'weekly',
-          enableFixedPlacement: false,
-          formats: [{ timesPerWeek: 1, duration: '45' }]
-        });
+        initialFormData.subject = editingLesson.subject || '';
+        initialFormData.selectedClasses = editingLesson.lessonClass
+          ? [editingLesson.lessonClass]
+          : editingLesson.class
+          ? [editingLesson.class]
+          : [];
+        initialFormData.selectedTeacher = editingLesson.teacher || '';
+        initialFormData.lessonsPerWeek = editingLesson.lessonsPerWeek || 1;
+        initialFormData.lessonSequence = editingLesson.lessonSequence || 'single';
+        initialFormData.scheduleType = editingLesson.scheduleType || 'weekly';
+        initialFormData.enableFixedPlacement = editingLesson.enableFixedPlacement || false;
+        initialFormData.formats = editingLesson.formats || [{ timesPerWeek: editingLesson.lessonsPerWeek || 1, duration: '45' }];
       }
+      
+      setFormData(initialFormData);
       setConflicts([]);
     }
   }, [open, editingLesson]);

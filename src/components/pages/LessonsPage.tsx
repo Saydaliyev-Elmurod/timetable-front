@@ -52,6 +52,8 @@ import { Check } from 'lucide-react';
 import { X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import AddLessonModal from '../AddLessonModal';
+import { ClassService } from '@/lib/classes';
 
 // Lightweight local types to keep the page functional until stricter typings are added
 type InternalLesson = any;
@@ -100,6 +102,8 @@ export default function LessonsPage() {
   const [entityTeachers, setEntityTeachers] = useState<any[]>([]);
   const [entityRooms, setEntityRooms] = useState<any[]>([]);
   const [entitySubjects, setEntitySubjects] = useState<any[]>([]);
+  const [allTeachers, setAllTeachers] = useState<any[]>([]);
+  const [allClasses, setAllClasses] = useState<any[]>([]);
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
@@ -389,13 +393,67 @@ export default function LessonsPage() {
     }
   };
 
-  const handleAdd = (className?: string) => {
-    setEditingLesson({ class: className } as any);
+  const handleAdd = (data?: { className?: string; teacherName?: string; subjectId?: string }) => {
+    const prefill: any = {};
+    if (data?.className) {
+      prefill.lessonClass = data.className;
+    }
+    if (data?.teacherName) {
+      prefill.teacher = data.teacherName;
+    }
+    if (data?.subjectId) {
+      prefill.subject = data.subjectId;
+    }
+    setEditingLesson(prefill);
     setIsDialogOpen(true);
   };
   const handleEdit = (lesson: any) => {
     setEditingLesson(lesson);
     setIsDialogOpen(true);
+  };
+
+  const handleModalSubmit = async (lessonData: any) => {
+    try {
+      const subjectId = parseInt(lessonData.subject, 10);
+      if (isNaN(subjectId)) {
+        toast.error(t('lessons.invalid_subject'));
+        return;
+      }
+
+      const teacher = allTeachers.find(t => t.fullName === lessonData.selectedTeacher);
+      if (!teacher) {
+        toast.error(t('lessons.teacher_not_found'));
+        return;
+      }
+
+      const classIds = lessonData.selectedClasses.map((className: string) => {
+        const foundClass = allClasses.find((c: any) => c.name === className);
+        return foundClass?.id;
+      }).filter(Boolean);
+
+      if (classIds.length !== lessonData.selectedClasses.length) {
+        toast.error(t('lessons.class_not_found'));
+        return;
+      }
+
+      const lessonRequest = {
+        subjectId: subjectId,
+        teacherId: teacher.id,
+        classId: classIds,
+        lessonCount: lessonData.lessonsPerWeek,
+        roomIds: [],
+      };
+
+      await LessonService.create(lessonRequest as any);
+
+      toast.success(t('lessons.lesson_created_successfully'));
+      setIsDialogOpen(false);
+      setEditingLesson(null);
+      fetchLessons();
+    } catch (error) {
+      console.error('Failed to save lesson:', error);
+      toast.error(t('lessons.failed_to_create_lesson'));
+    }
   };
 
   // Fetch lessons from API
@@ -561,6 +619,23 @@ export default function LessonsPage() {
   useEffect(() => {
     fetchLessons();
   }, [fetchLessons]);
+
+  useEffect(() => {
+    const fetchPrereqs = async () => {
+        try {
+            const [teachers, classes] = await Promise.all([
+                TeacherService.getAll(),
+                ClassService.getAll(),
+            ]);
+            setAllTeachers(teachers);
+            setAllClasses(classes);
+        } catch (err) {
+            toast.error('Failed to load required data for creating lessons.');
+            console.error('Error fetching lesson prereqs', err);
+        }
+    };
+    fetchPrereqs();
+}, []);
 
   // ... (useEffect and other functions)
 
@@ -751,7 +826,7 @@ export default function LessonsPage() {
                     <>
                       <Button size="sm" onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
-                        handleAdd(item.name);
+                        handleAdd({ className: item.name });
                       }}>
                         <Plus className="h-4 w-4 mr-1" />
                         {t('lessons.add_lesson_for_class')}
@@ -771,32 +846,50 @@ export default function LessonsPage() {
                     </>
                   )}
                   {type === 'teachers' && (
-                    <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      const idNum = Number(item.id);
-                      if (isNaN(idNum)) {
-                        toast.error(t('lessons.cannot_edit_unknown_teacher'));
-                        return;
-                      }
-                      openEntityEditor('teacher', idNum);
-                    }}>
-                      <Pencil className="h-4 w-4 mr-1" />
-                      {t('lessons.edit_teacher')}
-                    </Button>
+                    <>
+                      <Button size="sm" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleAdd({ teacherName: item.name });
+                      }}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        {t('lessons.add_lesson_for_teacher')}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        const idNum = Number(item.id);
+                        if (isNaN(idNum)) {
+                          toast.error(t('lessons.cannot_edit_unknown_teacher'));
+                          return;
+                        }
+                        openEntityEditor('teacher', idNum);
+                      }}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        {t('lessons.edit_teacher')}
+                      </Button>
+                    </>
                   )}
                   {type === 'subjects' && (
-                    <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      const idNum = Number(item.id);
-                      if (isNaN(idNum)) {
-                        toast.error(t('lessons.cannot_edit_unknown_subject'));
-                        return;
-                      }
-                      openEntityEditor('subject', idNum);
-                    }}>
-                      <Pencil className="h-4 w-4 mr-1" />
-                      {t('lessons.edit_subject')}
-                    </Button>
+                    <>
+                      <Button size="sm" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleAdd({ subjectId: item.id });
+                      }}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        {t('lessons.add_lesson_for_subject')}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        const idNum = Number(item.id);
+                        if (isNaN(idNum)) {
+                          toast.error(t('lessons.cannot_edit_unknown_subject'));
+                          return;
+                        }
+                        openEntityEditor('subject', idNum);
+                      }}>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        {t('lessons.edit_subject')}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1392,6 +1485,12 @@ export default function LessonsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <AddLessonModal
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          onSubmit={handleModalSubmit}
+          editingLesson={editingLesson}
+        />
     </div>
   );
 }
