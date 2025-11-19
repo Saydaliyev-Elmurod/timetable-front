@@ -57,6 +57,7 @@ import {
 import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, ChevronsUpDown, Loader2, Edit } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
+import Pagination from '../ui/pagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -942,13 +943,7 @@ export default function TeachersPage() {
               </SelectContent>
             </Select>
             <div className="flex gap-1">
-              {/* use new pagination component */}
-              {/* Lazy-load to avoid circular import issues */}
-              {React.createElement(require('../ui/pagination').default, {
-                currentPage,
-                totalPages,
-                onPageChange: (p: number) => setCurrentPage(p),
-              })}
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
             </div>
           </div>
         </div>

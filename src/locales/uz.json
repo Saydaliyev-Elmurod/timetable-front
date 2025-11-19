@@ -88,6 +88,8 @@
     "apply_balanced_load": "Yukni muvozanatlashtirish",
     "apply_daily_subject_distribution": "Kunlik fan taqsimoti",
     "optimizing": "Optimallashtirilmoqda..."
+    ,
+    "no_lessons_found": "Darslar topilmadi"
   },
   "dashboard": {
     "organization": "Tashkilot",

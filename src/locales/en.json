@@ -88,6 +88,8 @@
     "apply_balanced_load": "Balanced load",
     "apply_daily_subject_distribution": "Daily subject distribution",
     "optimizing": "Optimizing..."
+    ,
+    "no_lessons_found": "No lessons found"
   },
   "dashboard": {
     "organization": "Organization",

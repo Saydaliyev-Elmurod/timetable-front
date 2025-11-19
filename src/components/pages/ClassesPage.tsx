@@ -37,6 +37,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, Sparkles, Share2, HelpCircle, ChevronLeft, ChevronRight, Lightbulb, ExternalLink, FileText, Info, Edit, RefreshCw } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import Pagination from '../ui/pagination';
 import {
   Tooltip,
   TooltipContent,
@@ -75,6 +76,8 @@ export default function ClassesPage({ onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [csvData, setCsvData] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -261,8 +264,20 @@ export default function ClassesPage({ onNavigate }) {
         updatedDate: cls?.updatedDate,
         createdDate: cls?.createdDate
       }));
-
       setClasses(convertedClasses);
+
+      // Update pagination info when provided by API
+      if (data && typeof data.totalPages === 'number') {
+        setTotalPages(data.totalPages);
+      } else {
+        setTotalPages(Math.ceil((content ? content.length : convertedClasses.length) / itemsPerPage) || 1);
+      }
+
+      if (data && typeof data.totalElements === 'number') {
+        setTotalElements(data.totalElements);
+      } else {
+        setTotalElements(content ? content.length : convertedClasses.length);
+      }
     } catch (error) {
       console.error('Error fetching classes:', error);
       toast.error(t('classes.failed_to_load_classes'));
@@ -286,14 +301,14 @@ export default function ClassesPage({ onNavigate }) {
     ),
     [classes, searchQuery]
   );
-
-  const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
+  // If server-side pagination is used, `classes` represents the current page content.
   const paginatedClasses = React.useMemo(() =>
-    filteredClasses.slice(
+    // fallback to client-side slicing only when classes likely contain full dataset
+    classes && classes.length ? classes : filteredClasses.slice(
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
     ),
-    [filteredClasses, currentPage, itemsPerPage]
+    [classes, filteredClasses, currentPage, itemsPerPage]
   );
 
   const generateShortName = useCallback((fullName) => {
@@ -1358,14 +1373,12 @@ export default function ClassesPage({ onNavigate }) {
         </Table>
 
         {/* Pagination */}
-        {filteredClasses.length > 0 && (
+        {totalElements > 0 && (
           <div className="border-t p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <p className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                  {Math.min(currentPage * itemsPerPage, filteredClasses.length)} of{' '}
-                  {filteredClasses.length} classes
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} classes
                 </p>
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground">Items per page:</Label>
@@ -1383,51 +1396,9 @@ export default function ClassesPage({ onNavigate }) {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                
-                {/* Page numbers */}
                 <div className="flex gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <Button
-                        key={i}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(pageNum)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
+                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
               </div>
             </div>
           </div>

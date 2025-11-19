@@ -46,7 +46,12 @@ type ViewType = 'classes' | 'teachers' | 'subjects' | 'rooms';
 
 export default function LessonsPage() {
   const { t } = useTranslation();
-  const [lessons, setLessons] = useState<InternalLesson[]>([]);
+  const [lessons, setLessons] = useState<{
+    classes: GroupedData[];
+    teachers: GroupedData[];
+    subjects: GroupedData[];
+    rooms: GroupedData[];
+  }>({ classes: [], teachers: [], subjects: [], rooms: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -103,21 +108,107 @@ export default function LessonsPage() {
     try {
       setIsLoading(true);
       const data = await LessonService.getAll();
-      // Convert API format to internal format
-      const converted = data.map((lesson: LessonResponse) => ({
+
+      // Convert API format to internal flat format but keep original for grouping
+      const flat = data.map((lesson: LessonResponse) => ({
         id: lesson.id,
+        raw: lesson,
         subject: lesson.subject?.name || t('lessons.unknown_subject'),
         teacher: lesson.teacher?.fullName || t('lessons.unknown_teacher'),
-        class: lesson.class?.shortName || lesson.class?.name || t('lessons.unknown_class'),
+        className: lesson.class?.shortName || lesson.class?.name || t('lessons.unknown_class'),
+        classId: lesson.class?.id,
         day: lesson.dayOfWeek,
         startTime: `${lesson.hour}:00`,
         endTime: `${lesson.hour + 1}:00`,
         period: lesson.period,
         frequency: `${lesson.lessonCount}x`,
-          room: lesson.rooms?.map((r: any) => r.name).join(', ') || t('lessons.no_room'),
+        rooms: lesson.rooms || [],
+        roomNames: lesson.rooms?.map((r: any) => r.name).join(', ') || t('lessons.no_room'),
         duration: '45 min'
       }));
-      setLessons(converted);
+
+      // Group by class
+      const classesMap = new Map<string | number, any>();
+      const teachersMap = new Map<string | number, any>();
+      const subjectsMap = new Map<string | number, any>();
+      const roomsMap = new Map<string | number, any>();
+
+      flat.forEach((f) => {
+        // classes
+        const classKey = f.classId ?? f.className ?? `class-${f.id}`;
+        if (!classesMap.has(classKey)) {
+          classesMap.set(classKey, {
+            id: String(classKey),
+            name: f.className,
+            totalLessons: 0,
+            totalPeriods: 0,
+            teachers: 0,
+            subjects: 0,
+            lessons: [] as any[],
+          });
+        }
+        const c = classesMap.get(classKey);
+        c.lessons.push(f);
+        c.totalLessons += 1;
+
+        // teachers
+        const teacherKey = f.raw.teacher?.id ?? f.teacher ?? `teacher-${f.id}`;
+        if (!teachersMap.has(teacherKey)) {
+          teachersMap.set(teacherKey, {
+            id: String(teacherKey),
+            name: f.teacher,
+            totalLessons: 0,
+            totalPeriods: 0,
+            classes: 0,
+            lessons: [] as any[],
+          });
+        }
+        const tr = teachersMap.get(teacherKey);
+        tr.lessons.push(f);
+        tr.totalLessons += 1;
+
+        // subjects
+        const subjectKey = f.raw.subject?.id ?? f.subject ?? `subject-${f.id}`;
+        if (!subjectsMap.has(subjectKey)) {
+          subjectsMap.set(subjectKey, {
+            id: String(subjectKey),
+            name: f.subject,
+            totalLessons: 0,
+            teachers: 0,
+            classes: 0,
+            lessons: [] as any[],
+          });
+        }
+        const s = subjectsMap.get(subjectKey);
+        s.lessons.push(f);
+        s.totalLessons += 1;
+
+        // rooms (a lesson can belong to multiple rooms)
+        (f.rooms || []).forEach((r: any) => {
+          const roomKey = r.id ?? r.name ?? `room-${f.id}`;
+          if (!roomsMap.has(roomKey)) {
+            roomsMap.set(roomKey, {
+              id: String(roomKey),
+              name: r.name || t('lessons.unknown_room'),
+              totalLessons: 0,
+              teachers: 0,
+              classes: 0,
+              lessons: [] as any[],
+            });
+          }
+          const rm = roomsMap.get(roomKey);
+          rm.lessons.push(f);
+          rm.totalLessons += 1;
+        });
+      });
+
+      setLessons({
+        classes: Array.from(classesMap.values()),
+        teachers: Array.from(teachersMap.values()),
+        subjects: Array.from(subjectsMap.values()),
+        rooms: Array.from(roomsMap.values()),
+      });
+
       setTotalElements(data.length);
       setTotalPages(1);
     } catch (error) {
@@ -138,7 +229,8 @@ export default function LessonsPage() {
   const handleDelete = async (id: number) => {
     try {
       await LessonService.delete(id);
-      setLessons(lessons.filter((l) => l.id !== id));
+      // refresh listing after delete to keep grouped state consistent
+      await fetchLessons();
       toast.success(t('lessons.lesson_deleted_successfully'));
     } catch (error) {
       console.error('Failed to delete lesson:', error);
@@ -478,7 +570,33 @@ export default function LessonsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ... (TabsContent) */}
+          <TabsContent value="classes" className="space-y-4 mt-6">
+            {lessons.classes.length === 0 && !isLoading && (
+              <div className="text-muted-foreground">{t('lessons.no_lessons_found')}</div>
+            )}
+            {lessons.classes.map((item) => renderLessonCard(item, 'classes'))}
+          </TabsContent>
+
+          <TabsContent value="teachers" className="space-y-4 mt-6">
+            {lessons.teachers.length === 0 && !isLoading && (
+              <div className="text-muted-foreground">{t('lessons.no_lessons_found')}</div>
+            )}
+            {lessons.teachers.map((item) => renderLessonCard(item, 'teachers'))}
+          </TabsContent>
+
+          <TabsContent value="subjects" className="space-y-4 mt-6">
+            {lessons.subjects.length === 0 && !isLoading && (
+              <div className="text-muted-foreground">{t('lessons.no_lessons_found')}</div>
+            )}
+            {lessons.subjects.map((item) => renderLessonCard(item, 'subjects'))}
+          </TabsContent>
+
+          <TabsContent value="rooms" className="space-y-4 mt-6">
+            {lessons.rooms.length === 0 && !isLoading && (
+              <div className="text-muted-foreground">{t('lessons.no_lessons_found')}</div>
+            )}
+            {lessons.rooms.map((item) => renderLessonCard(item, 'rooms'))}
+          </TabsContent>
         </Tabs>
 
         {/* Global Actions */}

@@ -38,6 +38,7 @@ import {
 import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, HelpCircle, Loader2, Edit } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
+import Pagination from '../ui/pagination';
 import {
   Tooltip,
   TooltipContent,
@@ -936,10 +937,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       {!isLoading && totalElements > 0 && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} subjects
-            </span>
-          </div>
+                <span className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} subjects
+                </span>
+              </div>
           <div className="flex items-center gap-2">
             <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
               <SelectTrigger className="w-24">
@@ -953,11 +954,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
               </SelectContent>
             </Select>
             <div className="flex gap-1">
-              {React.createElement(require('../ui/pagination').default, {
-                currentPage,
-                totalPages,
-                onPageChange: (p: number) => setCurrentPage(p),
-              })}
+              <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
             </div>
           </div>
         </div>

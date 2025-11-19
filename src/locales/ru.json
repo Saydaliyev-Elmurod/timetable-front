@@ -88,6 +88,8 @@
     "apply_balanced_load": "Сбалансированная нагрузка",
     "apply_daily_subject_distribution": "Ежедневное распределение предметов",
     "optimizing": "Оптимизация..."
+    ,
+    "no_lessons_found": "Уроки не найдены"
   },
   "dashboard": {
     "organization": "Организация",
