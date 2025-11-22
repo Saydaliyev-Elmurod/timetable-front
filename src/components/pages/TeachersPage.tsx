@@ -142,10 +142,10 @@ export default function TeachersPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  
+
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [deleteDialogTeacher, setDeleteDialogTeacher] = useState<TeacherResponse | null>(null);
-  
+
   // Inline form state
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState<number | null>(null);
@@ -166,7 +166,7 @@ export default function TeachersPage() {
   });
   const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   const [subjectComboOpen, setSubjectComboOpen] = useState(false);
-  
+
   // Availability view for existing teachers
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
 
@@ -226,7 +226,7 @@ export default function TeachersPage() {
     }
   };
 
-  const filteredTeachers = React.useMemo(() => 
+  const filteredTeachers = React.useMemo(() =>
     // Defensive: teacher fields (fullName, shortName, subjects) may be undefined from API
     (teachers || []).filter((teacher) => {
       const q = searchQuery.trim().toLowerCase();
@@ -267,28 +267,24 @@ export default function TeachersPage() {
         sunday: [1, 2, 3, 4, 5, 6, 7],
       },
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleEdit = async (teacher: TeacherResponse) => {
     try {
-      setIsSaving(true);
-      const teacherData = await TeacherService.getById(teacher.id);
       setEditingTeacherId(teacher.id);
-      setOriginalSubjectIds((teacherData.subjects || []).map((s: SubjectResponse) => s.id));
+      setOriginalSubjectIds((teacher.subjects || []).map((s: SubjectResponse) => s.id));
       setInlineFormData({
-        fullName: teacherData.fullName,
-        shortName: teacherData.shortName,
-        selectedSubjectIds: (teacherData.subjects || []).map((s: SubjectResponse) => s.id),
-        availability: convertFromTimeSlots(teacherData.availabilities),
+        fullName: teacher.fullName,
+        shortName: teacher.shortName,
+        selectedSubjectIds: (teacher.subjects || []).map((s: SubjectResponse) => s.id),
+        availability: convertFromTimeSlots(teacher.availabilities),
       });
       setShowInlineForm(true);
-      setShowAvailabilityInForm(false);
+      setShowAvailabilityInForm(true);
     } catch (error) {
       toast.error('Failed to load teacher data');
       console.error(error);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -302,7 +298,7 @@ export default function TeachersPage() {
       selectedSubjectIds: (teacher.subjects || []).map((s: SubjectResponse) => s.id),
       availability: convertFromTimeSlots(teacher.availabilities),
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleSaveInlineForm = async () => {
@@ -313,7 +309,7 @@ export default function TeachersPage() {
 
     try {
       setIsSaving(true);
-      
+
       if (editingTeacherId) {
         // For update, calculate deleted subjects
         const deletedSubjects = originalSubjectIds.filter(
@@ -342,7 +338,7 @@ export default function TeachersPage() {
         await TeacherService.create(requestData);
         toast.success('Teacher added successfully');
       }
-      
+
       setShowInlineForm(false);
       setShowAvailabilityInForm(false);
       setEditingTeacherId(null);
@@ -395,7 +391,7 @@ export default function TeachersPage() {
       const newPeriods = dayPeriods.includes(period)
         ? dayPeriods.filter((p: number) => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
-      
+
       return {
         ...prev,
         availability: {
@@ -409,7 +405,7 @@ export default function TeachersPage() {
   const toggleInlineDay = (day: DayOfWeek) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: {
@@ -422,7 +418,7 @@ export default function TeachersPage() {
   const toggleInlinePeriodAcrossDays = (period: number) => {
     const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
     const newAvailability = { ...inlineFormData.availability };
-    
+
     days.forEach(day => {
       if (isSelected) {
         newAvailability[day] = newAvailability[day].filter(p => p !== period);
@@ -432,7 +428,7 @@ export default function TeachersPage() {
         }
       }
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -444,7 +440,7 @@ export default function TeachersPage() {
     days.forEach(day => {
       newAvailability[day] = [...periods];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -456,7 +452,7 @@ export default function TeachersPage() {
     days.forEach(day => {
       newAvailability[day] = [];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -538,9 +534,7 @@ export default function TeachersPage() {
                 <DialogTitle>{editingTeacherId ? t('teachers.update_teacher') : t('teachers.add_teacher')}</DialogTitle>
                 <DialogDescription />
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleCancelInlineForm}>
-                <X className="h-4 w-4" />
-              </Button>
+
             </div>
           </DialogHeader>
 
@@ -701,7 +695,7 @@ export default function TeachersPage() {
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Days and periods */}
                     {days.map((day, dayIndex) => (
                       <div key={day} className="grid grid-cols-8 gap-1">
@@ -717,11 +711,10 @@ export default function TeachersPage() {
                             <button
                               key={period}
                               onClick={() => toggleInlineAvailability(day, period)}
-                              className={`p-1 text-center rounded border text-xs transition-colors ${
-                                isAvailable
+                              className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
                                   ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
                                   : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                              }`}
+                                }`}
                             >
                               {isAvailable ? '✓' : '—'}
                             </button>
@@ -735,9 +728,9 @@ export default function TeachersPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <Button 
-                  onClick={handleSaveInlineForm} 
-                  size="sm" 
+                <Button
+                  onClick={handleSaveInlineForm}
+                  size="sm"
                   className="bg-green-600 hover:bg-green-700"
                   disabled={isSaving}
                 >
@@ -882,7 +875,7 @@ export default function TeachersPage() {
                                 <Calendar className="h-4 w-4 text-green-600" />
                                 <h4 className="text-green-800 dark:text-green-300">Weekly Availability</h4>
                               </div>
-                              
+
                               <div className="grid gap-2">
                                 {/* Period headers */}
                                 <div className="grid grid-cols-8 gap-1">
@@ -896,7 +889,7 @@ export default function TeachersPage() {
                                     </div>
                                   ))}
                                 </div>
-                                
+
                                 {/* Days and availability */}
                                 {days.map((day, dayIndex) => (
                                   <div key={day} className="grid grid-cols-8 gap-1">
@@ -908,11 +901,10 @@ export default function TeachersPage() {
                                       return (
                                         <div
                                           key={period}
-                                          className={`p-1 text-center rounded border text-xs ${
-                                            isAvailable
+                                          className={`p-1 text-center rounded border text-xs ${isAvailable
                                               ? 'bg-green-500 border-green-600 text-white'
                                               : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
-                                          }`}
+                                            }`}
                                         >
                                           {isAvailable ? '✓' : '—'}
                                         </div>

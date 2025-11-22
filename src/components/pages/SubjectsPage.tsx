@@ -181,10 +181,10 @@ export default function SubjectsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  
+
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [deleteDialogSubject, setDeleteDialogSubject] = useState<SubjectResponse | null>(null);
-  
+
   // Inline form state
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [editingSubjectId, setEditingSubjectId] = useState<number | null>(null);
@@ -205,14 +205,14 @@ export default function SubjectsPage() {
     },
   });
   const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
-  
+
   // Availability view for existing subjects
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
 
   type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-type AvailabilityMap = Record<DayOfWeek, number[]>;
+  type AvailabilityMap = Record<DayOfWeek, number[]>;
 
-const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
@@ -240,7 +240,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     }
   };
 
-  const filteredSubjects = React.useMemo(() => 
+  const filteredSubjects = React.useMemo(() =>
     subjects.filter(
       (subject) =>
         subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -275,29 +275,25 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
         sunday: [1, 2, 3, 4, 5, 6, 7],
       },
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleEdit = async (subject: SubjectResponse) => {
     try {
-      setIsSaving(true);
-      const subjectData = await SubjectService.getById(subject.id);
       setEditingSubjectId(subject.id);
       setInlineFormData({
-        name: subjectData.name,
-        shortName: subjectData.shortName,
-        emoji: subjectData.emoji || '📖',
-        color: subjectData.color || '#3b82f6',
-        difficulty: subjectData.weight || 5,
-        availability: convertFromTimeSlots(subjectData.availabilities),
+        name: subject.name,
+        shortName: subject.shortName,
+        emoji: subject.emoji || '📖',
+        color: subject.color || '#3b82f6',
+        difficulty: subject.weight || 5,
+        availability: convertFromTimeSlots(subject.availabilities),
       });
       setShowInlineForm(true);
-      setShowAvailabilityInForm(false);
+      setShowAvailabilityInForm(true);
     } catch (error) {
       toast.error('Failed to load subject data');
       console.error(error);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -312,7 +308,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       difficulty: subject.weight || 5,
       availability: convertFromTimeSlots(subject.availabilities),
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleSaveInlineForm = async () => {
@@ -378,7 +374,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       const newPeriods = dayPeriods.includes(period)
         ? dayPeriods.filter((p: number) => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
-      
+
       return {
         ...prev,
         availability: {
@@ -392,7 +388,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   const toggleInlineDay = (day: DayOfWeek) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: {
@@ -405,7 +401,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   const toggleInlinePeriodAcrossDays = (period: number) => {
     const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
     const newAvailability = { ...inlineFormData.availability };
-    
+
     days.forEach(day => {
       if (isSelected) {
         newAvailability[day] = newAvailability[day].filter(p => p !== period);
@@ -415,7 +411,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
         }
       }
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -427,7 +423,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     days.forEach(day => {
       newAvailability[day] = [...periods];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -439,7 +435,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     days.forEach(day => {
       newAvailability[day] = [];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -504,18 +500,34 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
 
       {/* Search */}
       <div className="flex items-center gap-4">
-          <Input
-            placeholder={t('subjects.search_placeholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
+        <Input
+          placeholder={t('subjects.search_placeholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-sm"
+        />
       </div>
 
-      {/* Inline Add/Clone Form */}
-      {showInlineForm && (
-        <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
-          <CardContent className="pt-6">
+      {/* Add / Edit Form (moved to Dialog) */}
+      <Dialog open={showInlineForm} onOpenChange={(open) => {
+        setShowInlineForm(open);
+        if (!open) {
+          setEditingSubjectId(null);
+          setShowAvailabilityInForm(false);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>{editingSubjectId ? 'Edit Subject' : 'Add New Subject'}</DialogTitle>
+                <DialogDescription />
+              </div>
+
+            </div>
+          </DialogHeader>
+
+          <div className="p-6">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -582,8 +594,8 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                   <div className="flex gap-2">
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="flex-shrink-0"
                           title="Emoji tanlash"
@@ -599,11 +611,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                               <button
                                 key={emoji}
                                 onClick={() => updateInlineFormField('emoji', emoji)}
-                                className={`p-2 rounded border transition-colors ${
-                                  inlineFormData.emoji === emoji
-                                    ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900'
-                                }`}
+                                className={`p-2 rounded border transition-colors ${inlineFormData.emoji === emoji
+                                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                                  : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900'
+                                  }`}
                                 title={subject}
                               >
                                 <span className="text-xl">{emoji}</span>
@@ -685,7 +696,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Days and periods */}
                     {days.map((day, dayIndex) => (
                       <div key={day} className="grid grid-cols-8 gap-1">
@@ -701,11 +712,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                             <button
                               key={period}
                               onClick={() => toggleInlineAvailability(day, period)}
-                              className={`p-1 text-center rounded border text-xs transition-colors ${
-                                isAvailable
-                                  ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
-                                  : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                              }`}
+                              className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
+                                ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
+                                : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                                }`}
                             >
                               {isAvailable ? '✓' : '—'}
                             </button>
@@ -719,9 +729,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <Button 
-                  onClick={handleSaveInlineForm} 
-                  size="sm" 
+                <Button
+                  onClick={handleSaveInlineForm}
+                  size="sm"
                   className="bg-green-600 hover:bg-green-700"
                   disabled={isSaving}
                 >
@@ -743,9 +753,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <Card>
@@ -782,7 +792,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                       <TableRow className="hover:bg-muted/50">
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-3">
-                            <div 
+                            <div
                               className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
                               style={{ backgroundColor: subject.color + '20', border: `2px solid ${subject.color}` }}
                             >
@@ -792,9 +802,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge 
+                          <Badge
                             variant="secondary"
-                            style={{ 
+                            style={{
                               backgroundColor: subject.color + '15',
                               color: subject.color,
                               borderColor: subject.color + '40'
@@ -809,11 +819,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                               {Array.from({ length: 10 }).map((_, i) => (
                                 <div
                                   key={i}
-                                  className={`w-2 h-6 rounded-sm ${
-                                    i < (subject.weight || 5)
-                                      ? 'bg-gradient-to-t from-orange-500 to-yellow-400'
-                                      : 'bg-gray-200 dark:bg-gray-700'
-                                  }`}
+                                  className={`w-2 h-6 rounded-sm ${i < (subject.weight || 5)
+                                    ? 'bg-gradient-to-t from-orange-500 to-yellow-400'
+                                    : 'bg-gray-200 dark:bg-gray-700'
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -881,7 +890,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                 <Calendar className="h-4 w-4 text-green-600" />
                                 <h4 className="text-green-800 dark:text-green-300">Weekly Availability</h4>
                               </div>
-                              
+
                               <div className="grid gap-2">
                                 {/* Period headers */}
                                 <div className="grid grid-cols-8 gap-1">
@@ -895,7 +904,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                     </div>
                                   ))}
                                 </div>
-                                
+
                                 {/* Days and availability */}
                                 {days.map((day, dayIndex) => (
                                   <div key={day} className="grid grid-cols-8 gap-1">
@@ -907,11 +916,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                       return (
                                         <div
                                           key={period}
-                                          className={`p-1 text-center rounded border text-xs ${
-                                            isAvailable
-                                              ? 'bg-green-500 border-green-600 text-white'
-                                              : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
-                                          }`}
+                                          className={`p-1 text-center rounded border text-xs ${isAvailable
+                                            ? 'bg-green-500 border-green-600 text-white'
+                                            : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
+                                            }`}
                                         >
                                           {isAvailable ? '✓' : '—'}
                                         </div>
@@ -937,10 +945,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       {!isLoading && totalElements > 0 && (
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} subjects
-                </span>
-              </div>
+            <span className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} subjects
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
               <SelectTrigger className="w-24">

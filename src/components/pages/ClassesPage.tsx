@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, Sparkles, Share2, HelpCircle, ChevronLeft, ChevronRight, Lightbulb, ExternalLink, FileText, Info, Edit, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, Sparkles, Share2, HelpCircle, ChevronLeft, ChevronRight, Lightbulb, ExternalLink, FileText, Info, Edit, RefreshCw, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import Pagination from '../ui/pagination';
 import {
@@ -63,7 +63,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../ui/accordion';
-
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from '../ui/command';
+import { cn } from '../ui/utils';
 const API_BASE_URL = 'http://localhost:8080';
 
 export default function ClassesPage({ onNavigate }) {
@@ -83,7 +95,7 @@ export default function ClassesPage({ onNavigate }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [deleteDialogClass, setDeleteDialogClass] = useState(null);
   const [isImportTipsSidebarOpen, setIsImportTipsSidebarOpen] = useState(true);
-  
+
   // Batch Create states
   const [isBatchCreateOpen, setIsBatchCreateOpen] = useState(false);
   const [batchCharacterSet, setBatchCharacterSet] = useState('latin'); // 'latin' or 'cyrillic'
@@ -93,15 +105,15 @@ export default function ClassesPage({ onNavigate }) {
   });
   const [generatedClasses, setGeneratedClasses] = useState([]);
   const [batchMode, setBatchMode] = useState('simple'); // 'simple' or 'quick'
-  
+
   // Class Availability states
   const [changedClassAvailability, setChangedClassAvailability] = useState(null); // { classId, availability }
   const [isApplyToOthersOpen, setIsApplyToOthersOpen] = useState(false);
   const [selectedClassesForApply, setSelectedClassesForApply] = useState([]);
-  
+
   // Tips & Tricks sidebar state
   const [isTipsSidebarOpen, setIsTipsSidebarOpen] = useState(false);
-  
+
   // Inline form state
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [inlineFormData, setInlineFormData] = useState({
@@ -121,7 +133,7 @@ export default function ClassesPage({ onNavigate }) {
   });
   const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
   const [editingClassId, setEditingClassId] = useState(null);
-  
+
   // Availability view for existing classes
   const [expandedAvailability, setExpandedAvailability] = useState(null);
 
@@ -140,7 +152,7 @@ export default function ClassesPage({ onNavigate }) {
       saturday: 'SATURDAY',
       sunday: 'SUNDAY'
     };
-    
+
     const timeSlots = [];
     Object.entries(availability).forEach(([day, lessons]) => {
       if (lessons && lessons.length > 0) {
@@ -163,7 +175,7 @@ export default function ClassesPage({ onNavigate }) {
       SATURDAY: 'saturday',
       SUNDAY: 'sunday'
     };
-    
+
     const availability = {
       monday: [],
       tuesday: [],
@@ -173,7 +185,7 @@ export default function ClassesPage({ onNavigate }) {
       saturday: [],
       sunday: []
     };
-    
+
     if (timeSlots) {
       timeSlots.forEach(slot => {
         const day = dayMapping[slot.dayOfWeek];
@@ -182,7 +194,7 @@ export default function ClassesPage({ onNavigate }) {
         }
       });
     }
-    
+
     return availability;
   };
 
@@ -236,11 +248,11 @@ export default function ClassesPage({ onNavigate }) {
     setLoading(true);
     try {
       const response = await apiCall<any>(`${API_BASE_URL}/api/classes/v1?page=${currentPage - 1}&size=${itemsPerPage}`);
-      
+
       if (response.error) {
         throw new Error('Failed to fetch classes');
       }
-      
+
       const data = response.data;
 
       if (!data) {
@@ -293,7 +305,7 @@ export default function ClassesPage({ onNavigate }) {
     fetchRooms();
   }, [fetchClasses, fetchTeachers, fetchRooms]);
 
-  const filteredClasses = React.useMemo(() => 
+  const filteredClasses = React.useMemo(() =>
     classes.filter(
       (cls) =>
         cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -313,13 +325,13 @@ export default function ClassesPage({ onNavigate }) {
 
   const generateShortName = useCallback((fullName) => {
     if (!fullName) return '';
-    
+
     const gradeMatch = fullName.match(/grade\s*(\d+)/i);
     const grade = gradeMatch ? gradeMatch[1] : '';
-    
+
     const subjectMap = {
       'mathematics': 'MA',
-      'math': 'MA', 
+      'math': 'MA',
       'science': 'SC',
       'english': 'EN',
       'history': 'HI',
@@ -333,7 +345,7 @@ export default function ClassesPage({ onNavigate }) {
       'physical education': 'PE',
       'computer science': 'CS'
     };
-    
+
     let subject = '';
     for (const [key, value] of Object.entries(subjectMap)) {
       if (fullName.toLowerCase().includes(key)) {
@@ -341,16 +353,16 @@ export default function ClassesPage({ onNavigate }) {
         break;
       }
     }
-    
+
     if (!subject) {
-      const words = fullName.split(' ').filter(word => 
+      const words = fullName.split(' ').filter(word =>
         !['grade', 'class', 'year', 'level'].includes(word.toLowerCase())
       );
       if (words.length > 0) {
         subject = words[0].substring(0, 2).toUpperCase();
       }
     }
-    
+
     return grade && subject ? `${grade}-${subject}` : fullName.substring(0, 6).toUpperCase();
   }, []);
 
@@ -377,17 +389,21 @@ export default function ClassesPage({ onNavigate }) {
   };
 
   const handleEdit = (classItem) => {
-    setShowInlineForm(true);
-    setEditingClassId(classItem.id);
-    setInlineFormData({
-      name: classItem.name,
-      shortName: classItem.shortName,
-      classTeacher: classItem.classTeacher || '',
-      roomIds: classItem.roomIds || [],
-      availability: JSON.parse(JSON.stringify(classItem.availability)),
-    });
-    // When opening in modal, show availability calendar by default
-    setShowAvailabilityInForm(true);
+    try {
+      setEditingClassId(classItem.id);
+      setInlineFormData({
+        name: classItem.name,
+        shortName: classItem.shortName,
+        classTeacher: classItem.classTeacher ? classItem.classTeacher.toString() : '',
+        roomIds: classItem.roomIds ? classItem.roomIds.map(String) : [],
+        availability: classItem.availability,
+      });
+      setShowInlineForm(true);
+      setShowAvailabilityInForm(true);
+    } catch (error) {
+      toast.error('Failed to load class data');
+      console.error(error);
+    }
   };
 
   const handleClone = (classItem) => {
@@ -417,11 +433,11 @@ export default function ClassesPage({ onNavigate }) {
         shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
         availabilities: convertToTimeSlots(inlineFormData.availability),
         teacherId: inlineFormData.classTeacher ? parseInt(inlineFormData.classTeacher, 10) : null,
-        rooms: []
+        rooms: inlineFormData.roomIds.map(id => ({ id: parseInt(id, 10) }))
       };
 
       const isEdit = editingClassId !== null;
-      const url = isEdit 
+      const url = isEdit
         ? `${API_BASE_URL}/api/classes/v1/${editingClassId}`
         : `${API_BASE_URL}/api/classes/v1`;
       const method = isEdit ? 'PUT' : 'POST';
@@ -470,7 +486,7 @@ export default function ClassesPage({ onNavigate }) {
       const newPeriods = dayPeriods.includes(period)
         ? dayPeriods.filter(p => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
-      
+
       return {
         ...prev,
         availability: {
@@ -484,7 +500,7 @@ export default function ClassesPage({ onNavigate }) {
   const toggleInlineDay = (day) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: {
@@ -497,7 +513,7 @@ export default function ClassesPage({ onNavigate }) {
   const toggleInlinePeriodAcrossDays = (period) => {
     const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
     const newAvailability = { ...inlineFormData.availability };
-    
+
     days.forEach(day => {
       if (isSelected) {
         newAvailability[day] = newAvailability[day].filter(p => p !== period);
@@ -507,7 +523,7 @@ export default function ClassesPage({ onNavigate }) {
         }
       }
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -519,7 +535,7 @@ export default function ClassesPage({ onNavigate }) {
     days.forEach(day => {
       newAvailability[day] = [...periods];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -531,7 +547,7 @@ export default function ClassesPage({ onNavigate }) {
     days.forEach(day => {
       newAvailability[day] = [];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -578,7 +594,7 @@ export default function ClassesPage({ onNavigate }) {
     const example1 = 'Grade 10 Mathematics,10-MA,1,1;2,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,';
     const example2 = 'Grade 9 Science,9-SC,2,5;6;7,true,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,,';
     const csv = [headers, example1, example2].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -586,7 +602,7 @@ export default function ClassesPage({ onNavigate }) {
     a.download = 'classes_template.csv';
     a.click();
     window.URL.revokeObjectURL(url);
-    
+
     toast.success('Template downloaded successfully');
   };
 
@@ -681,7 +697,7 @@ export default function ClassesPage({ onNavigate }) {
 
   const handleBatchGenerate = () => {
     const newClasses = [];
-    
+
     Object.entries(gradeQuantities).forEach(([grade, quantity]) => {
       const numQuantity = parseInt(quantity) || 0;
       for (let i = 0; i < numQuantity; i++) {
@@ -695,13 +711,13 @@ export default function ClassesPage({ onNavigate }) {
         });
       }
     });
-    
+
     setGeneratedClasses(newClasses);
   };
 
   const handleBatchCreate = async () => {
     const newClasses = [];
-    
+
     Object.entries(gradeQuantities).forEach(([grade, quantity]) => {
       const numQuantity = parseInt(quantity) || 0;
       for (let i = 0; i < numQuantity; i++) {
@@ -807,8 +823,8 @@ export default function ClassesPage({ onNavigate }) {
   };
 
   const handleToggleClassForApply = (classId) => {
-    setSelectedClassesForApply(prev => 
-      prev.includes(classId) 
+    setSelectedClassesForApply(prev =>
+      prev.includes(classId)
         ? prev.filter(id => id !== classId)
         : [...prev, classId]
     );
@@ -888,9 +904,9 @@ export default function ClassesPage({ onNavigate }) {
           </div>
           <div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={fetchClasses} 
+              <Button
+                variant="outline"
+                onClick={fetchClasses}
                 size="sm"
                 disabled={loading}
               >
@@ -923,1037 +939,935 @@ export default function ClassesPage({ onNavigate }) {
           />
         </div>
 
-      {/* Add / Edit Form (moved to Dialog) */}
-      <Dialog open={showInlineForm} onOpenChange={(open) => {
-        setShowInlineForm(open);
-        if (!open) {
-          setEditingClassId(null);
-          setShowAvailabilityInForm(false);
-        }
-      }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle>{editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}</DialogTitle>
-                <DialogDescription />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={() => setShowInlineForm(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t('classes.class_name')}</Label>
-                  <Input
-                    placeholder="e.g., Grade 10 Mathematics"
-                    value={inlineFormData.name}
-                    onChange={(e) => updateInlineFormField('name', e.target.value)}
-                    autoFocus
-                  />
+        {/* Add / Edit Form (moved to Dialog) */}
+        <Dialog open={showInlineForm} onOpenChange={(open) => {
+          setShowInlineForm(open);
+          if (!open) {
+            setEditingClassId(null);
+            setShowAvailabilityInForm(false);
+          }
+        }}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-start justify-between">
+                <div>
+                  <DialogTitle>{editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}</DialogTitle>
+                  <DialogDescription />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('classes.short_name')}</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Auto-generated"
-                      value={inlineFormData.shortName}
-                      onChange={(e) => updateInlineFormField('shortName', e.target.value)}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowAvailabilityInForm(!showAvailabilityInForm)}
-                      className={`flex-shrink-0 ${showAvailabilityInForm ? 'bg-green-100 border-green-500 text-green-700' : 'border-green-300 text-green-600'}`}
-                      title="Toggle availability"
-                    >
-                      <Calendar className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
 
-              {/* Class Teacher Field */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label>{t('classes.class_teacher')}</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-                          <HelpCircle className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-sm">
-                          "Class Teacher" is an optional field. If you select a teacher here, that teacher will automatically appear as the default one when adding new lessons to this class. This helps you save time when scheduling lessons for the same teacher.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Select
-                  value={inlineFormData.classTeacher || undefined}
-                  onValueChange={(value) => updateInlineFormField('classTeacher', value)}
-                  disabled={!teachers || teachers.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers && teachers.length > 0 ? (
-                      <>
-                        {teachers.map((teacher) => (
-                          teacher.id ? (
-                            <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                              {teacher.name}
-                            </SelectItem>
-                          ) : null
-                        ))}
-                      </>
-                    ) : (
-                      <div className="p-2 text-sm text-muted-foreground text-center">
-                        {t('teachers.no_teachers_found')}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
               </div>
+            </DialogHeader>
 
-              {/* Rooms Field (Multi-select) */}
-              <div className="space-y-2">
-                <Label>{t('classes.rooms_optional')}</Label>
-                <div className="border rounded-lg p-3 bg-card max-h-48 overflow-y-auto">
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    {rooms && rooms.length > 0 ? (
-                      rooms.map((room) => (
-                        <div key={room.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`room-${room.id}`}
-                            checked={inlineFormData.roomIds?.includes(room.id.toString())}
-                            onCheckedChange={(checked) => {
-                              const currentRooms = inlineFormData.roomIds || [];
-                              const roomIdStr = room.id.toString();
-                              if (checked) {
-                                updateInlineFormField('roomIds', [...currentRooms, roomIdStr]);
-                              } else {
-                                updateInlineFormField('roomIds', currentRooms.filter(id => id !== roomIdStr));
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`room-${room.id}`}
-                            className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {room.name} <span className="text-muted-foreground">(Capacity: {room.capacity})</span>
-                          </label>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t('classes.no_rooms')}</p>
-                    )}
+                    <Label>{t('classes.class_name')}</Label>
+                    <Input
+                      placeholder="e.g., Grade 10 Mathematics"
+                      value={inlineFormData.name}
+                      onChange={(e) => updateInlineFormField('name', e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                </div>
-                {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {inlineFormData.roomIds.length} {t('classes.table.rooms').toLowerCase()} selected
-                  </p>
-                )}
-              </div>
-
-              {/* Inline Availability Grid */}
-              {showAvailabilityInForm && (
-                <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{t('classes.class_availability')}</p>
+                  <div className="space-y-2">
+                    <Label>{t('classes.short_name')}</Label>
                     <div className="flex gap-2">
+                      <Input
+                        placeholder="Auto-generated"
+                        value={inlineFormData.shortName}
+                        onChange={(e) => updateInlineFormField('shortName', e.target.value)}
+                      />
                       <Button
                         variant="outline"
-                        size="sm"
-                        onClick={selectAllInlineAvailability}
-                        className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                        size="icon"
+                        onClick={() => setShowAvailabilityInForm(!showAvailabilityInForm)}
+                        className={`flex-shrink-0 ${showAvailabilityInForm ? 'bg-green-100 border-green-500 text-green-700' : 'border-green-300 text-green-600'}`}
+                        title="Toggle availability"
                       >
-                        {t('classes.select_all')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearAllInlineAvailability}
-                        className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        {t('classes.clear_all')}
+                        <Calendar className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-
-                  <div className="grid gap-2">
-                    <div className="grid grid-cols-8 gap-1">
-                      <div className="p-1"></div>
-                      {periods.map((period) => (
-                        <button
-                          key={period}
-                          onClick={() => toggleInlinePeriodAcrossDays(period)}
-                          className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          P{period}
-                        </button>
-                      ))}
-                    </div>
-                    {days.map((day, dayIndex) => (
-                      <div key={day} className="grid grid-cols-8 gap-1">
-                        <button
-                          onClick={() => toggleInlineDay(day)}
-                          className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          {dayLabels[dayIndex]}
-                        </button>
-                        {periods.map((period) => {
-                          const isAvailable = inlineFormData.availability[day].includes(period);
-                          return (
-                            <button
-                              key={period}
-                              onClick={() => toggleInlineAvailability(day, period)}
-                              className={`p-1 text-center rounded border text-xs transition-colors ${
-                                isAvailable
-                                  ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
-                                  : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                              }`}
-                            >
-                              {isAvailable ? '✓' : '—'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleSaveInlineForm} 
-                  size="sm" 
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      {editingClassId ? t('classes.update_class') : t('classes.save_class')}
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      {editingClassId ? t('classes.update_class') : t('classes.save_class')}
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  onClick={handleCancelInlineForm} 
-                  variant="outline" 
-                  size="sm"
-                  disabled={loading}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  {t('classes.cancel')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Table */}
-        <div>
-        <Table>
-        <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>{t('classes.table.name')}</TableHead>
-              <TableHead>{t('classes.table.short_name')}</TableHead>
-              <TableHead>{t('classes.table.teacher')}</TableHead>
-              <TableHead>{t('classes.table.rooms')}</TableHead>
-              <TableHead className="text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <span>{t('classes.table.availability')}</span>
-                  <span>Availability</span>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-                          <HelpCircle className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-sm">
-                          {t('classes.class_availability')} - {t('classes.description')}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </TableHead>
-              <TableHead>Updated Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-                </TableCell>
-              </TableRow>
-            ) : paginatedClasses.map((classItem) => {
-              const totalPeriods = getTotalAvailablePeriods(classItem.availability);
-              const isExpanded = expandedAvailability === classItem.id;
-
-              return (
-                <React.Fragment key={classItem.id}>
-                  <TableRow className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{classItem.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{classItem.shortName}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {classItem.classTeacher ? (
-                        <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || t('teachers.unknown')}</span>
-                      ) : (
-                        <span className="text-muted-foreground italic">{t('classes.not_assigned')}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {classItem.roomIds && classItem.roomIds.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {classItem.roomIds.map(roomId => {
-                            const room = rooms.find(r => r.id?.toString() === roomId);
-                            return room ? (
-                              <Badge key={roomId} variant="outline" className="text-xs">
-                                {room.name}
-                              </Badge>
-                            ) : null;
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground italic">{t('classes.no_rooms_assigned')}</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-3 flex-wrap">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setExpandedAvailability(isExpanded ? null : classItem.id)}
-                          className="h-8 px-2 text-green-700 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950"
-                        >
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {totalPeriods} periods
-                          <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                        </Button>
-                        {isExpanded && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setChangedClassAvailability({ classId: classItem.id, availability: classItem.availability });
-                              handleOpenApplyToOthers();
-                            }}
-                            className="h-8 px-3 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400 animate-in fade-in slide-in-from-left-2"
-                          >
-                            <Share2 className="h-3 w-3 mr-1" />
-                            Apply to others
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(classItem.updatedDate)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(classItem)}
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                          title={t('actions.edit')}
-                          aria-label={t('actions.edit')}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleClone(classItem)}
-                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                          title={t('actions.clone')}
-                          aria-label={t('actions.clone')}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(classItem)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          title={t('actions.delete')}
-                          aria-label={t('actions.delete')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-
-                  {/* Expanded Availability Row */}
-                  {isExpanded && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="bg-green-50/30 dark:bg-green-950/10 p-4">
-                        <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-200 dark:border-green-900 p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Calendar className="h-4 w-4 text-green-600" />
-                            <h4 className="text-green-800 dark:text-green-300">Weekly Availability</h4>
-                          </div>
-                          
-                          <div className="grid gap-2">
-                            {/* Period headers */}
-                            <div className="grid grid-cols-8 gap-1">
-                              <div className="p-1"></div>
-                              {periods.map((period) => (
-                                <div
-                                  key={period}
-                                  className="p-1 text-center text-xs font-medium text-muted-foreground"
-                                >
-                                  P{period}
-                                </div>
-                              ))}
-                            </div>
-                            
-                            {/* Days and availability */}
-                            {days.map((day, dayIndex) => (
-                              <div key={day} className="grid grid-cols-8 gap-1">
-                                <div className="p-1 text-xs font-medium capitalize flex items-center">
-                                  {dayLabels[dayIndex]}
-                                </div>
-                                {periods.map((period) => {
-                                  const isAvailable = classItem.availability[day].includes(period);
-                                  return (
-                                    <div
-                                      key={period}
-                                      className={`p-1 text-center rounded border text-xs ${
-                                        isAvailable
-                                          ? 'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/50 dark:border-green-700 dark:text-green-200'
-                                          : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-900 dark:border-gray-800'
-                                      }`}
-                                    >
-                                      {isAvailable ? '✓' : '—'}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </React.Fragment>
-              );
-            })}
-
-            {paginatedClasses.length === 0 && !loading && (
-              <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground">
-                      {searchQuery ? t('classes.no_classes_found') : t('classes.no_classes_yet')}
-                    </p>
-                    {!searchQuery && (
-                      <Button onClick={handleAddClass} size="sm" variant="outline">
-                        <Plus className="mr-2 h-4 w-4" />
-                        {t('classes.add_your_first_class')}
-                      </Button>
-                    )}
+                {/* Class Teacher Field */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label>{t('classes.class_teacher')}</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                            <HelpCircle className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-sm">
+                            "Class Teacher" is an optional field. If you select a teacher here, that teacher will automatically appear as the default one when adding new lessons to this class. This helps you save time when scheduling lessons for the same teacher.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
-        {/* Pagination */}
-        {totalElements > 0 && (
-          <div className="border-t p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} classes
-                </p>
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm text-muted-foreground">Items per page:</Label>
-                  <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                    <SelectTrigger className="h-8 w-[70px]">
-                      <SelectValue />
+                  <Select
+                    value={inlineFormData.classTeacher || undefined}
+                    onValueChange={(value) => updateInlineFormField('classTeacher', value)}
+                    disabled={!teachers || teachers.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
+                      {teachers && teachers.length > 0 ? (
+                        <>
+                          {teachers.map((teacher) => (
+                            teacher.id ? (
+                              <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                {teacher.name}
+                              </SelectItem>
+                            ) : null
+                          ))}
+                        </>
+                      ) : (
+                        <div className="p-2 text-sm text-muted-foreground text-center">
+                          {t('teachers.no_teachers_found')}
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogClass} onOpenChange={() => setDeleteDialogClass(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Class</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteDialogClass?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Import CSV Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
-        setIsImportDialogOpen(open);
-        if (!open) {
-          setCsvData('');
-          setSelectedFile(null);
-        }
-      }}>
-        <DialogContent className="max-w-5xl max-h-[90vh] p-0 gap-0">
-          {/* Header */}
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-blue-600 text-white">
-                  <Upload className="h-5 w-5" />
-                </div>
-                <div>
-                  <DialogTitle>Bulk Import Classes</DialogTitle>
-                  <DialogDescription>
-                    Import multiple classes from CSV format
-                  </DialogDescription>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={() => setIsImportDialogOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-
-          <div className="flex">
-            {/* Main Content */}
-            <div className="flex-1 px-6 py-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
-              <div className="space-y-6">
-                {/* CSV Format Section */}
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 bg-blue-600 text-white rounded">
-                        <Info className="h-3.5 w-3.5" />
-                      </div>
-                      <h3 className="text-base">CSV Format</h3>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownloadTemplate}
-                      className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Download Template
-                    </Button>
-                  </div>
-
-                  <p className="text-sm mb-4 text-blue-900 dark:text-blue-100">
-                    Import classes using CSV format. Only <span className="font-medium text-blue-700 dark:text-blue-300">Name</span> is required, all other fields are optional.
-                  </p>
-
-                  {/* Column Order */}
-                  <div className="space-y-2 mb-4">
-                    <Label className="text-sm text-blue-900 dark:text-blue-100">Column Order:</Label>
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-200 dark:border-blue-900">
-                      <code className="text-xs font-mono text-gray-700 dark:text-gray-300">
-                        Name, Short Name, Teacher ID, Room IDs, Is Active, Mon Periods, Tue Periods, Wed Periods, Thu Periods, Fri Periods, Sat Periods, Sun Periods
-                      </code>
-                    </div>
-                  </div>
-
-                  {/* Field Requirements */}
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Name:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Required</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Short Name:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Optional (auto-generated)</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Teacher ID:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Optional</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Room IDs:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Optional (1;2;3 format)</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Is Active:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Optional (defaults to true)</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <span className="font-medium text-blue-900 dark:text-blue-100">Mon-Sun Periods:</span>{' '}
-                        <span className="text-blue-700 dark:text-blue-300">Optional (semicolon-separated)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Upload Section */}
-                <div className="border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-lg p-10 text-center bg-white dark:bg-gray-950">
-                  <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-                    Upload a CSV file or paste CSV data below
-                  </p>
-                  <div className="flex justify-center">
-                    <label htmlFor="csv-upload">
-                      <Button 
-                        variant="default" 
-                        className="bg-blue-600 hover:bg-blue-700 cursor-pointer" 
-                        asChild
+                <div className="space-y-2">
+                  <Label>{t('classes.rooms_optional')}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal"
                       >
-                        <span>
-                          <Download className="mr-2 h-4 w-4" />
-                          Choose CSV File
-                        </span>
+                        {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 ? (
+                          <span className="truncate">
+                            {inlineFormData.roomIds.length} room{inlineFormData.roomIds.length > 1 ? 's' : ''} selected
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{t('classes.select_rooms_placeholder')}</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
-                      <Input
-                        id="csv-upload"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                  {selectedFile && (
-                    <p className="text-sm text-blue-600 mt-4 flex items-center justify-center gap-2">
-                      <Check className="h-4 w-4" />
-                      {selectedFile.name}
-                    </p>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder={t('classes.search_rooms')} />
+                        <CommandEmpty>{t('classes.no_rooms')}</CommandEmpty>
+                        <CommandGroup className="max-h-64 overflow-auto">
+                          {rooms.map((room) => (
+                            <CommandItem
+                              key={room.id}
+                              value={room.name}
+                              onSelect={() => {
+                                const current = inlineFormData.roomIds || [];
+                                const roomIdStr = room.id.toString();
+                                const isSelected = current.includes(roomIdStr);
+                                const newRoomIds = isSelected
+                                  ? current.filter((id) => id !== roomIdStr)
+                                  : [...current, roomIdStr];
+                                updateInlineFormField('roomIds', newRoomIds);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  (inlineFormData.roomIds || []).includes(room.id.toString())
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {room.name} (Capacity: {room.capacity})
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {inlineFormData.roomIds.map((roomId) => {
+                        const room = rooms.find((r) => r.id.toString() === roomId);
+                        return room ? (
+                          <Badge key={roomId} variant="secondary" className="pl-2 pr-1">
+                            {room.name}
+                            <button
+                              className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                              onClick={() => {
+                                const newRoomIds = inlineFormData.roomIds.filter((id) => id !== roomId);
+                                updateInlineFormField('roomIds', newRoomIds);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
                   )}
                 </div>
 
-                {/* Paste CSV Data */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Or paste CSV data here</Label>
-                  <textarea
-                    value={csvData}
-                    onChange={(e) => setCsvData(e.target.value)}
-                    placeholder="Grade 10A,10A,1,1;2,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,&#10;Grade 9 Science,9-SC,2,5;6,true,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,,&#10;Grade 11 Math,11-MA,,,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,"
-                    className="w-full min-h-[140px] p-3 border border-border rounded-lg font-mono text-xs resize-y bg-card focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ fontFamily: 'monospace' }}
-                  />
+                {/* Inline Availability Grid */}
+                {showAvailabilityInForm && (
+                  <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{t('classes.class_availability')}</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={selectAllInlineAvailability}
+                          className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
+                        >
+                          {t('classes.select_all')}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearAllInlineAvailability}
+                          className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          {t('classes.clear_all')}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-8 gap-1">
+                        <div className="p-1"></div>
+                        {periods.map((period) => (
+                          <button
+                            key={period}
+                            onClick={() => toggleInlinePeriodAcrossDays(period)}
+                            className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          >
+                            P{period}
+                          </button>
+                        ))}
+                      </div>
+                      {days.map((day, dayIndex) => (
+                        <div key={day} className="grid grid-cols-8 gap-1">
+                          <button
+                            onClick={() => toggleInlineDay(day)}
+                            className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          >
+                            {dayLabels[dayIndex]}
+                          </button>
+                          {periods.map((period) => {
+                            const isAvailable = inlineFormData.availability[day].includes(period);
+                            return (
+                              <button
+                                key={period}
+                                onClick={() => toggleInlineAvailability(day, period)}
+                                className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
+                                  ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
+                                  : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                                  }`}
+                              >
+                                {isAvailable ? '✓' : '—'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSaveInlineForm}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        {editingClassId ? t('classes.update_class') : t('classes.save_class')}
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        {editingClassId ? t('classes.update_class') : t('classes.save_class')}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleCancelInlineForm}
+                    variant="outline"
+                    size="sm"
+                    disabled={loading}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    {t('classes.cancel')}
+                  </Button>
                 </div>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
 
-            {/* Tips & Tricks Sidebar */}
-            <div 
-              className={`border-l bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 transition-all duration-300 overflow-y-auto ${
-                isImportTipsSidebarOpen ? 'w-80' : 'w-0'
-              }`}
-              style={{ maxHeight: 'calc(90vh - 140px)' }}
-            >
-              {isImportTipsSidebarOpen && (
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+        {/* Table */}
+        <div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>{t('classes.table.name')}</TableHead>
+                <TableHead>{t('classes.table.short_name')}</TableHead>
+                <TableHead>{t('classes.table.teacher')}</TableHead>
+                <TableHead>{t('classes.table.rooms')}</TableHead>
+                <TableHead className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <span>{t('classes.table.availability')}</span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                            <HelpCircle className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-sm">
+                            {t('classes.time_off_description')}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </TableHead>
+                <TableHead>Updated Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                  </TableCell>
+                </TableRow>
+              ) : paginatedClasses.map((classItem) => {
+                const totalPeriods = getTotalAvailablePeriods(classItem.availability);
+                const isExpanded = expandedAvailability === classItem.id;
+
+                return (
+                  <React.Fragment key={classItem.id}>
+                    <TableRow className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{classItem.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{classItem.shortName}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {classItem.classTeacher ? (
+                          <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || t('teachers.unknown')}</span>
+                        ) : (
+                          <span className="text-muted-foreground italic">{t('classes.not_assigned')}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {classItem.roomIds && classItem.roomIds.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {classItem.roomIds.map(roomId => {
+                              const room = rooms.find(r => r.id?.toString() === roomId);
+                              return room ? (
+                                <Badge key={roomId} variant="outline" className="text-xs">
+                                  {room.name}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">{t('classes.no_rooms_assigned')}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-3 flex-wrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedAvailability(isExpanded ? null : classItem.id)}
+                            className="h-8 px-2 text-green-700 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950"
+                          >
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {totalPeriods} periods
+                            <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </Button>
+                          {isExpanded && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setChangedClassAvailability({ classId: classItem.id, availability: classItem.availability });
+                                handleOpenApplyToOthers();
+                              }}
+                              className="h-8 px-3 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400 animate-in fade-in slide-in-from-left-2"
+                            >
+                              <Share2 className="h-3 w-3 mr-1" />
+                              Apply to others
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(classItem.updatedDate)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(classItem)}
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            title={t('actions.edit')}
+                            aria-label={t('actions.edit')}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleClone(classItem)}
+                            className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                            title={t('actions.clone')}
+                            aria-label={t('actions.clone')}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(classItem)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title={t('actions.delete')}
+                            aria-label={t('actions.delete')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Expanded Availability Row */}
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="bg-green-50/30 dark:bg-green-950/10 p-4">
+                          <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-200 dark:border-green-900 p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <h4 className="text-green-800 dark:text-green-300">Weekly Availability</h4>
+                            </div>
+
+                            <div className="grid gap-2">
+                              {/* Period headers */}
+                              <div className="grid grid-cols-8 gap-1">
+                                <div className="p-1"></div>
+                                {periods.map((period) => (
+                                  <div
+                                    key={period}
+                                    className="p-1 text-center text-xs font-medium text-muted-foreground"
+                                  >
+                                    P{period}
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Days and availability */}
+                              {days.map((day, dayIndex) => (
+                                <div key={day} className="grid grid-cols-8 gap-1">
+                                  <div className="p-1 text-xs font-medium capitalize flex items-center">
+                                    {dayLabels[dayIndex]}
+                                  </div>
+                                  {periods.map((period) => {
+                                    const isAvailable = classItem.availability[day].includes(period);
+                                    return (
+                                      <div
+                                        key={period}
+                                        className={`p-1 text-center rounded border text-xs ${isAvailable
+                                          ? 'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/50 dark:border-green-700 dark:text-green-200'
+                                          : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-900 dark:border-gray-800'
+                                          }`}
+                                      >
+                                        {isAvailable ? '✓' : '—'}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+
+              {paginatedClasses.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-muted-foreground">
+                        {searchQuery ? t('classes.no_classes_found') : t('classes.no_classes_yet')}
+                      </p>
+                      {!searchQuery && (
+                        <Button onClick={handleAddClass} size="sm" variant="outline">
+                          <Plus className="mr-2 h-4 w-4" />
+                          {t('classes.add_your_first_class')}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          {/* Pagination */}
+          {totalElements > 0 && (
+            <div className="border-t p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} classes
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Items per page:</Label>
+                    <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                      <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteDialogClass} onOpenChange={() => setDeleteDialogClass(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Class</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteDialogClass?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Import CSV Dialog */}
+        <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) {
+            setCsvData('');
+            setSelectedFile(null);
+          }
+        }}>
+          <DialogContent className="max-w-5xl max-h-[90vh] p-0 gap-0">
+            {/* Header */}
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-blue-600 text-white">
+                    <Upload className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle>Bulk Import Classes</DialogTitle>
+                    <DialogDescription>
+                      Import multiple classes from CSV format
+                    </DialogDescription>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  onClick={() => setIsImportDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="flex">
+              {/* Main Content */}
+              <div className="flex-1 px-6 py-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+                <div className="space-y-6">
+                  {/* CSV Format Section */}
+                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-600 text-white rounded">
+                          <Info className="h-3.5 w-3.5" />
+                        </div>
+                        <h3 className="text-base">CSV Format</h3>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadTemplate}
+                        className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download Template
+                      </Button>
+                    </div>
+
+                    <p className="text-sm mb-4 text-blue-900 dark:text-blue-100">
+                      Import classes using CSV format. Only <span className="font-medium text-blue-700 dark:text-blue-300">Name</span> is required, all other fields are optional.
+                    </p>
+
+                    {/* Column Order */}
+                    <div className="space-y-2 mb-4">
+                      <Label className="text-sm text-blue-900 dark:text-blue-100">Column Order:</Label>
+                      <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-200 dark:border-blue-900">
+                        <code className="text-xs font-mono text-gray-700 dark:text-gray-300">
+                          Name, Short Name, Teacher ID, Room IDs, Is Active, Mon Periods, Tue Periods, Wed Periods, Thu Periods, Fri Periods, Sat Periods, Sun Periods
+                        </code>
+                      </div>
+                    </div>
+
+                    {/* Field Requirements */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Name:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Required</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Short Name:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Optional (auto-generated)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Teacher ID:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Optional</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Room IDs:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Optional (1;2;3 format)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Is Active:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Optional (defaults to true)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
+                        <div className="text-sm">
+                          <span className="font-medium text-blue-900 dark:text-blue-100">Mon-Sun Periods:</span>{' '}
+                          <span className="text-blue-700 dark:text-blue-300">Optional (semicolon-separated)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upload Section */}
+                  <div className="border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-lg p-10 text-center bg-white dark:bg-gray-950">
+                    <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+                      Upload a CSV file or paste CSV data below
+                    </p>
+                    <div className="flex justify-center">
+                      <label htmlFor="csv-upload">
+                        <Button
+                          variant="default"
+                          className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                          asChild
+                        >
+                          <span>
+                            <Download className="mr-2 h-4 w-4" />
+                            Choose CSV File
+                          </span>
+                        </Button>
+                        <Input
+                          id="csv-upload"
+                          type="file"
+                          accept=".csv"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {selectedFile && (
+                      <p className="text-sm text-blue-600 mt-4 flex items-center justify-center gap-2">
+                        <Check className="h-4 w-4" />
+                        {selectedFile.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Paste CSV Data */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Or paste CSV data here</Label>
+                    <textarea
+                      value={csvData}
+                      onChange={(e) => setCsvData(e.target.value)}
+                      placeholder="Grade 10A,10A,1,1;2,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,&#10;Grade 9 Science,9-SC,2,5;6,true,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,,&#10;Grade 11 Math,11-MA,,,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,"
+                      className="w-full min-h-[140px] p-3 border border-border rounded-lg font-mono text-xs resize-y bg-card focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tips & Tricks Sidebar */}
+              <div
+                className={`border-l bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 transition-all duration-300 overflow-y-auto ${isImportTipsSidebarOpen ? 'w-80' : 'w-0'
+                  }`}
+                style={{ maxHeight: 'calc(90vh - 140px)' }}
+              >
+                {isImportTipsSidebarOpen && (
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
                         <Lightbulb className="h-5 w-5 text-amber-600" />
                         <h3 className="text-base">{t('classes.tips.title')}</h3>
                       </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setIsImportTipsSidebarOpen(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setIsImportTipsSidebarOpen(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Tip 1 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip1.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip1.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 2 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip2.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip2.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 3 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip3.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip3.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 4 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            4
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip4.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip4.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 5 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">Excel to CSV</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              If you have data in Excel, use "Save As" and choose "CSV (Comma delimited)" format.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 6 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            6
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip5.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip5.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tip 7 */}
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
+                            7
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm mb-1">{t('classes.tips.tip6.title')}</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {t('classes.tips.tip6.desc')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                )}
+              </div>
 
-                  <div className="space-y-4">
-                    {/* Tip 1 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          1
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip1.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip1.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 2 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          2
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip2.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip2.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 3 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          3
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip3.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip3.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 4 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          4
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip4.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip4.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 5 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          5
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">Excel to CSV</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            If you have data in Excel, use "Save As" and choose "CSV (Comma delimited)" format.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 6 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          6
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip5.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip5.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tip 7 */}
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                          7
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm mb-1">{t('classes.tips.tip6.title')}</h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {t('classes.tips.tip6.desc')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Toggle Tips Button */}
+              {!isImportTipsSidebarOpen && (
+                <div className="w-10 flex items-start justify-center pt-6 border-l bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 hover:bg-amber-100 dark:hover:bg-amber-900/20"
+                    onClick={() => setIsImportTipsSidebarOpen(true)}
+                  >
+                    <Lightbulb className="h-5 w-5 text-amber-600" />
+                  </Button>
                 </div>
               )}
             </div>
 
-            {/* Toggle Tips Button */}
-            {!isImportTipsSidebarOpen && (
-              <div className="w-10 flex items-start justify-center pt-6 border-l bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 hover:bg-amber-100 dark:hover:bg-amber-900/20"
-                  onClick={() => setIsImportTipsSidebarOpen(true)}
-                >
-                  <Lightbulb className="h-5 w-5 text-amber-600" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900/50 flex items-center justify-end gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsImportDialogOpen(false);
-                setCsvData('');
-                setSelectedFile(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleProcessImport}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={!csvData.trim()}
-            >
-              Import Classes
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Batch Create Dialog */}
-      <Dialog open={isBatchCreateOpen} onOpenChange={setIsBatchCreateOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              Batch Create Classes
-            </DialogTitle>
-            <DialogDescription>
-              Choose a mode to automatically generate class names
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Mode Selection */}
-            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900/50 flex items-center justify-end gap-3">
               <Button
-                variant={batchMode === 'simple' ? 'default' : 'ghost'}
-                className="flex-1"
-                onClick={() => setBatchMode('simple')}
+                variant="outline"
+                onClick={() => {
+                  setIsImportDialogOpen(false);
+                  setCsvData('');
+                  setSelectedFile(null);
+                }}
               >
-                Simple Mode
+                Cancel
               </Button>
               <Button
-                variant={batchMode === 'quick' ? 'default' : 'ghost'}
-                className="flex-1"
-                onClick={() => setBatchMode('quick')}
+                onClick={handleProcessImport}
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={!csvData.trim()}
               >
-                Quick Setup
+                Import Classes
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
 
-            {batchMode === 'simple' ? (
-              <>
-                {/* Character Set Selection */}
-                <div className="space-y-3">
-                  <RadioGroup value={batchCharacterSet} onValueChange={setBatchCharacterSet}>
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="latin" id="latin" />
-                        <Label htmlFor="latin" className="cursor-pointer font-normal">
-                          ABC (Latin)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="cyrillic" id="cyrillic" />
-                        <Label htmlFor="cyrillic" className="cursor-pointer font-normal">
-                          АБВГД (Cyrillic)
-                        </Label>
-                      </div>
-                    </div>
-                  </RadioGroup>
-                </div>
+        {/* Batch Create Dialog */}
+        <Dialog open={isBatchCreateOpen} onOpenChange={setIsBatchCreateOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                Batch Create Classes
+              </DialogTitle>
+              <DialogDescription>
+                Choose a mode to automatically generate class names
+              </DialogDescription>
+            </DialogHeader>
 
-                {/* Grade Levels List */}
-                <div className="space-y-3">
-                  <div className="grid grid-cols-[60px_120px_1fr] gap-4 items-center pb-2 border-b">
-                    <Label className="text-sm text-muted-foreground">Grade</Label>
-                    <Label className="text-sm text-muted-foreground text-center">Quantity</Label>
-                    <Label className="text-sm text-muted-foreground">Preview</Label>
-                  </div>
-                  
-                  <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                    {gradeList.map(grade => {
-                      const quantity = gradeQuantities[grade] || 0;
-                      const preview = quantity > 0 
-                        ? Array.from({ length: quantity }, (_, i) => 
-                            `${grade}-${getLetterSequence(i, batchCharacterSet)}`
-                          ).join(', ')
-                        : '';
-                      
-                      return (
-                        <div key={grade} className="grid grid-cols-[60px_120px_1fr] gap-4 items-center">
-                          <div className="flex items-center justify-center h-12 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                            <span className="font-medium">{grade}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-12 w-12 shrink-0"
-                              onClick={() => {
-                                setGradeQuantities(prev => ({
-                                  ...prev,
-                                  [grade]: Math.max(0, (prev[grade] || 0) - 1)
-                                }));
-                              }}
-                            >
-                              -
-                            </Button>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="26"
-                              value={gradeQuantities[grade] || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const numValue = value === '' ? 0 : Math.max(0, Math.min(26, parseInt(value) || 0));
-                                setGradeQuantities(prev => ({
-                                  ...prev,
-                                  [grade]: numValue
-                                }));
-                              }}
-                              className="h-12 w-16 text-center p-0"
-                              placeholder="0"
-                            />
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-12 w-12 shrink-0"
-                              onClick={() => {
-                                setGradeQuantities(prev => ({
-                                  ...prev,
-                                  [grade]: Math.min(26, (prev[grade] || 0) + 1)
-                                }));
-                              }}
-                            >
-                              +
-                            </Button>
-                          </div>
-                          
-                          <div className="flex items-center h-12 px-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg min-h-[48px]">
-                            <span className="text-sm text-muted-foreground truncate">
-                              {preview || '—'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+            <div className="space-y-6 py-4">
+              {/* Mode Selection */}
+              <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
+                <Button
+                  variant={batchMode === 'simple' ? 'default' : 'ghost'}
+                  className="flex-1"
+                  onClick={() => setBatchMode('simple')}
+                >
+                  Simple Mode
+                </Button>
+                <Button
+                  variant={batchMode === 'quick' ? 'default' : 'ghost'}
+                  className="flex-1"
+                  onClick={() => setBatchMode('quick')}
+                >
+                  Quick Setup
+                </Button>
+              </div>
 
-                  {/* Add/Remove Grade Buttons */}
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveGrade}
-                      disabled={gradeList.length <= 1}
-                      className="flex-1"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Remove Grade {Math.max(...gradeList)}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddGrade}
-                      className="flex-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100 dark:bg-green-950/20 dark:border-green-800 dark:text-green-400"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Grade {Math.max(...gradeList) + 1}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Quick Setup Mode */}
-                <div className="space-y-4">
+              {batchMode === 'simple' ? (
+                <>
+                  {/* Character Set Selection */}
                   <div className="space-y-3">
-                    <Label>Character Set</Label>
                     <RadioGroup value={batchCharacterSet} onValueChange={setBatchCharacterSet}>
                       <div className="flex items-center gap-6">
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="latin" id="latin-quick" />
-                          <Label htmlFor="latin-quick" className="cursor-pointer font-normal">
+                          <RadioGroupItem value="latin" id="latin" />
+                          <Label htmlFor="latin" className="cursor-pointer font-normal">
                             ABC (Latin)
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="cyrillic" id="cyrillic-quick" />
-                          <Label htmlFor="cyrillic-quick" className="cursor-pointer font-normal">
+                          <RadioGroupItem value="cyrillic" id="cyrillic" />
+                          <Label htmlFor="cyrillic" className="cursor-pointer font-normal">
                             АБВГД (Cyrillic)
                           </Label>
                         </div>
@@ -1961,270 +1875,394 @@ export default function ClassesPage({ onNavigate }) {
                     </RadioGroup>
                   </div>
 
+                  {/* Grade Levels List */}
                   <div className="space-y-3">
-                    <Label>Quick Presets</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(2)}>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                              <span className="text-lg">2️⃣</span>
-                            </div>
-                            <div>
-                              <h4 className="text-sm">2 Classes per Grade</h4>
-                              <p className="text-xs text-muted-foreground">Standard dual-stream</p>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
+                    <div className="grid grid-cols-[60px_120px_1fr] gap-4 items-center pb-2 border-b">
+                      <Label className="text-sm text-muted-foreground">Grade</Label>
+                      <Label className="text-sm text-muted-foreground text-center">Quantity</Label>
+                      <Label className="text-sm text-muted-foreground">Preview</Label>
+                    </div>
 
-                      <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(3)}>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                              <span className="text-lg">3️⃣</span>
-                            </div>
-                            <div>
-                              <h4 className="text-sm">3 Classes per Grade</h4>
-                              <p className="text-xs text-muted-foreground">Medium school</p>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                      {gradeList.map(grade => {
+                        const quantity = gradeQuantities[grade] || 0;
+                        const preview = quantity > 0
+                          ? Array.from({ length: quantity }, (_, i) =>
+                            `${grade}-${getLetterSequence(i, batchCharacterSet)}`
+                          ).join(', ')
+                          : '';
 
-                      <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(4)}>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                              <span className="text-lg">4️⃣</span>
+                        return (
+                          <div key={grade} className="grid grid-cols-[60px_120px_1fr] gap-4 items-center">
+                            <div className="flex items-center justify-center h-12 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                              <span className="font-medium">{grade}</span>
                             </div>
-                            <div>
-                              <h4 className="text-sm">4 Classes per Grade</h4>
-                              <p className="text-xs text-muted-foreground">Large school</p>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
 
-                      <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(5)}>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                              <span className="text-lg">5️⃣</span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-12 w-12 shrink-0"
+                                onClick={() => {
+                                  setGradeQuantities(prev => ({
+                                    ...prev,
+                                    [grade]: Math.max(0, (prev[grade] || 0) - 1)
+                                  }));
+                                }}
+                              >
+                                -
+                              </Button>
+                              <Input
+                                type="number"
+                                min="0"
+                                max="26"
+                                value={gradeQuantities[grade] || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  const numValue = value === '' ? 0 : Math.max(0, Math.min(26, parseInt(value) || 0));
+                                  setGradeQuantities(prev => ({
+                                    ...prev,
+                                    [grade]: numValue
+                                  }));
+                                }}
+                                className="h-12 w-16 text-center p-0"
+                                placeholder="0"
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-12 w-12 shrink-0"
+                                onClick={() => {
+                                  setGradeQuantities(prev => ({
+                                    ...prev,
+                                    [grade]: Math.min(26, (prev[grade] || 0) + 1)
+                                  }));
+                                }}
+                              >
+                                +
+                              </Button>
                             </div>
-                            <div>
-                              <h4 className="text-sm">5 Classes per Grade</h4>
-                              <p className="text-xs text-muted-foreground">Very large school</p>
+
+                            <div className="flex items-center h-12 px-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg min-h-[48px]">
+                              <span className="text-sm text-muted-foreground truncate">
+                                {preview || '—'}
+                              </span>
                             </div>
                           </div>
-                        </div>
-                      </Card>
+                        );
+                      })}
+                    </div>
+
+                    {/* Add/Remove Grade Buttons */}
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRemoveGrade}
+                        disabled={gradeList.length <= 1}
+                        className="flex-1"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Remove Grade {Math.max(...gradeList)}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddGrade}
+                        className="flex-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100 dark:bg-green-950/20 dark:border-green-800 dark:text-green-400"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Grade {Math.max(...gradeList) + 1}
+                      </Button>
                     </div>
                   </div>
-
-                  {/* Preview in Quick Mode */}
-                  {Object.values(gradeQuantities).some(q => q > 0) && (
+                </>
+              ) : (
+                <>
+                  {/* Quick Setup Mode */}
+                  <div className="space-y-4">
                     <div className="space-y-3">
-                      <Label>Preview ({Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes)</Label>
-                      <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-purple-950/20 dark:to-blue-950/20 max-h-60 overflow-y-auto">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {gradeList.map(grade => {
-                            const quantity = gradeQuantities[grade] || 0;
-                            if (quantity === 0) return null;
-                            
-                            const classes = Array.from({ length: quantity }, (_, i) => 
-                              `${grade}-${getLetterSequence(i, batchCharacterSet)}`
-                            );
-                            
-                            return (
-                              <div key={grade} className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Grade {grade}</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {classes.map((cls, idx) => (
-                                    <Badge key={idx} variant="outline" className="bg-white dark:bg-gray-900 border-purple-200 text-purple-700 dark:text-purple-300 text-xs">
-                                      {cls}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
+                      <Label>Character Set</Label>
+                      <RadioGroup value={batchCharacterSet} onValueChange={setBatchCharacterSet}>
+                        <div className="flex items-center gap-6">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="latin" id="latin-quick" />
+                            <Label htmlFor="latin-quick" className="cursor-pointer font-normal">
+                              ABC (Latin)
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="cyrillic" id="cyrillic-quick" />
+                            <Label htmlFor="cyrillic-quick" className="cursor-pointer font-normal">
+                              АБВГД (Cyrillic)
+                            </Label>
+                          </div>
                         </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Quick Presets</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(2)}>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                                <span className="text-lg">2️⃣</span>
+                              </div>
+                              <div>
+                                <h4 className="text-sm">2 Classes per Grade</h4>
+                                <p className="text-xs text-muted-foreground">Standard dual-stream</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(3)}>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                                <span className="text-lg">3️⃣</span>
+                              </div>
+                              <div>
+                                <h4 className="text-sm">3 Classes per Grade</h4>
+                                <p className="text-xs text-muted-foreground">Medium school</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(4)}>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                                <span className="text-lg">4️⃣</span>
+                              </div>
+                              <div>
+                                <h4 className="text-sm">4 Classes per Grade</h4>
+                                <p className="text-xs text-muted-foreground">Large school</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(5)}>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                                <span className="text-lg">5️⃣</span>
+                              </div>
+                              <div>
+                                <h4 className="text-sm">5 Classes per Grade</h4>
+                                <p className="text-xs text-muted-foreground">Very large school</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
                       </div>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
 
-            {/* Summary */}
-            {Object.values(gradeQuantities).some(q => q > 0) && batchMode === 'simple' && (
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium">Total classes to create:</span>
-                </div>
-                <Badge className="bg-purple-600 text-white">
-                  {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes
-                </Badge>
-              </div>
-            )}
-          </div>
+                    {/* Preview in Quick Mode */}
+                    {Object.values(gradeQuantities).some(q => q > 0) && (
+                      <div className="space-y-3">
+                        <Label>Preview ({Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes)</Label>
+                        <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-purple-950/20 dark:to-blue-950/20 max-h-60 overflow-y-auto">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {gradeList.map(grade => {
+                              const quantity = gradeQuantities[grade] || 0;
+                              if (quantity === 0) return null;
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => {
-              setIsBatchCreateOpen(false);
-              handleBatchReset();
-            }}>
-              Cancel
-            </Button>
-            {Object.values(gradeQuantities).some(q => q > 0) && (
-              <Button onClick={() => {
-                handleBatchGenerate();
-                handleBatchCreate();
-              }} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                <Check className="mr-2 h-4 w-4" />
-                Create {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} Classes
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                              const classes = Array.from({ length: quantity }, (_, i) =>
+                                `${grade}-${getLetterSequence(i, batchCharacterSet)}`
+                              );
 
-      {/* Apply to Other Classes Dialog */}
-      <Dialog open={isApplyToOthersOpen} onOpenChange={setIsApplyToOthersOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Share2 className="h-5 w-5 text-blue-600" />
-              Apply Availability to Other Classes
-            </DialogTitle>
-            <DialogDescription>
-              {changedClassAvailability && (
-                <>
-                  Copy availability settings from <span className="font-medium text-blue-600">
-                    {classes.find(c => c.id === changedClassAvailability.classId)?.shortName}
-                  </span> to other classes
+                              return (
+                                <div key={grade} className="space-y-1">
+                                  <p className="text-xs font-medium text-muted-foreground">Grade {grade}</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {classes.map((cls, idx) => (
+                                      <Badge key={idx} variant="outline" className="bg-white dark:bg-gray-900 border-purple-200 text-purple-700 dark:text-purple-300 text-xs">
+                                        {cls}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Action buttons */}
-            <div className="flex items-center justify-between pb-2 border-b">
-              <p className="text-sm text-muted-foreground">
-                Select classes to apply this change
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAllForApply}
-                  className="h-8 text-xs"
-                >
-                  Select All
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeselectAllForApply}
-                  className="h-8 text-xs"
-                >
-                  Clear All
-                </Button>
-              </div>
+              {/* Summary */}
+              {Object.values(gradeQuantities).some(q => q > 0) && batchMode === 'simple' && (
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium">Total classes to create:</span>
+                  </div>
+                  <Badge className="bg-purple-600 text-white">
+                    {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes
+                  </Badge>
+                </div>
+              )}
             </div>
 
-            {/* Classes list */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-              {classes
-                .filter(cls => cls.id !== changedClassAvailability?.classId)
-                .sort((a, b) => a.shortName.localeCompare(b.shortName))
-                .map(classItem => (
-                  <div
-                    key={classItem.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 ${
-                      selectedClassesForApply.includes(classItem.id)
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => {
+                setIsBatchCreateOpen(false);
+                handleBatchReset();
+              }}>
+                Cancel
+              </Button>
+              {Object.values(gradeQuantities).some(q => q > 0) && (
+                <Button onClick={() => {
+                  handleBatchGenerate();
+                  handleBatchCreate();
+                }} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                  <Check className="mr-2 h-4 w-4" />
+                  Create {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} Classes
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Apply to Other Classes Dialog */}
+        <Dialog open={isApplyToOthersOpen} onOpenChange={setIsApplyToOthersOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Share2 className="h-5 w-5 text-blue-600" />
+                Apply Availability to Other Classes
+              </DialogTitle>
+              <DialogDescription>
+                {changedClassAvailability && (
+                  <>
+                    Copy availability settings from <span className="font-medium text-blue-600">
+                      {classes.find(c => c.id === changedClassAvailability.classId)?.shortName}
+                    </span> to other classes
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Action buttons */}
+              <div className="flex items-center justify-between pb-2 border-b">
+                <p className="text-sm text-muted-foreground">
+                  Select classes to apply this change
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllForApply}
+                    className="h-8 text-xs"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDeselectAllForApply}
+                    className="h-8 text-xs"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+
+              {/* Classes list */}
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                {classes
+                  .filter(cls => cls.id !== changedClassAvailability?.classId)
+                  .sort((a, b) => a.shortName.localeCompare(b.shortName))
+                  .map(classItem => (
+                    <div
+                      key={classItem.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 ${selectedClassesForApply.includes(classItem.id)
                         ? 'bg-blue-50 border-blue-300 dark:bg-blue-950/30 dark:border-blue-700'
                         : 'bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-700'
-                    }`}
-                    onClick={() => handleToggleClassForApply(classItem.id)}
-                  >
-                    <Checkbox
-                      checked={selectedClassesForApply.includes(classItem.id)}
-                      onCheckedChange={() => handleToggleClassForApply(classItem.id)}
-                      className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{classItem.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {classItem.shortName}
-                          </Badge>
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900"
-                          >
-                            {getTotalAvailablePeriods(classItem.availability)} periods
-                          </Badge>
+                        }`}
+                      onClick={() => handleToggleClassForApply(classItem.id)}
+                    >
+                      <Checkbox
+                        checked={selectedClassesForApply.includes(classItem.id)}
+                        onCheckedChange={() => handleToggleClassForApply(classItem.id)}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                      />
+                      <div className="flex-1 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{classItem.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {classItem.shortName}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900"
+                            >
+                              {getTotalAvailablePeriods(classItem.availability)} periods
+                            </Badge>
+                          </div>
                         </div>
+                        {selectedClassesForApply.includes(classItem.id) && (
+                          <div className="flex items-center gap-2 text-blue-600 animate-in fade-in slide-in-from-right-2">
+                            <span className="text-sm">Will be updated</span>
+                            <Badge className="bg-blue-600 text-white">
+                              {changedClassAvailability && getTotalAvailablePeriods(changedClassAvailability.availability)} periods
+                            </Badge>
+                          </div>
+                        )}
                       </div>
-                      {selectedClassesForApply.includes(classItem.id) && (
-                        <div className="flex items-center gap-2 text-blue-600 animate-in fade-in slide-in-from-right-2">
-                          <span className="text-sm">Will be updated</span>
-                          <Badge className="bg-blue-600 text-white">
-                            {changedClassAvailability && getTotalAvailablePeriods(changedClassAvailability.availability)} periods
-                          </Badge>
-                        </div>
-                      )}
                     </div>
+                  ))}
+              </div>
+
+              {/* Summary */}
+              {selectedClassesForApply.length > 0 && (
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium">Selected:</span>
                   </div>
-                ))}
+                  <Badge className="bg-blue-600 text-white">
+                    {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'class' : 'classes'}
+                  </Badge>
+                </div>
+              )}
             </div>
 
-            {/* Summary */}
-            {selectedClassesForApply.length > 0 && (
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Selected:</span>
-                </div>
-                <Badge className="bg-blue-600 text-white">
-                  {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'class' : 'classes'}
-                </Badge>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsApplyToOthersOpen(false);
-                setSelectedClassesForApply([]);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleApplyToSelectedClasses}
-              disabled={selectedClassesForApply.length === 0}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-            >
-              <Check className="mr-2 h-4 w-4" />
-              Apply to {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'Class' : 'Classes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApplyToOthersOpen(false);
+                  setSelectedClassesForApply([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApplyToSelectedClasses}
+                disabled={selectedClassesForApply.length === 0}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Apply to {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'Class' : 'Classes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Tips & Tricks Sidebar */}
-      <div className={`fixed top-0 right-0 h-screen transition-all duration-300 ease-in-out z-40 ${
-        isTipsSidebarOpen ? 'translate-x-0' : 'translate-x-[284px]'
-      }`} style={{ paddingTop: '80px' }}>
+      <div className={`fixed top-0 right-0 h-screen transition-all duration-300 ease-in-out z-40 ${isTipsSidebarOpen ? 'translate-x-0' : 'translate-x-[284px]'
+        }`} style={{ paddingTop: '80px' }}>
         <div className="relative h-full">
           {/* Toggle Button */}
           <button

@@ -71,13 +71,12 @@
     "failed_to_create_lesson": "Failed to create lesson",
     "lesson_updated_successfully": "Lesson updated successfully",
     "failed_to_update_lesson": "Failed to update lesson",
-      "failed_to_load_lessons": "Failed to load lessons",
-      "failed_to_load_entity": "Failed to load data",
-      "failed_to_save": "Failed to save",
-      "teacher_updated": "Teacher updated",
-      "subject_updated": "Subject updated",
-      "class_updated": "Class updated"
-    ,
+    "failed_to_load_lessons": "Failed to load lessons",
+    "failed_to_load_entity": "Failed to load data",
+    "failed_to_save": "Failed to save",
+    "teacher_updated": "Teacher updated",
+    "subject_updated": "Subject updated",
+    "class_updated": "Class updated",
     "optimize_no_timetable_id": "Please provide a timetable id to optimize",
     "optimize_invalid_timetable_id": "Invalid timetable id",
     "optimize_failed": "Failed to start optimization",
@@ -93,8 +92,7 @@
     "apply_continuity_class": "Continuity penalty (class)",
     "apply_balanced_load": "Balanced load",
     "apply_daily_subject_distribution": "Daily subject distribution",
-    "optimizing": "Optimizing..."
-    ,
+    "optimizing": "Optimizing...",
     "no_lessons_found": "No lessons found"
   },
   "dashboard": {
@@ -138,8 +136,7 @@
       "friday": "Friday",
       "saturday": "Saturday",
       "sunday": "Sunday"
-    }
-    ,
+    },
     "period": "Period",
     "break": "Break",
     "period_name_placeholder": "Period name...",
@@ -155,12 +152,10 @@
     "minutes": "minutes",
     "no_periods_configured": "No periods configured",
     "click_add_period": "Click add period to create your first period"
-  }
-  ,
+  },
   "availability": {
     "period_prefix": "P"
-  }
-  ,
+  },
   "classes": {
     "title": "Classes",
     "description": "Manage class schedules and availability",
@@ -180,7 +175,8 @@
     "select_rooms_placeholder": "Select rooms...",
     "search_rooms": "Search rooms...",
     "not_assigned": "Not assigned",
-    "class_availability": "Class Availability",
+    "class_availability": "Time Off",
+    "time_off_description": "Set periods when this class cannot have lessons (e.g. lunch break, assembly).",
     "select_all": "Select All",
     "clear_all": "Clear All",
     "save_class": "Save Class",
@@ -191,20 +187,18 @@
       "short_name": "Short Name",
       "teacher": "Teacher",
       "rooms": "Rooms",
-      "availability": "Availability",
+      "availability": "Time Off",
       "updated_date": "Updated Date",
       "actions": "Actions"
     },
     "no_classes_found": "No classes found matching your search",
     "no_classes_yet": "No classes yet",
     "add_your_first_class": "Add your first class",
-    "items_per_page": "Items per page:"
-  ,
+    "items_per_page": "Items per page:",
     "failed_to_load_classes": "Failed to load classes",
     "deleted_success": "Class deleted successfully",
     "delete_failed": "Failed to delete class",
-    "name_required": "Please enter a class name"
-  ,
+    "name_required": "Please enter a class name",
     "tips": {
       "title": "Tips & Tricks",
       "tip1": {
@@ -244,10 +238,8 @@
     "title": "Rooms",
     "description": "Manage school rooms",
     "import": "Import",
-    "add_room": "Add Room"
-    ,
-    "unknown": "Unknown Room"
-    ,
+    "add_room": "Add Room",
+    "unknown": "Unknown Room",
     "type": {
       "label_prefix": "Room Type",
       "shared": {
@@ -305,9 +297,7 @@
     "no_subjects": "No subjects",
     "download_template": "Download Template",
     "import_teachers": "Import Teachers"
-  }
-
-  ,
+  },
   "timetables": {
     "title": "Timetables",
     "description": "View and manage generated timetables",
@@ -332,7 +322,6 @@
     "generate_name_required": "Please enter a timetable name",
     "cancel": "Cancel"
   },
-
   "landing": {
     "hero": {
       "badge": "🎓 Trusted by 500+ Schools Worldwide",

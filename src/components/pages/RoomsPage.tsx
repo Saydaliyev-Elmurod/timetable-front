@@ -112,10 +112,10 @@ export default function RoomsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  
+
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [deleteDialogRoom, setDeleteDialogRoom] = useState<RoomResponse | null>(null);
-  
+
   // Inline form state
   const [showInlineForm, setShowInlineForm] = useState(false);
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
@@ -135,12 +135,12 @@ export default function RoomsPage() {
     },
   });
   const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
-  
+
   // Availability view for existing rooms
   const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
 
   type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
@@ -174,7 +174,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     }
   };
 
-  const filteredRooms = React.useMemo(() => 
+  const filteredRooms = React.useMemo(() =>
     rooms.filter(
       (room) =>
         room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -208,7 +208,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
         sunday: [1, 2, 3, 4, 5, 6, 7],
       },
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleEdit = (room: RoomResponse) => {
@@ -221,7 +221,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       availability: convertFromTimeSlots(room.availabilities),
     });
     setShowInlineForm(true);
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleClone = (room: RoomResponse) => {
@@ -234,7 +234,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       allowedSubjectIds: room.allowedSubjectIds || [],
       availability: convertFromTimeSlots(room.availabilities),
     });
-    setShowAvailabilityInForm(false);
+    setShowAvailabilityInForm(true);
   };
 
   const handleSaveInlineForm = async () => {
@@ -294,7 +294,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
       const newPeriods = dayPeriods.includes(period)
         ? dayPeriods.filter((p: number) => p !== period)
         : [...dayPeriods, period].sort((a, b) => a - b);
-      
+
       return {
         ...prev,
         availability: {
@@ -308,7 +308,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   const toggleInlineDay = (day: DayOfWeek) => {
     const currentPeriods = inlineFormData.availability[day];
     const allSelected = periods.every(p => currentPeriods.includes(p));
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: {
@@ -321,7 +321,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
   const toggleInlinePeriodAcrossDays = (period: number) => {
     const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
     const newAvailability = { ...inlineFormData.availability };
-    
+
     days.forEach(day => {
       if (isSelected) {
         newAvailability[day] = newAvailability[day].filter(p => p !== period);
@@ -331,7 +331,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
         }
       }
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -343,7 +343,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     days.forEach(day => {
       newAvailability[day] = [...periods];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -355,7 +355,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
     days.forEach(day => {
       newAvailability[day] = [];
     });
-    
+
     setInlineFormData(prev => ({
       ...prev,
       availability: newAvailability
@@ -427,10 +427,33 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
         />
       </div>
 
-      {/* Inline Add/Edit/Clone Form */}
-      {showInlineForm && (
-        <Card className="border-2 border-green-500 bg-green-50/50 dark:bg-green-950/20">
-          <CardContent className="pt-6">
+      {/* Add / Edit Form (moved to Dialog) */}
+      <Dialog open={showInlineForm} onOpenChange={(open) => {
+        setShowInlineForm(open);
+        if (!open) {
+          setEditingRoomId(null);
+          setShowAvailabilityInForm(false);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>{editingRoomId ? 'Edit Room' : 'Add New Room'}</DialogTitle>
+                <DialogDescription />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => setShowInlineForm(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -466,25 +489,25 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
               {/* Room Type Selection */}
               <div className="space-y-2">
                 <Label>Xona turi</Label>
-                <Select 
-                  value={inlineFormData.type} 
+                <Select
+                  value={inlineFormData.type}
                   onValueChange={(value) => updateInlineFormField('type', value as RoomType)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value={RoomType.SHARED}>
-                        {t(ROOM_TYPE_DEFINITIONS[RoomType.SHARED].labelKey)}
-                      </SelectItem>
-                      <SelectItem value={RoomType.SPECIAL}>
-                        {t(ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].labelKey)}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t(ROOM_TYPE_DEFINITIONS[inlineFormData.type].descriptionKey)}
-                  </p>
+                    <SelectItem value={RoomType.SHARED}>
+                      {t(ROOM_TYPE_DEFINITIONS[RoomType.SHARED].labelKey)}
+                    </SelectItem>
+                    <SelectItem value={RoomType.SPECIAL}>
+                      {t(ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].labelKey)}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t(ROOM_TYPE_DEFINITIONS[inlineFormData.type].descriptionKey)}
+                </p>
               </div>
 
               {showAvailabilityInForm && (
@@ -515,7 +538,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                     {/* Period headers */}
                     <div className="grid grid-cols-8 gap-1">
                       <div className="p-1"></div>
-                        {periods.map((period) => (
+                      {periods.map((period) => (
                         <button
                           key={period}
                           onClick={() => toggleInlinePeriodAcrossDays(period)}
@@ -525,7 +548,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Days and periods */}
                     {days.map((day, dayIndex) => (
                       <div key={day} className="grid grid-cols-8 gap-1">
@@ -541,11 +564,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                             <button
                               key={period}
                               onClick={() => toggleInlineAvailability(day, period)}
-                              className={`p-1 text-center rounded border text-xs transition-colors ${
-                                isAvailable
+                              className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
                                   ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
                                   : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                              }`}
+                                }`}
                             >
                               {isAvailable ? '✓' : '—'}
                             </button>
@@ -559,9 +581,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <Button 
-                  onClick={handleSaveInlineForm} 
-                  size="sm" 
+                <Button
+                  onClick={handleSaveInlineForm}
+                  size="sm"
                   className="bg-green-600 hover:bg-green-700"
                   disabled={isSaving}
                 >
@@ -583,9 +605,9 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <Card>
@@ -631,7 +653,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            <Badge 
+                            <Badge
                               className={room.type === RoomType.SHARED ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'}
                             >
                               {t(ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].labelKey)}
@@ -717,12 +739,12 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                   </div>
                                 )}
                               </div>
-                              
+
                               <div className="flex items-center gap-2 mb-3">
                                 <Calendar className="h-4 w-4 text-blue-600" />
                                 <h4 className="text-blue-800 dark:text-blue-300">Weekly Availability</h4>
                               </div>
-                              
+
                               <div className="grid gap-2">
                                 {/* Period headers */}
                                 <div className="grid grid-cols-8 gap-1">
@@ -736,7 +758,7 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                     </div>
                                   ))}
                                 </div>
-                                
+
                                 {/* Days and availability */}
                                 {days.map((day, dayIndex) => (
                                   <div key={day} className="grid grid-cols-8 gap-1">
@@ -748,11 +770,10 @@ const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday
                                       return (
                                         <div
                                           key={period}
-                                          className={`p-1 text-center rounded border text-xs ${
-                                            isAvailable
+                                          className={`p-1 text-center rounded border text-xs ${isAvailable
                                               ? 'bg-blue-500 border-blue-600 text-white'
                                               : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
-                                          }`}
+                                            }`}
                                         >
                                           {isAvailable ? '✓' : '—'}
                                         </div>
