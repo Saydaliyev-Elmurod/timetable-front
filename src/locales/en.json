@@ -225,6 +225,20 @@
         "title": "Empty Fields",
         "desc": "Leave optional fields empty by using consecutive commas: name,,,,"
       }
+    },
+    "apply_to_others": {
+      "title": "Apply Availability to Other Classes",
+      "description": "Copy availability settings from <1>{{class}}</1> to other classes",
+      "select_classes": "Select classes to apply this change",
+      "select_all": "Select All",
+      "clear_all": "Clear All",
+      "will_be_updated": "Will be updated",
+      "selected": "Selected:",
+      "apply_button": "Apply to {{count}} {{class}}",
+      "cancel": "Cancel",
+      "success_message": "Availability settings applied to {{count}} {{class}}",
+      "error_select_one": "Please select at least one class",
+      "error_failed": "Failed to apply availability settings"
     }
   },
   "subjects": {

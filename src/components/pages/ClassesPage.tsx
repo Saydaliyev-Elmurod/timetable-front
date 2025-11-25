@@ -76,11 +76,13 @@ import {
   CommandItem,
 } from '../ui/command';
 import { cn } from '../ui/utils';
+
+import { organizationApi } from '../../api/organizationApi';
 const API_BASE_URL = 'http://localhost:8080';
 
-export default function ClassesPage({ onNavigate }) {
+export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation();
-  const [classes, setClasses] = useState([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -110,6 +112,7 @@ export default function ClassesPage({ onNavigate }) {
   const [changedClassAvailability, setChangedClassAvailability] = useState(null); // { classId, availability }
   const [isApplyToOthersOpen, setIsApplyToOthersOpen] = useState(false);
   const [selectedClassesForApply, setSelectedClassesForApply] = useState([]);
+  const [allClassesForModal, setAllClassesForModal] = useState([]);
 
   // Tips & Tricks sidebar state
   const [isTipsSidebarOpen, setIsTipsSidebarOpen] = useState(false);
@@ -139,7 +142,30 @@ export default function ClassesPage({ onNavigate }) {
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const periods = [1, 2, 3, 4, 5, 6, 7];
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+
+  useEffect(() => {
+    const fetchOrganizationSettings = async () => {
+      try {
+        const org = await organizationApi.get();
+        if (org && org.periods) {
+          // Count non-break periods
+          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
+          // Create array [1, 2, ..., count]
+          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
+          if (newPeriods.length > 0) {
+            setPeriods(newPeriods);
+
+            // Also update default availability in inline form data if it hasn't been modified yet
+            // or just ensure we use these periods when resetting the form.
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization settings:', error);
+      }
+    };
+    fetchOrganizationSettings();
+  }, []);
 
   // API helper functions
   const convertToTimeSlots = (availability) => {
@@ -298,6 +324,31 @@ export default function ClassesPage({ onNavigate }) {
     }
   }, [currentPage, itemsPerPage]);
 
+  // Fetch all classes for modal
+  const fetchAllClasses = useCallback(async () => {
+    try {
+      const response = await apiCall<any>(`${API_BASE_URL}/api/classes/v1/all`);
+      if (!response.error && response.data) {
+        const data = Array.isArray(response.data) ? response.data : [];
+        const convertedClasses = data.map((cls: any) => ({
+          id: cls?.id ?? 0,
+          name: cls?.name ?? 'Unnamed Class',
+          shortName: cls?.shortName ?? '',
+          isActive: cls?.isActive ?? true,
+          classTeacher: cls?.teacher?.id?.toString() || '',
+          roomIds: Array.isArray(cls?.rooms) ? cls.rooms.map((r: any) => String(r?.id ?? '')) : [],
+          availability: convertFromTimeSlots(cls?.availabilities),
+          updatedDate: cls?.updatedDate,
+          createdDate: cls?.createdDate
+        }));
+        setAllClassesForModal(convertedClasses);
+      }
+    } catch (error) {
+      console.error('Error fetching all classes:', error);
+      toast.error('Failed to load all classes');
+    }
+  }, []);
+
   // Fetch data on mount and when pagination changes
   useEffect(() => {
     fetchClasses();
@@ -375,13 +426,13 @@ export default function ClassesPage({ onNavigate }) {
       classTeacher: '',
       roomIds: [],
       availability: {
-        monday: [1, 2, 3, 4, 5, 6, 7],
-        tuesday: [1, 2, 3, 4, 5, 6, 7],
-        wednesday: [1, 2, 3, 4, 5, 6, 7],
-        thursday: [1, 2, 3, 4, 5, 6, 7],
-        friday: [1, 2, 3, 4, 5, 6, 7],
-        saturday: [1, 2, 3, 4, 5, 6, 7],
-        sunday: [1, 2, 3, 4, 5, 6, 7],
+        monday: periods,
+        tuesday: periods,
+        wednesday: periods,
+        thursday: periods,
+        friday: periods,
+        saturday: periods,
+        sunday: periods,
       },
     });
     // When opening in modal, show availability calendar by default
@@ -727,11 +778,11 @@ export default function ClassesPage({ onNavigate }) {
           name: `Grade ${grade} ${letter}`,
           shortName: className,
           availabilities: convertToTimeSlots({
-            monday: [1, 2, 3, 4, 5, 6, 7],
-            tuesday: [1, 2, 3, 4, 5, 6, 7],
-            wednesday: [1, 2, 3, 4, 5, 6, 7],
-            thursday: [1, 2, 3, 4, 5, 6, 7],
-            friday: [1, 2, 3, 4, 5, 6, 7],
+            monday: periods,
+            tuesday: periods,
+            wednesday: periods,
+            thursday: periods,
+            friday: periods,
             saturday: [],
             sunday: [],
           }),
@@ -760,9 +811,9 @@ export default function ClassesPage({ onNavigate }) {
       const failedCount = responses.filter(r => r.error).length;
 
       if (failedCount > 0) {
-        toast.error(`Failed to create ${failedCount} of ${newClasses.length} classes`);
+        toast.error(t('classes.apply_to_others.error_failed'));
       } else {
-        toast.success(`${newClasses.length} classes created successfully`);
+        toast.success(t('classes.apply_to_others.success_message', { count: selectedClassesForApply.length, class: selectedClassesForApply.length === 1 ? 'class' : 'classes' }));
       }
 
       setIsBatchCreateOpen(false);
@@ -820,6 +871,7 @@ export default function ClassesPage({ onNavigate }) {
   const handleOpenApplyToOthers = () => {
     setIsApplyToOthersOpen(true);
     setSelectedClassesForApply([]);
+    fetchAllClasses();
   };
 
   const handleToggleClassForApply = (classId) => {
@@ -831,7 +883,7 @@ export default function ClassesPage({ onNavigate }) {
   };
 
   const handleSelectAllForApply = () => {
-    const otherClasses = classes
+    const otherClasses = allClassesForModal
       .filter(cls => cls.id !== changedClassAvailability?.classId)
       .map(cls => cls.id);
     setSelectedClassesForApply(otherClasses);
@@ -843,42 +895,30 @@ export default function ClassesPage({ onNavigate }) {
 
   const handleApplyToSelectedClasses = async () => {
     if (selectedClassesForApply.length === 0) {
-      toast.error('Please select at least one class');
+      toast.error(t('classes.apply_to_others.error_select_one'));
       return;
     }
 
     setLoading(true);
     try {
       const sourceAvailability = changedClassAvailability.availability;
-      const availabilities = convertToTimeSlots(sourceAvailability);
+      const timeSlots = convertToTimeSlots(sourceAvailability);
 
-      // Update all selected classes
-      const promises = selectedClassesForApply.map(classId => {
-        const classItem = classes.find(c => c.id === classId);
-        if (!classItem) return Promise.resolve();
+      const requestBody = {
+        applyTo: selectedClassesForApply,
+        timeOff: timeSlots
+      };
 
-        const requestData = {
-          name: classItem.name,
-          shortName: classItem.shortName,
-          availabilities: availabilities,
-          teacherId: null,
-          rooms: []
-        };
-
-        return apiCall(`${API_BASE_URL}/api/classes/v1/${classId}`, {
-          method: 'PUT',
-          body: JSON.stringify(requestData),
-        });
+      const response = await apiCall(`${API_BASE_URL}/api/classes/v1/timeoff`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
       });
 
-      const responses = await Promise.all(promises);
-      const failedCount = responses.filter(r => r && r.error).length;
-
-      if (failedCount > 0) {
-        toast.error(`Failed to update ${failedCount} of ${selectedClassesForApply.length} classes`);
-      } else {
-        toast.success(`Availability settings applied to ${selectedClassesForApply.length} ${selectedClassesForApply.length === 1 ? 'class' : 'classes'}`);
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to apply availability');
       }
+
+      toast.success(`Availability settings applied to ${selectedClassesForApply.length} classes`);
 
       setIsApplyToOthersOpen(false);
       setChangedClassAvailability(null);
@@ -886,7 +926,7 @@ export default function ClassesPage({ onNavigate }) {
       fetchClasses();
     } catch (error) {
       console.error('Error applying availability:', error);
-      toast.error('Failed to apply availability settings');
+      toast.error(t('classes.apply_to_others.error_failed'));
     } finally {
       setLoading(false);
     }
@@ -2137,15 +2177,17 @@ export default function ClassesPage({ onNavigate }) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Share2 className="h-5 w-5 text-blue-600" />
-                Apply Availability to Other Classes
+                {t('classes.apply_to_others.title')}
               </DialogTitle>
               <DialogDescription>
                 {changedClassAvailability && (
-                  <>
-                    Copy availability settings from <span className="font-medium text-blue-600">
-                      {classes.find(c => c.id === changedClassAvailability.classId)?.shortName}
-                    </span> to other classes
-                  </>
+                  <p className="text-sm text-muted-foreground">
+                    {t('classes.apply_to_others.description', {
+                      class: allClassesForModal.find(c => c.id === changedClassAvailability.classId)?.shortName || classes.find(c => c.id === changedClassAvailability.classId)?.shortName
+                    }).split('<1>').map((part, i) =>
+                      i === 1 ? <span key={i} className="font-medium text-blue-600">{part.replace('</1>', '')}</span> : part
+                    )}
+                  </p>
                 )}
               </DialogDescription>
             </DialogHeader>
@@ -2154,7 +2196,7 @@ export default function ClassesPage({ onNavigate }) {
               {/* Action buttons */}
               <div className="flex items-center justify-between pb-2 border-b">
                 <p className="text-sm text-muted-foreground">
-                  Select classes to apply this change
+                  {t('classes.apply_to_others.select_classes')}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -2163,7 +2205,7 @@ export default function ClassesPage({ onNavigate }) {
                     onClick={handleSelectAllForApply}
                     className="h-8 text-xs"
                   >
-                    Select All
+                    {t('classes.apply_to_others.select_all')}
                   </Button>
                   <Button
                     variant="outline"
@@ -2171,14 +2213,14 @@ export default function ClassesPage({ onNavigate }) {
                     onClick={handleDeselectAllForApply}
                     className="h-8 text-xs"
                   >
-                    Clear All
+                    {t('classes.apply_to_others.clear_all')}
                   </Button>
                 </div>
               </div>
 
               {/* Classes list */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                {classes
+                {allClassesForModal
                   .filter(cls => cls.id !== changedClassAvailability?.classId)
                   .sort((a, b) => a.shortName.localeCompare(b.shortName))
                   .map(classItem => (
@@ -2212,7 +2254,7 @@ export default function ClassesPage({ onNavigate }) {
                         </div>
                         {selectedClassesForApply.includes(classItem.id) && (
                           <div className="flex items-center gap-2 text-blue-600 animate-in fade-in slide-in-from-right-2">
-                            <span className="text-sm">Will be updated</span>
+                            <span className="text-sm">{t('classes.apply_to_others.will_be_updated')}</span>
                             <Badge className="bg-blue-600 text-white">
                               {changedClassAvailability && getTotalAvailablePeriods(changedClassAvailability.availability)} periods
                             </Badge>
@@ -2228,10 +2270,10 @@ export default function ClassesPage({ onNavigate }) {
                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Selected:</span>
+                    <span className="text-sm font-medium">{t('classes.apply_to_others.selected')}</span>
                   </div>
                   <Badge className="bg-blue-600 text-white">
-                    {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'class' : 'classes'}
+                    {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? t('lessons.classes_count', { count: 1 }).replace('1 ', '') : t('lessons.classes_count', { count: 2 }).replace('2 ', '')}
                   </Badge>
                 </div>
               )}
@@ -2245,7 +2287,7 @@ export default function ClassesPage({ onNavigate }) {
                   setSelectedClassesForApply([]);
                 }}
               >
-                Cancel
+                {t('classes.apply_to_others.cancel')}
               </Button>
               <Button
                 onClick={handleApplyToSelectedClasses}
@@ -2253,7 +2295,7 @@ export default function ClassesPage({ onNavigate }) {
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
               >
                 <Check className="mr-2 h-4 w-4" />
-                Apply to {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? 'Class' : 'Classes'}
+                {t('classes.apply_to_others.apply_button', { count: selectedClassesForApply.length, class: selectedClassesForApply.length === 1 ? 'Class' : 'Classes' })}
               </Button>
             </DialogFooter>
           </DialogContent>

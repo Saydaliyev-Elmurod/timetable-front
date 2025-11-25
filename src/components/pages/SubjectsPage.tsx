@@ -91,6 +91,7 @@ interface PageResponse<T> {
 
 // Import services
 import { SubjectService } from '@/lib/subjects';
+import { organizationApi } from '../../api/organizationApi';
 
 // Using SubjectService imported from @/lib/subjects
 
@@ -214,7 +215,25 @@ export default function SubjectsPage() {
 
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const periods = [1, 2, 3, 4, 5, 6, 7];
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+
+  useEffect(() => {
+    const fetchOrganizationSettings = async () => {
+      try {
+        const org = await organizationApi.get();
+        if (org && org.periods) {
+          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
+          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
+          if (newPeriods.length > 0) {
+            setPeriods(newPeriods);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization settings:', error);
+      }
+    };
+    fetchOrganizationSettings();
+  }, []);
 
   // Fetch subjects on mount and when pagination changes
   useEffect(() => {
@@ -266,13 +285,13 @@ export default function SubjectsPage() {
       color: '#3b82f6',
       difficulty: 5,
       availability: {
-        monday: [1, 2, 3, 4, 5, 6, 7],
-        tuesday: [1, 2, 3, 4, 5, 6, 7],
-        wednesday: [1, 2, 3, 4, 5, 6, 7],
-        thursday: [1, 2, 3, 4, 5, 6, 7],
-        friday: [1, 2, 3, 4, 5, 6, 7],
-        saturday: [1, 2, 3, 4, 5, 6, 7],
-        sunday: [1, 2, 3, 4, 5, 6, 7],
+        monday: periods,
+        tuesday: periods,
+        wednesday: periods,
+        thursday: periods,
+        friday: periods,
+        saturday: periods,
+        sunday: periods,
       },
     });
     setShowAvailabilityInForm(true);

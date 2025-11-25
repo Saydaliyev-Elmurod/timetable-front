@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Trash2, Plus, Upload, ArrowUpDown, Info, ChevronRight, X, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { Badge } from '../ui/badge';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
-
+import { organizationApi } from '../../api/organizationApi';
 interface ClassRow {
   id: string;
   name: string;
@@ -38,9 +38,27 @@ interface ClassRow {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
-export default function ClassSetupPage({ onNavigate }) {
+export default function ClassSetupPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+
+  useEffect(() => {
+    const fetchOrganizationSettings = async () => {
+      try {
+        const org = await organizationApi.get();
+        if (org && org.periods) {
+          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
+          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
+          if (newPeriods.length > 0) {
+            setPeriods(newPeriods);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization settings:', error);
+      }
+    };
+    fetchOrganizationSettings();
+  }, []);
   const [showShortNames, setShowShortNames] = useState(true);
   const [classes, setClasses] = useState<ClassRow[]>([
     { id: '1', name: '10th Grade', shortName: '10th', teacher: '', availability: 'all' },
@@ -119,7 +137,7 @@ export default function ClassSetupPage({ onNavigate }) {
       toast.error('Please fill in all class names');
       return;
     }
-    
+
     // Check for duplicates
     const names = classes.map(cls => cls.name.toLowerCase());
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
@@ -139,11 +157,11 @@ export default function ClassSetupPage({ onNavigate }) {
     if (!classRow.availabilitySchedule[day]) {
       classRow.availabilitySchedule[day] = {};
     }
-    
+
     const isCurrentlyAvailable = classRow.availabilitySchedule[day][period] !== false;
     classRow.availabilitySchedule[day][period] = !isCurrentlyAvailable;
-    
-    setClasses(prev => prev.map(cls => 
+
+    setClasses(prev => prev.map(cls =>
       cls.id === classRow.id ? { ...classRow } : cls
     ));
   }, []);
@@ -412,111 +430,111 @@ export default function ClassSetupPage({ onNavigate }) {
               </DialogHeader>
 
               <div className="space-y-4 mt-4">
-            <div className="flex items-center gap-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-              <Info className="h-5 w-5 text-blue-600" />
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                Schedule: <span className="font-medium">Default Schedule</span> (Weekly) • 6 working days • 7 maximum periods
-              </p>
-            </div>
-
-            <div className="flex items-center gap-6 p-3 rounded-lg border">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded bg-green-100 dark:bg-green-900 border-2 border-green-500 flex items-center justify-center">
-                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                <div className="flex items-center gap-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <Info className="h-5 w-5 text-blue-600" />
+                  <p className="text-sm text-blue-900 dark:text-blue-100">
+                    Schedule: <span className="font-medium">Default Schedule</span> (Weekly) • 6 working days • 7 maximum periods
+                  </p>
                 </div>
-                <span className="text-sm">Available</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded bg-red-100 dark:bg-red-900 border-2 border-red-500 flex items-center justify-center">
-                  <X className="h-3 w-3 text-red-600" />
-                </div>
-                <span className="text-sm">Time Off</span>
-              </div>
-            </div>
 
-            {/* Availability Grid */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="p-3 text-left text-sm font-medium border-r">Period/Day</th>
-                      {DAYS.map((day) => (
-                        <th key={day} className="p-3 text-center text-sm font-medium border-r last:border-r-0">
-                          {day}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PERIODS.map((period) => (
-                      <tr key={period} className="border-t">
-                        <td className="p-3 font-medium text-sm border-r bg-muted/50">
-                          Period {period}
-                        </td>
-                        {DAYS.map((day) => {
-                          const isAvailable = isPeriodAvailable(selectedClassForAvailability, day, period);
-                          return (
-                            <td
-                              key={`${day}-${period}`}
-                              className="p-2 text-center border-r last:border-r-0 cursor-pointer hover:bg-accent/50 transition-colors"
-                              onClick={() => selectedClassForAvailability && toggleAvailability(selectedClassForAvailability, day, period)}
-                            >
-                              <div className={`
-                                h-12 rounded flex items-center justify-center transition-all
-                                ${isAvailable 
-                                  ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500 hover:bg-green-200' 
-                                  : 'bg-red-100 dark:bg-red-900/30 border-2 border-red-500 hover:bg-red-200'
-                                }
-                              `}>
-                                {isAvailable ? (
-                                  <div className="text-center">
-                                    <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />
-                                    <span className="text-xs text-green-700 dark:text-green-400">
-                                      {(9 + Math.floor((period - 1) * 1.5)).toString().padStart(2, '0')}:00 - {(9 + Math.floor(period * 1.5)).toString().padStart(2, '0')}:45
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="text-center">
-                                    <X className="h-4 w-4 text-red-600 mx-auto" />
-                                    <span className="text-xs text-red-700 dark:text-red-400">
-                                      {(9 + Math.floor((period - 1) * 1.5)).toString().padStart(2, '0')}:00 - {(9 + Math.floor(period * 1.5)).toString().padStart(2, '0')}:45
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                <div className="flex items-center gap-6 p-3 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded bg-green-100 dark:bg-green-900 border-2 border-green-500 flex items-center justify-center">
+                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    </div>
+                    <span className="text-sm">Available</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded bg-red-100 dark:bg-red-900 border-2 border-red-500 flex items-center justify-center">
+                      <X className="h-3 w-3 text-red-600" />
+                    </div>
+                    <span className="text-sm">Time Off</span>
+                  </div>
+                </div>
+
+                {/* Availability Grid */}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="p-3 text-left text-sm font-medium border-r">Period/Day</th>
+                          {DAYS.map((day) => (
+                            <th key={day} className="p-3 text-center text-sm font-medium border-r last:border-r-0">
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {periods.map((period) => (
+                          <tr key={period} className="border-t">
+                            <td className="p-3 font-medium text-sm border-r bg-muted/50">
+                              Period {period}
                             </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                            {DAYS.map((day) => {
+                              const isAvailable = isPeriodAvailable(selectedClassForAvailability, day, period);
+                              return (
+                                <td
+                                  key={`${day}-${period}`}
+                                  className="p-2 text-center border-r last:border-r-0 cursor-pointer hover:bg-accent/50 transition-colors"
+                                  onClick={() => selectedClassForAvailability && toggleAvailability(selectedClassForAvailability, day, period)}
+                                >
+                                  <div className={`
+                                h-12 rounded flex items-center justify-center transition-all
+                                ${isAvailable
+                                      ? 'bg-green-100 dark:bg-green-900/30 border-2 border-green-500 hover:bg-green-200'
+                                      : 'bg-red-100 dark:bg-red-900/30 border-2 border-red-500 hover:bg-red-200'
+                                    }
+                              `}>
+                                    {isAvailable ? (
+                                      <div className="text-center">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />
+                                        <span className="text-xs text-green-700 dark:text-green-400">
+                                          {(9 + Math.floor((period - 1) * 1.5)).toString().padStart(2, '0')}:00 - {(9 + Math.floor(period * 1.5)).toString().padStart(2, '0')}:45
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-center">
+                                        <X className="h-4 w-4 text-red-600 mx-auto" />
+                                        <span className="text-xs text-red-700 dark:text-red-400">
+                                          {(9 + Math.floor((period - 1) * 1.5)).toString().padStart(2, '0')}:00 - {(9 + Math.floor(period * 1.5)).toString().padStart(2, '0')}:45
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => setSelectedClassForAvailability(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => {
-                const hasTimeOff = selectedClassForAvailability?.availabilitySchedule && 
-                  Object.values(selectedClassForAvailability.availabilitySchedule).some(day => 
-                    Object.values(day).some(available => available === false)
-                  );
-                
-                setClasses(prev => prev.map(cls => 
-                  cls.id === selectedClassForAvailability?.id 
-                    ? { ...cls, availability: hasTimeOff ? 'timeoff' : 'all' }
-                    : cls
-                ));
-                setSelectedClassForAvailability(null);
-                toast.success('Availability updated');
-              }}>
-                Save Changes
-              </Button>
-            </div>
-          </div>
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setSelectedClassForAvailability(null)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={() => {
+                    const hasTimeOff = selectedClassForAvailability?.availabilitySchedule &&
+                      Object.values(selectedClassForAvailability.availabilitySchedule).some(day =>
+                        Object.values(day).some(available => available === false)
+                      );
+
+                    setClasses(prev => prev.map(cls =>
+                      cls.id === selectedClassForAvailability?.id
+                        ? { ...cls, availability: hasTimeOff ? 'timeoff' : 'all' }
+                        : cls
+                    ));
+                    setSelectedClassForAvailability(null);
+                    toast.success('Availability updated');
+                  }}>
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </DialogContent>

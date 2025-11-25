@@ -8,7 +8,7 @@ export type Locale = 'uz' | 'ru' | 'en';
 
 const defaultLocale: Locale = 'uz';
 
-const resources: Record<Locale, Record<string, string>> = {
+const resources: Record<Locale, any> = {
   uz,
   ru,
   en,
@@ -16,7 +16,7 @@ const resources: Record<Locale, Record<string, string>> = {
 
 interface I18nContextValue {
   locale: Locale;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, params?: Record<string, any> | string, fallback?: string) => string;
   setLocale: (l: Locale) => void;
 }
 
@@ -34,23 +34,49 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const setLocale = (l: Locale) => setLocaleState(l);
 
-  const t = (key: string, fallback = ''): string => {
+  const t = (key: string, params?: Record<string, any> | string, fallback = ''): string => {
+    let actualParams: Record<string, any> = {};
+    let actualFallback = fallback;
+
+    if (typeof params === 'string') {
+      actualFallback = params;
+    } else if (typeof params === 'object' && params !== null) {
+      actualParams = params;
+    }
+
     const parts = key.split('.');
     let current: any = resources[locale];
     for (const p of parts) {
       if (!current) break;
       current = current[p];
     }
-    if (typeof current === 'string') return current;
-    // fallback to default locale
-    const defaultParts = key.split('.');
-    let curDefault: any = resources[defaultLocale];
-    for (const p of defaultParts) {
-      if (!curDefault) break;
-      curDefault = curDefault[p];
+
+    let result = '';
+    if (typeof current === 'string') {
+      result = current;
+    } else {
+      // fallback to default locale
+      const defaultParts = key.split('.');
+      let curDefault: any = resources[defaultLocale];
+      for (const p of defaultParts) {
+        if (!curDefault) break;
+        curDefault = curDefault[p];
+      }
+      if (typeof curDefault === 'string') {
+        result = curDefault;
+      } else {
+        result = actualFallback || key;
+      }
     }
-    if (typeof curDefault === 'string') return curDefault;
-    return fallback || key;
+
+    // Interpolation
+    if (Object.keys(actualParams).length > 0) {
+      Object.entries(actualParams).forEach(([k, v]) => {
+        result = result.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
+      });
+    }
+
+    return result;
   };
 
   const value = useMemo(() => ({ locale, t, setLocale }), [locale]);

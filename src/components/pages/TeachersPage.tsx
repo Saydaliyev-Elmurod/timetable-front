@@ -84,6 +84,7 @@ import type { PaginatedResponse } from '@/lib/api';
 
 // Import API configuration
 import { API_CONFIG, getApiUrl, safeApiCall } from '@/config/api';
+import { organizationApi } from '../../api/organizationApi';
 
 // Using imported TeacherService and SubjectService
 
@@ -172,7 +173,25 @@ export default function TeachersPage() {
 
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const periods = [1, 2, 3, 4, 5, 6, 7];
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+
+  useEffect(() => {
+    const fetchOrganizationSettings = async () => {
+      try {
+        const org = await organizationApi.get();
+        if (org && org.periods) {
+          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
+          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
+          if (newPeriods.length > 0) {
+            setPeriods(newPeriods);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization settings:', error);
+      }
+    };
+    fetchOrganizationSettings();
+  }, []);
 
   // Fetch teachers on mount and when pagination changes
   useEffect(() => {
@@ -258,13 +277,13 @@ export default function TeachersPage() {
       shortName: '',
       selectedSubjectIds: [],
       availability: {
-        monday: [1, 2, 3, 4, 5, 6, 7],
-        tuesday: [1, 2, 3, 4, 5, 6, 7],
-        wednesday: [1, 2, 3, 4, 5, 6, 7],
-        thursday: [1, 2, 3, 4, 5, 6, 7],
-        friday: [1, 2, 3, 4, 5, 6, 7],
-        saturday: [1, 2, 3, 4, 5, 6, 7],
-        sunday: [1, 2, 3, 4, 5, 6, 7],
+        monday: periods,
+        tuesday: periods,
+        wednesday: periods,
+        thursday: periods,
+        friday: periods,
+        saturday: periods,
+        sunday: periods,
       },
     });
     setShowAvailabilityInForm(true);
@@ -712,8 +731,8 @@ export default function TeachersPage() {
                               key={period}
                               onClick={() => toggleInlineAvailability(day, period)}
                               className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
-                                  ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
-                                  : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                                ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
+                                : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
                                 }`}
                             >
                               {isAvailable ? '✓' : '—'}
@@ -902,8 +921,8 @@ export default function TeachersPage() {
                                         <div
                                           key={period}
                                           className={`p-1 text-center rounded border text-xs ${isAvailable
-                                              ? 'bg-green-500 border-green-600 text-white'
-                                              : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
+                                            ? 'bg-green-500 border-green-600 text-white'
+                                            : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
                                             }`}
                                         >
                                           {isAvailable ? '✓' : '—'}

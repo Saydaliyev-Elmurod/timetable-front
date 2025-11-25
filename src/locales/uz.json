@@ -92,8 +92,7 @@
     "apply_continuity_class": "Davomiylik jarimasi (sinf)",
     "apply_balanced_load": "Yukni muvozanatlashtirish",
     "apply_daily_subject_distribution": "Kunlik fan taqsimoti",
-    "optimizing": "Optimallashtirilmoqda..."
-    ,
+    "optimizing": "Optimallashtirilmoqda...",
     "no_lessons_found": "Darslar topilmadi"
   },
   "dashboard": {
@@ -137,8 +136,7 @@
       "friday": "Juma",
       "saturday": "Shanba",
       "sunday": "Yakshanba"
-    }
-    ,
+    },
     "period": "Dars",
     "break": "Tanaffus",
     "period_name_placeholder": "Dars nomi...",
@@ -154,12 +152,10 @@
     "minutes": "daqiqa",
     "no_periods_configured": "Hech qanday dars konfiguratsiyasi yo'q",
     "click_add_period": "Qo'shish tugmasini bosing va birinchi darsni yarating"
-  }
-  ,
+  },
   "availability": {
     "period_prefix": "P"
-  }
-  ,
+  },
   "classes": {
     "title": "Sinflar",
     "description": "Sinflar jadvali va mavjudligini boshqaring",
@@ -201,8 +197,7 @@
     "failed_to_load_classes": "Sinflarni yuklashda xatolik",
     "deleted_success": "Sinf muvaffaqiyatli o'chirildi",
     "delete_failed": "Sinfni o'chirishda xatolik",
-    "name_required": "Iltimos, sinf nomini kiriting"
-    ,
+    "name_required": "Iltimos, sinf nomini kiriting",
     "tips": {
       "title": "Maslahatlar va fokuslar",
       "tip1": {
@@ -229,6 +224,20 @@
         "title": "Bo'sh maydonlar",
         "desc": "Ixtiyoriy maydonlarni bo'sh qoldiring: name,,,,"
       }
+    },
+    "apply_to_others": {
+      "title": "Mavjudlikni boshqa sinflarga qo'llash",
+      "description": "<1>{{class}}</1> dan mavjudlik sozlamalarini boshqa sinflarga nusxalash",
+      "select_classes": "O'zgarishlarni qo'llash uchun sinflarni tanlang",
+      "select_all": "Hammasini tanlash",
+      "clear_all": "Hammasini tozalash",
+      "will_be_updated": "Yangilanadi",
+      "selected": "Tanlangan:",
+      "apply_button": "{{count}} {{class}}ga qo'llash",
+      "cancel": "Bekor qilish",
+      "success_message": "Mavjudlik sozlamalari {{count}} {{class}}ga qo'llaniladi",
+      "error_select_one": "Iltimos, kamida bitta sinfni tanlang",
+      "error_failed": "Mavjudlik sozlamalarini qo'llashda xatolik"
     }
   },
   "subjects": {
@@ -242,10 +251,8 @@
     "title": "Xonalar",
     "description": "Maktab xonalarini boshqarish",
     "import": "Import",
-    "add_room": "Xona qo'shish"
-    ,
-    "unknown": "Noma'lum xona"
-    ,
+    "add_room": "Xona qo'shish",
+    "unknown": "Noma'lum xona",
     "type": {
       "label_prefix": "Xona turi",
       "shared": {
@@ -304,7 +311,6 @@
     "download_template": "Shablonni yuklab olish",
     "import_teachers": "O'qituvchilarni import qilish"
   },
-
   "timetables": {
     "title": "Dars jadvallari",
     "description": "Yaratilgan dars jadvallarini ko'rish va boshqarish",
@@ -329,8 +335,6 @@
     "generate_name_required": "Iltimos, jadval uchun nom kiriting",
     "cancel": "Bekor qilish"
   },
- 
-
   "landing": {
     "hero": {
       "badge": "🎓 Dunyo bo'ylab 500+ maktab ishonadi",

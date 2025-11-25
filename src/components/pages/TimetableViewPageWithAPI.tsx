@@ -61,6 +61,7 @@ import {
   initializeMockLessons
 } from "../api/timetableActionApi";
 import { apiCall } from '@/lib/api';
+import { organizationApi } from '../../api/organizationApi';
 
 // API Types based on backend entities
 interface TimeSlot {
@@ -194,6 +195,7 @@ const SUBJECT_COLORS: Record<string, string> = {
 };
 
 // Draggable Lesson Card Component
+// Draggable Lesson Card Component
 const DraggableLessonCard = ({
   lesson,
   onEdit,
@@ -203,6 +205,7 @@ const DraggableLessonCard = ({
   isUnplaced = false,
   compact = false,
   showClass = false,
+  hasConflict = false,
 }: {
   lesson: Lesson | UnplacedLesson;
   onEdit: (lesson: Lesson | UnplacedLesson) => void;
@@ -212,6 +215,7 @@ const DraggableLessonCard = ({
   isUnplaced?: boolean;
   compact?: boolean;
   showClass?: boolean;
+  hasConflict?: boolean;
 }) => {
   const [{ opacity }, drag] = useDrag(
     () => ({
@@ -230,18 +234,26 @@ const DraggableLessonCard = ({
     SUBJECT_COLORS[lesson.subject as keyof typeof SUBJECT_COLORS] ||
     "bg-gray-100 border-gray-300 text-gray-900";
 
+  // Visual strips logic
+  const hasNoRoom = !lesson.roomId || lesson.roomId === 0;
+
   if (isUnplaced) {
     return (
       <div
         ref={drag}
         style={{ opacity }}
         className={cn(
-          "p-3 rounded-lg border-2 cursor-move hover:shadow-md transition-shadow",
+          "p-3 rounded-lg border-2 cursor-move hover:shadow-md transition-shadow relative overflow-hidden",
           subjectColor,
           "mb-3",
         )}
       >
-        <div className="flex items-start gap-2">
+        {/* White strip for no room */}
+        {hasNoRoom && (
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
+        )}
+
+        <div className={cn("flex items-start gap-2", hasNoRoom && "pl-2")}>
           <GripVertical className="h-4 w-4 mt-0.5 opacity-50" />
           <div className="flex-1">
             {displayOptions.showSubject && (
@@ -267,13 +279,23 @@ const DraggableLessonCard = ({
           ref={drag}
           style={{ opacity }}
           className={cn(
-            "p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full",
+            "p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden",
             subjectColor,
             lesson.isLocked && "ring-2 ring-yellow-500",
             compact && "p-1.5",
           )}
         >
-          <div className="flex items-start justify-between gap-1">
+          {/* White strip for no room */}
+          {hasNoRoom && (
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
+          )}
+
+          {/* Red strip for conflict/warning */}
+          {hasConflict && (
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500" />
+          )}
+
+          <div className={cn("flex items-start justify-between gap-1", hasNoRoom && "pl-2", hasConflict && "pt-1")}>
             <div className="flex-1 min-w-0">
               {displayOptions.showSubject && (
                 <div
@@ -389,6 +411,7 @@ const DroppableTimeSlot = ({
   showClass = false,
   draggedLesson,
   allLessons,
+  rowClass,
 }: {
   day: string;
   timeSlot: number;
@@ -402,27 +425,60 @@ const DroppableTimeSlot = ({
   showClass?: boolean;
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
+  rowClass?: string;
 }) => {
-  const [{ isOver }, drop] = useDrop(
+  const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
       accept: "lesson",
+      canDrop: (item: Lesson) => {
+        // Only allow dropping if it's the same class
+        if (rowClass && item.class !== rowClass) {
+          return false;
+        }
+        return true;
+      },
       drop: (item: Lesson) => onDrop(item, day, timeSlot),
       collect: (monitor) => ({
         isOver: !!monitor.isOver(),
+        canDrop: !!monitor.canDrop(),
       }),
     }),
-    [day, timeSlot],
+    [day, timeSlot, rowClass],
   );
 
-  // Conflict Detection Logic
+  // Calculate conflict for the CURRENT lesson in this slot (if any)
+  const currentLessonConflict = useMemo(() => {
+    if (!lesson || !allLessons) return false;
+
+    return allLessons.some(l =>
+      l.id !== lesson.id &&
+      l.day === day &&
+      l.timeSlot === timeSlot &&
+      (
+        l.teacherId === lesson.teacherId || // Teacher double booking
+        (l.roomId !== 0 && l.roomId === lesson.roomId) || // Room double booking
+        l.classId === lesson.classId // Class double booking
+      )
+    );
+  }, [lesson, allLessons, day, timeSlot]);
+
+  // Conflict Detection Logic for DRAGGED lesson
   const getSlotStyle = () => {
     if (!draggedLesson || !allLessons) {
       // Default behavior when not dragging
       return cn(
-        "border border-gray-200 p-1 transition-colors",
+        "border border-gray-200 p-1 transition-colors relative",
         compact ? "min-h-[60px]" : "min-h-[70px]",
-        isOver && "bg-blue-50 border-blue-300",
+        isOver && canDrop && "bg-blue-50 border-blue-300",
         !lesson && "hover:bg-gray-50"
+      );
+    }
+
+    // If we are dragging, but this slot is not a valid target (wrong class)
+    if (rowClass && draggedLesson.class !== rowClass) {
+      return cn(
+        "border border-gray-200 p-1 transition-colors relative opacity-50 bg-gray-100",
+        compact ? "min-h-[60px]" : "min-h-[70px]"
       );
     }
 
@@ -430,33 +486,16 @@ const DroppableTimeSlot = ({
     if (
       draggedLesson.day === day &&
       draggedLesson.timeSlot === timeSlot &&
-      draggedLesson.classId === (lesson?.classId || draggedLesson.classId) // Heuristic
+      draggedLesson.class === rowClass
     ) {
       return cn(
-        "border border-gray-200 p-1 transition-colors",
+        "border border-gray-200 p-1 transition-colors relative",
         compact ? "min-h-[60px]" : "min-h-[70px]",
         "bg-gray-50"
       );
     }
 
-    // 1. Class Conflict (Red) - "qizil sinfda dars bor"
-    // Check if the dragged lesson's class already has a lesson at this time (excluding the dragged lesson itself)
-    const classConflict = allLessons.some(
-      (l) =>
-        l.id !== draggedLesson.id &&
-        l.classId === draggedLesson.classId &&
-        l.day === day &&
-        l.timeSlot === timeSlot
-    );
-
-    if (classConflict) {
-      return cn(
-        "border border-red-300 p-1 transition-colors bg-red-100",
-        compact ? "min-h-[60px]" : "min-h-[70px]"
-      );
-    }
-
-    // 2. Teacher Conflict (Black) - "qora oqituvchida dars bor"
+    // 1. Teacher Conflict (Red - "B" in docs)
     // Check if the dragged lesson's teacher already has a lesson at this time
     const teacherConflict = allLessons.some(
       (l) =>
@@ -468,16 +507,13 @@ const DroppableTimeSlot = ({
 
     if (teacherConflict) {
       return cn(
-        "border border-gray-800 p-1 transition-colors bg-slate-900 text-white", // Using slate-900 for "black"
+        "border border-red-300 p-1 transition-colors bg-red-100 relative",
         compact ? "min-h-[60px]" : "min-h-[70px]"
       );
     }
 
-    // 3. Room Conflict (Blue) - "koko xonada dars bor"
+    // 2. Room Conflict (Blue - "C" in docs - Questionable)
     // Check if the dragged lesson's room is occupied at this time
-    // Note: If the dragged lesson has no room assigned yet (unplaced), we might skip this or check if target slot has a room?
-    // Assuming we check the room assigned to the dragged lesson (if any).
-    // If the lesson is being moved, it keeps its room unless changed.
     if (draggedLesson.roomId) {
       const roomConflict = allLessons.some(
         (l) =>
@@ -489,15 +525,15 @@ const DroppableTimeSlot = ({
 
       if (roomConflict) {
         return cn(
-          "border border-blue-300 p-1 transition-colors bg-blue-100",
+          "border border-blue-300 p-1 transition-colors bg-blue-100 relative",
           compact ? "min-h-[60px]" : "min-h-[70px]"
         );
       }
     }
 
-    // 4. No Conflict (Green) - "agar hammasi ok bolsa yashil"
+    // 3. No Conflict (Green - "A" in docs)
     return cn(
-      "border border-green-300 p-1 transition-colors bg-green-100",
+      "border border-green-300 p-1 transition-colors bg-green-100 relative",
       compact ? "min-h-[60px]" : "min-h-[70px]"
     );
   };
@@ -516,6 +552,7 @@ const DroppableTimeSlot = ({
           displayOptions={displayOptions}
           compact={compact}
           showClass={showClass}
+          hasConflict={currentLessonConflict}
         />
       )}
     </div>
@@ -555,9 +592,19 @@ const ClassViewGrid = ({
     );
   };
 
+  const isTargetClass = draggedLesson?.class === className;
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3">
+    <div
+      className={cn(
+        "bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all",
+        isTargetClass && "ring-4 ring-green-400 border-green-500 shadow-lg"
+      )}
+    >
+      <div className={cn(
+        "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3",
+        isTargetClass && "from-green-600 to-green-700"
+      )}>
         <h3 className="font-semibold">Class {className}</h3>
       </div>
 
@@ -597,6 +644,7 @@ const ClassViewGrid = ({
                     compact={true}
                     draggedLesson={draggedLesson}
                     allLessons={allLessons}
+                    rowClass={className}
                   />
                 ))}
               </React.Fragment>
@@ -839,14 +887,22 @@ const CompactViewGrid = ({
               <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
                 <span className="text-sm font-medium">Period</span>
               </div>
-              {classes.map((className) => (
-                <div
-                  key={className}
-                  className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0"
-                >
-                  <span className="text-sm font-medium">{className}</span>
-                </div>
-              ))}
+              {classes.map((className) => {
+                const isTargetClass = draggedLesson?.class === className;
+                return (
+                  <div
+                    key={className}
+                    className={cn(
+                      "text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors",
+                      isTargetClass
+                        ? "bg-gradient-to-r from-green-600 to-green-700"
+                        : "bg-gradient-to-r from-indigo-600 to-indigo-700"
+                    )}
+                  >
+                    <span className="text-sm font-medium">{className}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Body - Each day group */}
@@ -897,6 +953,7 @@ const CompactViewGrid = ({
                           compact={true}
                           draggedLesson={draggedLesson}
                           allLessons={allLessons}
+                          rowClass={className}
                         />
                       ))}
                     </div>
@@ -944,6 +1001,26 @@ const TimetableContent = ({
   // Processed data
   const [scheduledLessons, setScheduledLessons] = useState<Lesson[]>([]);
   const [unplacedLessons, setUnplacedLessons] = useState<UnplacedLesson[]>([]);
+  const [companyPeriods, setCompanyPeriods] = useState<number[]>([]);
+
+  // Fetch organization settings
+  useEffect(() => {
+    const fetchOrganizationSettings = async () => {
+      try {
+        const org = await organizationApi.get();
+        if (org && org.periods) {
+          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
+          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
+          if (newPeriods.length > 0) {
+            setCompanyPeriods(newPeriods);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organization settings:', error);
+      }
+    };
+    fetchOrganizationSettings();
+  }, []);
 
   // Drag Layer to track dragged item globally
   const { isDragging, draggedLesson } = useDragLayer((monitor) => ({
@@ -1052,10 +1129,19 @@ const TimetableContent = ({
 
   // Extract unique time slots
   const timeSlots = useMemo(
-    () =>
-      Array.from(new Set(scheduledLessons.map((l) => l.timeSlot).filter(Boolean)))
-        .sort((a, b) => a! - b!) as number[],
-    [scheduledLessons],
+    () => {
+      const scheduledSlots = new Set(scheduledLessons.map((l) => l.timeSlot).filter(Boolean) as number[]);
+      // Add company periods to the set
+      companyPeriods.forEach(p => scheduledSlots.add(p));
+
+      // If no company periods and no scheduled lessons, default to 1-7
+      if (scheduledSlots.size === 0) {
+        return [1, 2, 3, 4, 5, 6, 7];
+      }
+
+      return Array.from(scheduledSlots).sort((a, b) => a - b);
+    },
+    [scheduledLessons, companyPeriods],
   );
 
   const totalLessons = scheduledLessons.length + unplacedLessons.length;
@@ -1197,9 +1283,9 @@ const TimetableContent = ({
                 ...l,
                 day: targetDay,
                 timeSlot: targetTimeSlot,
-                roomId: targetLesson.roomId,
+                roomId: targetLesson!.roomId,
               };
-            } else if (l.id === targetLesson.id) {
+            } else if (l.id === targetLesson!.id) {
               return {
                 ...l,
                 day: draggedLesson.day!,
