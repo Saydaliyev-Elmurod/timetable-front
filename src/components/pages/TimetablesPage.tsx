@@ -53,7 +53,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [timetables, setTimetables] = useState<TimetableEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimetable, setSelectedTimetable] = useState<TimetableEntity | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -74,16 +74,16 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await apiCall<TimetableEntity[]>('http://localhost:8080/api/timetable/v1/timetable');
-      
+
       if (response.error) {
         throw new Error(`Failed to fetch timetables: ${response.error.message}`);
       }
-      
+
       const data = response.data || [];
       console.log('API Response:', data);
-      
+
       // Filter out deleted timetables
       const activeTimetables = data.filter(t => !t.deleted);
       console.log('Active Timetables:', activeTimetables);
@@ -92,7 +92,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch timetables';
       setError(errorMessage);
       toast.error(errorMessage);
-      
+
       // Fallback to mock data for demo purposes
       setTimetables([
         {
@@ -148,13 +148,25 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm(t('timetables.delete_confirm') || 'Are you sure you want to delete this timetable?')) {
+      return;
+    }
+
     try {
-      // In a real implementation, you would call DELETE API
-      // For now, we'll just remove from the list
-      setTimetables(timetables.filter((t) => t.id !== id));
-      toast.success(t('timetables.deleted_success'));
+      const response = await apiCall<void>(`http://localhost:8080/api/timetable/v1/timetable/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      // Remove from list
+      setTimetables(prev => prev.filter((t) => t.id !== id));
+      toast.success(t('timetables.deleted_success') || 'Timetable deleted successfully');
     } catch (err) {
-      toast.error(t('timetables.delete_failed'));
+      console.error('Delete error:', err);
+      toast.error(t('timetables.delete_failed') || 'Failed to delete timetable');
     }
   };
 
@@ -195,7 +207,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
         </div>
         <div className="flex gap-3">
           {onNavigate && (
-            <Button 
+            <Button
               variant="outline"
               onClick={() => onNavigate('timetable-view')}
               className="border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -420,12 +432,12 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
               Created on {selectedTimetable && formatDate(selectedTimetable.createdDate)}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <p className="text-muted-foreground mb-4">
               Click the button below to view the full interactive timetable.
             </p>
-            <Button 
+            <Button
               className="w-full"
               onClick={() => {
                 if (selectedTimetable && onNavigate) {
