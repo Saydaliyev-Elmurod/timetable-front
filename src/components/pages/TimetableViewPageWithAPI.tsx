@@ -206,6 +206,8 @@ const DraggableLessonCard = ({
   compact = false,
   showClass = false,
   hasConflict = false,
+  isSelected = false,
+  onSelect,
 }: {
   lesson: Lesson | UnplacedLesson;
   onEdit: (lesson: Lesson | UnplacedLesson) => void;
@@ -216,6 +218,8 @@ const DraggableLessonCard = ({
   compact?: boolean;
   showClass?: boolean;
   hasConflict?: boolean;
+  isSelected?: boolean;
+  onSelect?: (lesson: Lesson | UnplacedLesson) => void;
 }) => {
   const [{ opacity }, drag] = useDrag(
     () => ({
@@ -243,10 +247,14 @@ const DraggableLessonCard = ({
         ref={drag}
         style={{ opacity }}
         className={cn(
-          "p-3 rounded-lg border-2 cursor-move hover:shadow-md transition-shadow relative overflow-hidden",
-          subjectColor,
+          "p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden",
+          isSelected ? "ring-2 ring-blue-500 border-blue-500 shadow-lg" : subjectColor,
           "mb-3",
         )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect?.(lesson);
+        }}
       >
         {/* White strip for no room */}
         {hasNoRoom && (
@@ -282,8 +290,16 @@ const DraggableLessonCard = ({
             "p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden",
             subjectColor,
             lesson.isLocked && "ring-2 ring-yellow-500",
+            isSelected && "ring-2 ring-blue-500 border-blue-500 shadow-lg",
             compact && "p-1.5",
           )}
+          onClick={(e) => {
+            // If selecting, don't open popover
+            if (onSelect) {
+              e.stopPropagation();
+              onSelect(lesson);
+            }
+          }}
         >
           {/* White strip for no room */}
           {hasNoRoom && (
@@ -412,6 +428,8 @@ const DroppableTimeSlot = ({
   draggedLesson,
   allLessons,
   rowClass,
+  selectedLesson, // NEW PROP
+  onManualPlace,  // NEW PROP
 }: {
   day: string;
   timeSlot: number;
@@ -426,6 +444,8 @@ const DroppableTimeSlot = ({
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
   rowClass?: string;
+  selectedLesson?: Lesson | UnplacedLesson | null;
+  onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
   const [{ isOver, canDrop }, drop] = useDrop(
     () => ({
@@ -462,8 +482,72 @@ const DroppableTimeSlot = ({
     );
   }, [lesson, allLessons, day, timeSlot]);
 
-  // Conflict Detection Logic for DRAGGED lesson
+
+
+  // MANUAL PLACEMENT VALIDATION logic
+  const manualPlacementStatus = useMemo(() => {
+    if (!selectedLesson || !allLessons) return 'none';
+
+    // Target mismatch
+    if (rowClass && selectedLesson.class !== rowClass) {
+      return 'invalid-target';
+    }
+
+    // 1. Teacher Conflict
+    const teacherConflict = allLessons.some(
+      (l) =>
+        l.id !== selectedLesson.id &&
+        l.teacherId === selectedLesson.teacherId &&
+        l.day === day &&
+        l.timeSlot === timeSlot
+    );
+    if (teacherConflict) return 'teacher-conflict';
+
+    // 2. Room Conflict
+    if (selectedLesson.roomId) {
+      const roomConflict = allLessons.some(
+        (l) =>
+          l.id !== selectedLesson.id &&
+          l.roomId === selectedLesson.roomId &&
+          l.day === day &&
+          l.timeSlot === timeSlot
+      );
+      if (roomConflict) return 'room-conflict';
+    }
+
+    return 'valid';
+  }, [selectedLesson, allLessons, day, timeSlot, rowClass]);
+
+  // Conflict Detection Logic for DRAGGED lesson & MANUAL placement
   const getSlotStyle = () => {
+    // 1. MANUAL PLACEMENT STYLING
+    if (selectedLesson) {
+      if (manualPlacementStatus === 'invalid-target') {
+        return cn(
+          "border border-gray-200 p-1 transition-colors relative opacity-40 bg-gray-50",
+          compact ? "min-h-[60px]" : "min-h-[70px]"
+        );
+      }
+      if (manualPlacementStatus === 'teacher-conflict') {
+        return cn(
+          "border border-red-300 p-1 transition-colors bg-red-50 relative cursor-pointer hover:bg-red-100",
+          compact ? "min-h-[60px]" : "min-h-[70px]"
+        );
+      }
+      if (manualPlacementStatus === 'room-conflict') {
+        return cn(
+          "border border-blue-300 p-1 transition-colors bg-blue-50 relative cursor-pointer hover:bg-blue-100",
+          compact ? "min-h-[60px]" : "min-h-[70px]"
+        );
+      }
+      // Valid
+      return cn(
+        "border border-green-400 p-1 transition-colors bg-green-50 relative cursor-pointer hover:bg-green-100 ring-1 ring-inset ring-green-200",
+        compact ? "min-h-[60px]" : "min-h-[70px]"
+      );
+    }
+
+    // 2. DRAG AND DROP STYLING (Existing)
     if (!draggedLesson || !allLessons) {
       // Default behavior when not dragging
       return cn(
@@ -542,6 +626,11 @@ const DroppableTimeSlot = ({
     <div
       ref={drop}
       className={getSlotStyle()}
+      onClick={() => {
+        if (selectedLesson && onManualPlace) {
+          onManualPlace(day, timeSlot);
+        }
+      }}
     >
       {lesson && (
         <DraggableLessonCard
@@ -553,6 +642,16 @@ const DroppableTimeSlot = ({
           compact={compact}
           showClass={showClass}
           hasConflict={currentLessonConflict}
+          isSelected={selectedLesson?.id === lesson.id}
+          onSelect={(l) => {
+            // We can allow re-selecting scheduled lessons to move them
+            // For now passing undefined to use parent handler if we want, 
+            // but `DroppableTimeSlot` doesn't get `onSelect` passed from parent in current code. 
+            // To enable moving scheduled lessons via click, we need to pass `onSelect` down.
+            // For now, let's assume we select via `onEdit` or add `onSelect` to props.
+            // Actually, the user asked for "Manual Lesson Placement", implying unplaced to placed.
+            // But usually this system allows moving placed lessons too.
+          }}
         />
       )}
     </div>
@@ -571,6 +670,9 @@ const ClassViewGrid = ({
   timeSlots,
   draggedLesson,
   allLessons,
+  selectedLesson,   // NEW
+  onSelectLesson,   // NEW
+  onManualPlace,    // NEW
 }: {
   className: string;
   lessons: Lesson[];
@@ -582,6 +684,9 @@ const ClassViewGrid = ({
   timeSlots: number[];
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
+  selectedLesson?: Lesson | UnplacedLesson | null; // NEW
+  onSelectLesson?: (lesson: Lesson | UnplacedLesson) => void; // NEW
+  onManualPlace?: (day: string, timeSlot: number) => void; // NEW
 }) => {
   const getLesson = (day: string, timeSlot: number) => {
     return lessons.find(
@@ -645,6 +750,8 @@ const ClassViewGrid = ({
                     draggedLesson={draggedLesson}
                     allLessons={allLessons}
                     rowClass={className}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
                   />
                 ))}
               </React.Fragment>
@@ -668,6 +775,8 @@ const TeacherViewGrid = ({
   timeSlots,
   draggedLesson,
   allLessons,
+  selectedLesson,
+  onManualPlace,
 }: {
   teacherName: string;
   lessons: Lesson[];
@@ -679,6 +788,8 @@ const TeacherViewGrid = ({
   timeSlots: number[];
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
+  selectedLesson?: Lesson | UnplacedLesson | null;
+  onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
   const getLesson = (day: string, timeSlot: number) => {
     return lessons.find(
@@ -735,6 +846,8 @@ const TeacherViewGrid = ({
                     showClass={true}
                     draggedLesson={draggedLesson}
                     allLessons={allLessons}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
                   />
                 ))}
               </React.Fragment>
@@ -758,6 +871,8 @@ const RoomViewGrid = ({
   timeSlots,
   draggedLesson,
   allLessons,
+  selectedLesson,
+  onManualPlace,
 }: {
   roomName: string;
   lessons: Lesson[];
@@ -769,6 +884,8 @@ const RoomViewGrid = ({
   timeSlots: number[];
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
+  selectedLesson?: Lesson | UnplacedLesson | null;
+  onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
   const getLesson = (day: string, timeSlot: number) => {
     return lessons.find(
@@ -825,6 +942,8 @@ const RoomViewGrid = ({
                     showClass={true}
                     draggedLesson={draggedLesson}
                     allLessons={allLessons}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
                   />
                 ))}
               </React.Fragment>
@@ -848,6 +967,8 @@ const CompactViewGrid = ({
   timeSlots,
   draggedLesson,
   allLessons,
+  selectedLesson,
+  onManualPlace,
 }: {
   lessons: Lesson[];
   classes: string[];
@@ -859,6 +980,8 @@ const CompactViewGrid = ({
   timeSlots: number[];
   draggedLesson?: Lesson | null;
   allLessons?: Lesson[];
+  selectedLesson?: Lesson | UnplacedLesson | null;
+  onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
   const getLesson = (className: string, day: string, timeSlot: number) => {
     return lessons.find(
@@ -954,6 +1077,8 @@ const CompactViewGrid = ({
                           draggedLesson={draggedLesson}
                           allLessons={allLessons}
                           rowClass={className}
+                          selectedLesson={selectedLesson}
+                          onManualPlace={onManualPlace}
                         />
                       ))}
                     </div>
@@ -1002,6 +1127,27 @@ const TimetableContent = ({
   const [scheduledLessons, setScheduledLessons] = useState<Lesson[]>([]);
   const [unplacedLessons, setUnplacedLessons] = useState<UnplacedLesson[]>([]);
   const [companyPeriods, setCompanyPeriods] = useState<number[]>([]);
+
+  // MANUAL PLACEMENT STATE
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | UnplacedLesson | null>(null);
+
+  const handleSelectLesson = (lesson: Lesson | UnplacedLesson) => {
+    if (selectedLesson?.id === lesson.id) {
+      setSelectedLesson(null); // Deselect
+    } else {
+      setSelectedLesson(lesson);
+    }
+  };
+
+  const handleManualPlace = (day: string, timeSlot: number) => {
+    if (!selectedLesson) return;
+
+    // Call the existing drop handler
+    handleDrop(selectedLesson, day, timeSlot);
+
+    // Clear selection
+    setSelectedLesson(null);
+  };
 
   // Fetch organization settings
   useEffect(() => {
@@ -1836,6 +1982,8 @@ const TimetableContent = ({
                       timeSlots={timeSlots}
                       draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
+                      selectedLesson={selectedLesson}
+                      onManualPlace={handleManualPlace}
                     />
                   ))
                 ) : (
@@ -1864,6 +2012,8 @@ const TimetableContent = ({
                       timeSlots={timeSlots}
                       draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
+                      selectedLesson={selectedLesson}
+                      onManualPlace={handleManualPlace}
                     />
                   ))
                 ) : (
@@ -1888,6 +2038,8 @@ const TimetableContent = ({
                 timeSlots={timeSlots}
                 draggedLesson={isDragging ? draggedLesson : null}
                 allLessons={scheduledLessons}
+                selectedLesson={selectedLesson}
+                onManualPlace={handleManualPlace}
               />
             )}
           </div>
@@ -1920,6 +2072,8 @@ const TimetableContent = ({
                         onToggleLock={handleToggleLock}
                         displayOptions={displayOptions}
                         isUnplaced={true}
+                        isSelected={selectedLesson?.id === lesson.id}
+                        onSelect={handleSelectLesson}
                       />
                       <div className="mt-1 mb-3 px-3 py-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
                         <span className="opacity-75">Reason:</span> {lesson.reason}

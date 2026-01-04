@@ -5,14 +5,16 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen, Eye, EyeOff } from 'lucide-react';
 import { getCode, login, saveToken, verify } from '../lib/auth'; // Make sure to create this file
 
 export default function LoginPage({ onLogin, onBackToLanding }) {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupName, setSignupName] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerificationStep, setIsVerificationStep] = useState(false);
@@ -60,7 +62,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
       setLoading(false);
     }
   };
-  
+
   const handleVerifySubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -104,8 +106,8 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center p-4">
       {onBackToLanding && (
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           onClick={onBackToLanding}
           className="absolute top-6 left-6 text-slate-600 hover:text-blue-600"
         >
@@ -141,7 +143,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
               <TabsTrigger value="login">{useTranslation().t('login.login')}</TabsTrigger>
               <TabsTrigger value="signup">{useTranslation().t('login.signup')}</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -158,22 +160,39 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="login-password"
+                      type={showLoginPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                      disabled={loading}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      tabIndex={-1}
+                    >
+                      {showLoginPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-500" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-500" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700" disabled={loading}>
                   {loading ? useTranslation().t('login.login') + '...' : useTranslation().t('login.login')}
                 </Button>
               </form>
             </TabsContent>
-            
+
             <TabsContent value="signup">
               {!isVerificationStep ? (
                 <form onSubmit={handleGetCodeSubmit} className="space-y-4">
@@ -221,15 +240,32 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showSignupPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowSignupPassword(!showSignupPassword)}
+                        tabIndex={-1}
+                      >
+                        {showSignupPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700" disabled={loading}>
                     {loading ? useTranslation().t('login.createAccount') + '...' : useTranslation().t('login.createAccount')}
