@@ -222,37 +222,26 @@ export default function AddLessonModal({
             {/* Subject Selection (Required, Single) */}
             <div className="space-y-2">
               <Label htmlFor="subject">Subject {editingLesson ? '' : '*'}</Label>
-              {editingLesson ? (
-                // Display-only mode when editing
-                <div className="p-2 border rounded-lg bg-muted/50">
-                  <p className="text-sm">
-                    {formData.subject 
-                      ? subjects.find((s: any) => s.id.toString() === formData.subject)?.name || formData.subject
-                      : 'No subject selected'}
-                  </p>
-                </div>
-              ) : (
-                // Edit mode for new lessons
-                <Select 
-                  value={formData.subject} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                >
-                  <SelectTrigger id="subject">
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoading ? (
-                      <div className="p-2 text-center text-muted-foreground">Loading...</div>
-                    ) : (
-                      subjects.map((subject: any) => (
-                        <SelectItem key={subject.id} value={subject.id.toString()}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
+              {/* Subject selector (editable both for new and editing lessons) */}
+              <Select
+                value={formData.subject}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+              >
+                <SelectTrigger id="subject">
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoading ? (
+                    <div className="p-2 text-center text-muted-foreground">Loading...</div>
+                  ) : (
+                    subjects.map((subject: any) => (
+                      <SelectItem key={subject.id} value={subject.id.toString()}>
+                        {subject.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Classes Selection */}

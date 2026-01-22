@@ -35,6 +35,7 @@ export interface LessonRequest {
   dayOfWeek: DayOfWeek;
   hour: number;
   period: number;
+  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
 }
 
 export interface LessonResponse {

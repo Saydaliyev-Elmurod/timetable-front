@@ -436,12 +436,19 @@ export default function LessonsPage() {
         return;
       }
 
+      const scheduleTypeToFrequency: any = {
+        'weekly': 'WEEKLY',
+        'bi-weekly': 'BI_WEEKLY',
+        'tri-weekly': 'TRI_WEEKLY'
+      };
+
       const lessonRequest = {
         subjectId: subjectId,
         teacherId: teacher.id,
         classId: classIds,
         lessonCount: lessonData.lessonsPerWeek,
         roomIds: [],
+        frequency: scheduleTypeToFrequency[lessonData.scheduleType] || 'WEEKLY'
       };
 
       await LessonService.create(lessonRequest as any);

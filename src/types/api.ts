@@ -1,6 +1,18 @@
 // API Response Types
 export interface ClassResponse {
   id: number;
+  shortName: string;
+  name: string;
+  availabilities: TimeSlot[];
+  teacher: TeacherResponse;
+  rooms: RoomResponse[];
+  groups: GroupResponse[];
+  updatedDate: string;
+  createdDate: string;
+}
+
+export interface GroupResponse {
+  id: number;
   name: string;
 }
 
@@ -35,6 +47,36 @@ export interface LessonResponse {
 }
 
 // API Request Types
+export interface ClassRequest {
+  name: string;
+  shortName: string;
+  availabilities: TimeSlot[];
+  teacherId: number | null;
+  rooms: number[]; // Set<Integer> as array
+  groups: GroupRequest[];
+}
+
+export interface GroupRequest {
+  name: string;
+}
+
+export interface ClassUpdateRequest {
+  name: string;
+  shortName: string;
+  availabilities: TimeSlot[];
+  teacherId: number | null;
+  rooms: number[];
+  deletedRooms: number[];
+  newGroups: GroupRequest[];
+  updatedGroups: GroupUpdateRequest[];
+  deletedGroupIds: number[];
+}
+
+export interface GroupUpdateRequest {
+  id: number;
+  name: string;
+}
+
 export interface LessonRequest {
   classId: number;
   teacherId: number;
@@ -44,10 +86,17 @@ export interface LessonRequest {
   dayOfWeek: string;
   hour: number;
   period: number;
+  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
 }
 
 export interface LessonUpdateRequest extends LessonRequest {
   id: number;
+}
+
+// TimeSlot type (assuming it's defined elsewhere, but adding here for completeness)
+export interface TimeSlot {
+  dayOfWeek: string;
+  lessons: number[];
 }
 
 // API Response with Pagination

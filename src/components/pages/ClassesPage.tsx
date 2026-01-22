@@ -124,6 +124,9 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
     shortName: '',
     classTeacher: '',
     roomIds: [],
+    isGrouped: false,
+    groups: [],
+    originalGroups: [],
     availability: {
       monday: [1, 2, 3, 4, 5, 6, 7],
       tuesday: [1, 2, 3, 4, 5, 6, 7],
@@ -135,6 +138,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
     },
   });
   const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
+  const [showGroupsInForm, setShowGroupsInForm] = useState(false);
   const [editingClassId, setEditingClassId] = useState(null);
 
   // Availability view for existing classes
@@ -298,6 +302,8 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         isActive: cls?.isActive ?? true,
         classTeacher: cls?.teacher?.id?.toString() || '',
         roomIds: Array.isArray(cls?.rooms) ? cls.rooms.map((r: any) => String(r?.id ?? '')) : [],
+        isGrouped: cls?.isGrouped ?? false,
+        groups: Array.isArray(cls?.groups) ? cls.groups.map((g: any) => ({ name: g?.name ?? '' })) : [],
         availability: convertFromTimeSlots(cls?.availabilities),
         updatedDate: cls?.updatedDate,
         createdDate: cls?.createdDate
@@ -425,6 +431,9 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
       shortName: '',
       classTeacher: '',
       roomIds: [],
+      isGrouped: false,
+      groups: [],
+      originalGroups: [],
       availability: {
         monday: periods,
         tuesday: periods,
@@ -435,6 +444,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         sunday: periods,
       },
     });
+    setShowGroupsInForm(false);
     // When opening in modal, show availability calendar by default
     setShowAvailabilityInForm(true);
   };
@@ -447,8 +457,12 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         shortName: classItem.shortName,
         classTeacher: classItem.classTeacher ? classItem.classTeacher.toString() : '',
         roomIds: classItem.roomIds ? classItem.roomIds.map(String) : [],
+        isGrouped: classItem.isGrouped || (classItem.groups && classItem.groups.length > 0),
+        groups: classItem.groups ? classItem.groups.map(g => ({ ...g, isNew: false })) : [],
+        originalGroups: classItem.groups ? classItem.groups.map(g => ({ ...g })) : [],
         availability: classItem.availability,
       });
+      setShowGroupsInForm(false);
       setShowInlineForm(true);
       setShowAvailabilityInForm(true);
     } catch (error) {
@@ -465,8 +479,12 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
       shortName: `${classItem.shortName}-C`,
       classTeacher: classItem.classTeacher || '',
       roomIds: classItem.roomIds || [],
+      isGrouped: classItem.isGrouped || false,
+      groups: classItem.groups ? classItem.groups.map(g => ({ name: g.name, isNew: false })) : [],
+      originalGroups: [],
       availability: JSON.parse(JSON.stringify(classItem.availability)),
     });
+    setShowGroupsInForm(false);
     // When opening in modal, show availability calendar by default
     setShowAvailabilityInForm(true);
   };
@@ -479,15 +497,35 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
 
     setLoading(true);
     try {
-      const requestData = {
+      const baseData = {
         name: inlineFormData.name.trim(),
         shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
         availabilities: convertToTimeSlots(inlineFormData.availability),
         teacherId: inlineFormData.classTeacher ? parseInt(inlineFormData.classTeacher, 10) : null,
-        rooms: inlineFormData.roomIds.map(id => ({ id: parseInt(id, 10) }))
+        rooms: inlineFormData.roomIds.map(id => parseInt(id, 10)), // array of numbers
+        groups: inlineFormData.groups.map(g => ({ name: g.name }))
       };
 
+      let requestData;
       const isEdit = editingClassId !== null;
+
+      if (isEdit) {
+        // For update, use ClassUpdateRequest
+        // Only send NEW groups (groups that don't have id property or have isNew: true)
+        const newGroups = inlineFormData.groups.filter(g => !g.id || g.isNew).map(g => ({ name: g.name }));
+        const updatedGroups = inlineFormData.groups.filter(g => g.id && !g.isNew).map(g => ({ id: g.id, name: g.name }));
+        
+        requestData = {
+          ...baseData,
+          deletedRooms: [], // not tracking changes, so empty
+          newGroups: newGroups,
+          updatedGroups: updatedGroups,
+          deletedGroupIds: []
+        };
+      } else {
+        // For create, use ClassRequest
+        requestData = baseData;
+      }
       const url = isEdit
         ? `${API_BASE_URL}/api/classes/v1/${editingClassId}`
         : `${API_BASE_URL}/api/classes/v1`;
@@ -985,9 +1023,10 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
           if (!open) {
             setEditingClassId(null);
             setShowAvailabilityInForm(false);
+            setShowGroupsInForm(false);
           }
         }}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-0">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
               <div className="flex items-start justify-between">
                 <div>
@@ -1153,6 +1192,106 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
                     </div>
                   )}
                 </div>
+
+                {/* Group Checkbox */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isGrouped"
+                      checked={inlineFormData.isGrouped}
+                      onCheckedChange={(checked) => {
+                        const isChecked = checked === true;
+                        setInlineFormData(prev => {
+                          const newData = { ...prev, isGrouped: isChecked };
+                          if (isChecked && (!prev.groups || prev.groups.length === 0)) {
+                            // Set default groups based on language
+                            const defaultGroups = [
+                              t('classes.default_groups.girls'),
+                              t('classes.default_groups.boys'),
+                              t('classes.default_groups.group1'),
+                              t('classes.default_groups.group2')
+                            ];
+                            newData.groups = defaultGroups.map(name => ({ name }));
+                          } else if (!isChecked) {
+                            newData.groups = [];
+                          }
+                          return newData;
+                        });
+                      }}
+                    />
+                    <Label htmlFor="isGrouped" className="text-sm font-medium">
+                      {t('classes.divide_into_groups')}
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Groups Field */}
+                {inlineFormData.isGrouped && (
+                  <div className="space-y-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowGroupsInForm(!showGroupsInForm)}
+                      className="w-full justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{t('classes.groups')} ({inlineFormData.groups?.length || 0})</span>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${showGroupsInForm ? 'transform rotate-180' : ''}`} />
+                    </Button>
+
+                    {/* Groups Grid 2x2 - Collapsible */}
+                    {showGroupsInForm && (
+                    <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                      {inlineFormData.groups && inlineFormData.groups.map((group, index) => (
+                        <div key={index} className="flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-800">
+                          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full text-xs font-semibold">
+                            {index + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={group.name}
+                            onChange={(e) => {
+                              const newGroups = [...inlineFormData.groups];
+                              newGroups[index] = { ...group, name: e.target.value };
+                              updateInlineFormField('groups', newGroups);
+                            }}
+                            className="flex-1 px-2 py-1 text-sm border rounded bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder={t('classes.group_name')}
+                          />
+                          <button
+                            onClick={() => {
+                              const newGroups = inlineFormData.groups.filter((_, i) => i !== index);
+                              updateInlineFormField('groups', newGroups);
+                            }}
+                            className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    )}
+
+                    {/* Add Group Button */}
+                    {showGroupsInForm && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-dashed"
+                      onClick={() => {
+                        updateInlineFormField('groups', [
+                          ...inlineFormData.groups,
+                          { name: `${t('classes.default_groups.group1')} ${inlineFormData.groups.length + 1}`, isNew: true }
+                        ]);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t('classes.add_new_group')}
+                    </Button>
+                    )}
+                  </div>
+                )}
 
                 {/* Inline Availability Grid */}
                 {showAvailabilityInForm && (

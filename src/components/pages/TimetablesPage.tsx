@@ -170,12 +170,70 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
     }
   };
 
-  const handleExportExcel = (timetable: TimetableEntity) => {
-    toast(t('timetables.exporting_excel').replace('{{name}}', timetable.name));
+  const handleExportExcel = async (timetable: TimetableEntity) => {
+    try {
+      toast(t('timetables.exporting_excel').replace('{{name}}', timetable.name));
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/export/${timetable.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timetable.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success(t('timetables.export_success').replace('{{name}}', timetable.name));
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(t('timetables.export_failed') || 'Failed to export timetable');
+    }
   };
 
-  const handleExportPDF = (timetable: TimetableEntity) => {
-    toast(t('timetables.exporting_pdf').replace('{{name}}', timetable.name));
+  const handleExportPDF = async (timetable: TimetableEntity) => {
+    try {
+      toast(t('timetables.exporting_pdf').replace('{{name}}', timetable.name));
+
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/export/pdf/${timetable.id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`PDF export failed: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timetable.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success(t('timetables.pdf_export_success').replace('{{name}}', timetable.name));
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error(t('timetables.pdf_export_failed') || 'Failed to export timetable to PDF');
+    }
   };
 
   const handlePrint = () => {
