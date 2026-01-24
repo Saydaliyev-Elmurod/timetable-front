@@ -138,7 +138,7 @@ export default function LessonsPage() {
         if (isSelected) {
           availability[day] = availability[day].filter((p: number) => p !== period);
         } else {
-          if (!availability[day].includes(period)) availability[day] = [...availability[day], period].sort((a:number,b:number)=>a-b);
+          if (!availability[day].includes(period)) availability[day] = [...availability[day], period].sort((a: number, b: number) => a - b);
         }
       });
       return { ...prev, availability };
@@ -362,21 +362,21 @@ export default function LessonsPage() {
         });
         toast.success(t('lessons.subject_updated'));
       } else if (entityEditType === 'class') {
-          const url = `${getApiUrl('CLASSES')}/${entityEditId}`;
-          const body: any = {
-            name: entityEditData.name,
-            shortName: entityEditData.shortName || '',
-            isActive: entityEditData.isActive ?? true,
-            teacherId: entityEditData.classTeacher ? parseInt(entityEditData.classTeacher, 10) : null,
-            rooms: Array.isArray(entityEditData.roomIds) ? entityEditData.roomIds.map((r: any) => ({ id: parseInt(r, 10) })) : [],
-            availabilities: convertToTimeSlots(entityEditData.availability || {}),
-          };
+        const url = `${getApiUrl('CLASSES')}/${entityEditId}`;
+        const body: any = {
+          name: entityEditData.name,
+          shortName: entityEditData.shortName || '',
+          isActive: entityEditData.isActive ?? true,
+          teacherId: entityEditData.classTeacher ? parseInt(entityEditData.classTeacher, 10) : null,
+          rooms: Array.isArray(entityEditData.roomIds) ? entityEditData.roomIds.map((r: any) => ({ id: parseInt(r, 10) })) : [],
+          availabilities: convertToTimeSlots(entityEditData.availability || {}),
+        };
 
-          await apiCall(url, {
-            method: 'PUT',
-            body: JSON.stringify(body)
-          });
-          toast.success(t('lessons.class_updated'));
+        await apiCall(url, {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+        toast.success(t('lessons.class_updated'));
       }
 
       // refresh lessons and close
@@ -413,25 +413,66 @@ export default function LessonsPage() {
   };
 
   const handleModalSubmit = async (lessonData: any) => {
+
     try {
-      const subjectId = parseInt(lessonData.subject, 10);
-      if (isNaN(subjectId)) {
-        toast.error(t('lessons.invalid_subject'));
-        return;
+      // Handle Subject ID
+      let subjectId = lessonData.subjectId;
+      if (subjectId === undefined || subjectId === null) {
+        subjectId = parseInt(lessonData.subject, 10);
       }
 
-      const teacher = allTeachers.find(t => t.fullName === lessonData.selectedTeacher);
-      if (!teacher) {
-        toast.error(t('lessons.teacher_not_found'));
-        return;
+      if (isNaN(subjectId) || subjectId === 0) {
+        // Only throw error if we absolutely have no subject check
+        // In some group scenarios validation might happen backend side, but we expect a valid ID now.
+        if (!lessonData.groups || lessonData.groups.length === 0) {
+          toast.error(t('lessons.invalid_subject'));
+          return;
+        }
+        // If we have groups, maybe we tolerate 0 subjectId if the backend allows it (though current backend mock required it).
+        // But we put logic in AddLessonModal to ensure subjectId is valid from first group.
+        // If it is still 0/NaN here, it's an error.
+        if (isNaN(subjectId) || subjectId === 0) {
+          toast.error(t('lessons.invalid_subject'));
+          return;
+        }
       }
 
-      const classIds = lessonData.selectedClasses.map((className: string) => {
-        const foundClass = allClasses.find((c: any) => c.name === className);
-        return foundClass?.id;
-      }).filter(Boolean);
+      // Handle Teacher ID
+      let teacherId = lessonData.teacherId;
+      if (teacherId === undefined || teacherId === null) {
+        teacherId = typeof lessonData.selectedTeacher === 'number'
+          ? lessonData.selectedTeacher
+          : parseInt(lessonData.selectedTeacher, 10);
+      }
 
-      if (classIds.length !== lessonData.selectedClasses.length) {
+      // Teacher existence check
+      const teacher = allTeachers.find(t => t.id === teacherId);
+      // Fallback for name-based lookup (legacy)
+      if (!teacher && !teacherId && typeof lessonData.selectedTeacher === 'string') {
+        const tByName = allTeachers.find(t => t.fullName === lessonData.selectedTeacher);
+        if (tByName) {
+          teacherId = tByName.id;
+        } else {
+          toast.error(t('lessons.teacher_not_found'));
+          return;
+        }
+      } else if (!teacher && (!transactionalTeacherCheck(teacherId))) {
+        // transactionalTeacherCheck is a placeholder logic; essentially if we have an ID but not in list, 
+        // it might still be valid if list is stale, but usually we trust the list. 
+        // If teacherId is valid number but not found, we warn.
+        // However, in group mode, maybe we don't care about main teacher as much?
+        // For now, let's enforce IF it's not group mode.
+        if (!lessonData.groups && !teacher) {
+          toast.error(t('lessons.teacher_not_found'));
+          return;
+        }
+      }
+
+      // Handle Class IDs
+      // AddLessonModal sends 'classId' as array of numbers. Legacy might send 'selectedClasses'.
+      const classIds = lessonData.classId || lessonData.selectedClasses;
+
+      if (!classIds || !Array.isArray(classIds) || classIds.length === 0) {
         toast.error(t('lessons.class_not_found'));
         return;
       }
@@ -442,18 +483,30 @@ export default function LessonsPage() {
         'tri-weekly': 'TRI_WEEKLY'
       };
 
+      // Construct Request
       const lessonRequest = {
         subjectId: subjectId,
-        teacherId: teacher.id,
+        teacherId: teacherId,
         classId: classIds,
-        lessonCount: lessonData.lessonsPerWeek,
-        roomIds: [],
-        frequency: scheduleTypeToFrequency[lessonData.scheduleType] || 'WEEKLY'
+        lessonCount: lessonData.lessonCount || lessonData.lessonsPerWeek,
+        roomIds: lessonData.roomIds || [],
+        frequency: scheduleTypeToFrequency[lessonData.scheduleType] || lessonData.frequency || 'WEEKLY',
+        dayOfWeek: lessonData.dayOfWeek || null,
+        hour: lessonData.hour || null,
+        period: lessonData.period || 1,
+        groups: lessonData.groups
       };
 
-      await LessonService.create(lessonRequest as any);
+      if (editingLesson && editingLesson.id) {
+        // Update
+        await LessonService.update(editingLesson.id, lessonRequest as any);
+        toast.success(t('lessons.lesson_updated_successfully'));
+      } else {
+        // Create
+        await LessonService.create(lessonRequest as any);
+        toast.success(t('lessons.lesson_created_successfully'));
+      }
 
-      toast.success(t('lessons.lesson_created_successfully'));
       setIsDialogOpen(false);
       setEditingLesson(null);
       fetchLessons();
@@ -509,11 +562,11 @@ export default function LessonsPage() {
             _subjectIds: new Set<number | string>(),
           });
         }
-          const c = classesMap.get(classKey);
-          c.lessons.push(f);
-          c.totalLessons += 1;
-          // accumulate totalPeriods from lesson counts when available (default to 1)
-          c.totalPeriods += (f.raw?.lessonCount && Number(f.raw.lessonCount)) ? Number(f.raw.lessonCount) : 1;
+        const c = classesMap.get(classKey);
+        c.lessons.push(f);
+        c.totalLessons += 1;
+        // accumulate totalPeriods from lesson counts when available (default to 1)
+        c.totalPeriods += (f.raw?.lessonCount && Number(f.raw.lessonCount)) ? Number(f.raw.lessonCount) : 1;
         // record unique teacher/subject ids
         if (f.raw?.teacher?.id) c._teacherIds.add(f.raw.teacher.id);
         if (f.raw?.subject?.id) c._subjectIds.add(f.raw.subject.id);
@@ -629,20 +682,20 @@ export default function LessonsPage() {
 
   useEffect(() => {
     const fetchPrereqs = async () => {
-        try {
-            const [teachers, classes] = await Promise.all([
-                TeacherService.getAll(),
-                ClassService.getAll(),
-            ]);
-            setAllTeachers(teachers);
-            setAllClasses(classes);
-        } catch (err) {
-            toast.error('Failed to load required data for creating lessons.');
-            console.error('Error fetching lesson prereqs', err);
-        }
+      try {
+        const [teachers, classes] = await Promise.all([
+          TeacherService.getAll(),
+          ClassService.getAll(),
+        ]);
+        setAllTeachers(teachers);
+        setAllClasses(classes);
+      } catch (err) {
+        toast.error('Failed to load required data for creating lessons.');
+        console.error('Error fetching lesson prereqs', err);
+      }
     };
     fetchPrereqs();
-}, []);
+  }, []);
 
   // ... (useEffect and other functions)
 
@@ -681,7 +734,7 @@ export default function LessonsPage() {
         toast.error(t('lessons.failed_to_create_lesson'));
       }
     }
-    
+
     setEditingLesson(null);
     setIsDialogOpen(false);
   };
@@ -738,7 +791,7 @@ export default function LessonsPage() {
 
   const renderLessonCard = (item: GroupedData, type: ViewType) => {
     const isExpanded = expandedCards.has(item.id);
-    
+
     return (
       <Card key={item.id} className="mb-4">
         <Collapsible
@@ -794,7 +847,7 @@ export default function LessonsPage() {
                         </span>
                       </>
                     )}
-                      {type === 'subjects' && (
+                    {type === 'subjects' && (
                       <>
                         <span className="flex items-center gap-1">
                           <GraduationCap className="h-4 w-4" />
@@ -902,7 +955,7 @@ export default function LessonsPage() {
               </div>
             </CardHeader>
           </CollapsibleTrigger>
-          
+
           <CollapsibleContent>
             <CardContent>
               <Table>
@@ -1015,7 +1068,7 @@ export default function LessonsPage() {
                   ))}
                 </TableBody>
               </Table>
-              
+
               <div className="flex justify-between items-center mt-4 pt-4 border-t">
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm">
@@ -1048,14 +1101,14 @@ export default function LessonsPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={toggleExpandAll}
               className="flex items-center gap-2"
             >
               {allExpanded ? (
                 <>
-                      <ChevronsUp className="h-4 w-4" />
+                  <ChevronsUp className="h-4 w-4" />
                   {t('lessons.collapse_all')}
                 </>
               ) : (
@@ -1149,355 +1202,355 @@ export default function LessonsPage() {
       </div>
 
       {/* ... (Tips & Tricks Sidebar) */}
-        <Dialog open={optimizeOpen} onOpenChange={setOptimizeOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t('lessons.optimize_title')}</DialogTitle>
-              <DialogDescription>
-                {t('lessons.optimize_description')}
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={optimizeOpen} onOpenChange={setOptimizeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('lessons.optimize_title')}</DialogTitle>
+            <DialogDescription>
+              {t('lessons.optimize_description')}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-3 mt-4">
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm">{t('lessons.timetable_id')}</Label>
+                <Input value={optTimetableId} onChange={(e) => setOptTimetableId(e.target.value)} placeholder={t('lessons.timetable_id_placeholder')} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm">{t('lessons.timetable_id')}</Label>
-                  <Input value={optTimetableId} onChange={(e) => setOptTimetableId(e.target.value)} placeholder={t('lessons.timetable_id_placeholder')} />
+                  <Label className="text-sm">{t('lessons.apply_soft_constraint')}</Label>
+                </div>
+                <Switch checked={applySoftConstraint} onCheckedChange={(v: any) => setApplySoftConstraint(!!v)} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">{t('lessons.apply_unscheduled')}</Label>
+                </div>
+                <Switch checked={applyUnScheduledLessons} onCheckedChange={(v: any) => setApplyUnScheduledLessons(!!v)} />
+              </div>
+
+              <div>
+                <Label className="text-sm">{t('lessons.apply_unscheduled_penalty')}</Label>
+                <Input type="number" value={String(applyUnScheduledLessonsPenalty)} onChange={(e) => setApplyUnScheduledLessonsPenalty(Number(e.target.value || 0))} />
+              </div>
+
+              <div>
+                <Label className="text-sm">{t('lessons.apply_continuity_teacher')}</Label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={applyContinuityPenaltyTeacher} onCheckedChange={(v: any) => setApplyContinuityPenaltyTeacher(!!v)} />
+                  <Input type="number" value={String(applyContinuityPenaltyTeacherPenalty)} onChange={(e) => setApplyContinuityPenaltyTeacherPenalty(Number(e.target.value || 0))} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">{t('lessons.apply_soft_constraint')}</Label>
-                  </div>
-                  <Switch checked={applySoftConstraint} onCheckedChange={(v: any) => setApplySoftConstraint(!!v)} />
+              <div>
+                <Label className="text-sm">{t('lessons.apply_continuity_class')}</Label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={applyContinuityPenaltyClass} onCheckedChange={(v: any) => setApplyContinuityPenaltyClass(!!v)} />
+                  <Input type="number" value={String(applyContinuityPenaltyClassPenalty)} onChange={(e) => setApplyContinuityPenaltyClassPenalty(Number(e.target.value || 0))} />
                 </div>
+              </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">{t('lessons.apply_unscheduled')}</Label>
-                  </div>
-                  <Switch checked={applyUnScheduledLessons} onCheckedChange={(v: any) => setApplyUnScheduledLessons(!!v)} />
+              <div>
+                <Label className="text-sm">{t('lessons.apply_balanced_load')}</Label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={applyBalancedLoad} onCheckedChange={(v: any) => setApplyBalancedLoad(!!v)} />
+                  <Input type="number" value={String(applyBalancedLoadPenalty)} onChange={(e) => setApplyBalancedLoadPenalty(Number(e.target.value || 0))} />
                 </div>
+              </div>
 
-                <div>
-                  <Label className="text-sm">{t('lessons.apply_unscheduled_penalty')}</Label>
-                  <Input type="number" value={String(applyUnScheduledLessonsPenalty)} onChange={(e) => setApplyUnScheduledLessonsPenalty(Number(e.target.value || 0))} />
-                </div>
-
-                <div>
-                  <Label className="text-sm">{t('lessons.apply_continuity_teacher')}</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyContinuityPenaltyTeacher} onCheckedChange={(v: any) => setApplyContinuityPenaltyTeacher(!!v)} />
-                    <Input type="number" value={String(applyContinuityPenaltyTeacherPenalty)} onChange={(e) => setApplyContinuityPenaltyTeacherPenalty(Number(e.target.value || 0))} />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm">{t('lessons.apply_continuity_class')}</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyContinuityPenaltyClass} onCheckedChange={(v: any) => setApplyContinuityPenaltyClass(!!v)} />
-                    <Input type="number" value={String(applyContinuityPenaltyClassPenalty)} onChange={(e) => setApplyContinuityPenaltyClassPenalty(Number(e.target.value || 0))} />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm">{t('lessons.apply_balanced_load')}</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyBalancedLoad} onCheckedChange={(v: any) => setApplyBalancedLoad(!!v)} />
-                    <Input type="number" value={String(applyBalancedLoadPenalty)} onChange={(e) => setApplyBalancedLoadPenalty(Number(e.target.value || 0))} />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm">{t('lessons.apply_daily_subject_distribution')}</Label>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={applyDailySubjectDistribution} onCheckedChange={(v: any) => setApplyDailySubjectDistribution(!!v)} />
-                    <Input type="number" value={String(applyDailySubjectDistributionPenalty)} onChange={(e) => setApplyDailySubjectDistributionPenalty(Number(e.target.value || 0))} />
-                  </div>
+              <div>
+                <Label className="text-sm">{t('lessons.apply_daily_subject_distribution')}</Label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={applyDailySubjectDistribution} onCheckedChange={(v: any) => setApplyDailySubjectDistribution(!!v)} />
+                  <Input type="number" value={String(applyDailySubjectDistributionPenalty)} onChange={(e) => setApplyDailySubjectDistributionPenalty(Number(e.target.value || 0))} />
                 </div>
               </div>
             </div>
+          </div>
 
-            <DialogFooter>
-              <div className="flex gap-2 w-full justify-end">
-                <Button variant="ghost" onClick={() => setOptimizeOpen(false)}>{t('actions.cancel')}</Button>
-                <Button onClick={handleOptimizeSubmit} disabled={isOptimizing}>
-                  {isOptimizing ? t('lessons.optimizing') : t('lessons.optimize')}
-                </Button>
-              </div>
-            </DialogFooter>
-            <DialogClose />
-          </DialogContent>
-        </Dialog>
-        {/* Entity Edit Dialog (Class / Teacher / Subject) */}
-        <Dialog open={entityEditOpen} onOpenChange={(open) => {
-          setEntityEditOpen(open);
-          if (!open) {
-            setEntityEditType(null);
-            setEntityEditId(null);
-            setEntityEditData(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {entityEditType === 'class' && t('lessons.edit_class')}
-                {entityEditType === 'teacher' && t('lessons.edit_teacher')}
-                {entityEditType === 'subject' && t('lessons.edit_subject')}
-              </DialogTitle>
-              <DialogDescription />
-            </DialogHeader>
+          <DialogFooter>
+            <div className="flex gap-2 w-full justify-end">
+              <Button variant="ghost" onClick={() => setOptimizeOpen(false)}>{t('actions.cancel')}</Button>
+              <Button onClick={handleOptimizeSubmit} disabled={isOptimizing}>
+                {isOptimizing ? t('lessons.optimizing') : t('lessons.optimize')}
+              </Button>
+            </div>
+          </DialogFooter>
+          <DialogClose />
+        </DialogContent>
+      </Dialog>
+      {/* Entity Edit Dialog (Class / Teacher / Subject) */}
+      <Dialog open={entityEditOpen} onOpenChange={(open) => {
+        setEntityEditOpen(open);
+        if (!open) {
+          setEntityEditType(null);
+          setEntityEditId(null);
+          setEntityEditData(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {entityEditType === 'class' && t('lessons.edit_class')}
+              {entityEditType === 'teacher' && t('lessons.edit_teacher')}
+              {entityEditType === 'subject' && t('lessons.edit_subject')}
+            </DialogTitle>
+            <DialogDescription />
+          </DialogHeader>
 
-            <div className="py-4">
-              {entityLoading ? (
-                <div className="p-6 text-center">{t('actions.loading')}</div>
-              ) : (
-                entityEditData && (
-                  <div className="space-y-4">
-                    {entityEditType === 'teacher' && (
-                      <>
-                        <Label>{t('teachers.full_name')}</Label>
-                        <Input value={entityEditData.fullName || ''} onChange={(e) => updateEntityField('fullName', e.target.value)} />
-                        <Label>{t('teachers.short_name_code')}</Label>
-                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+          <div className="py-4">
+            {entityLoading ? (
+              <div className="p-6 text-center">{t('actions.loading')}</div>
+            ) : (
+              entityEditData && (
+                <div className="space-y-4">
+                  {entityEditType === 'teacher' && (
+                    <>
+                      <Label>{t('teachers.full_name')}</Label>
+                      <Input value={entityEditData.fullName || ''} onChange={(e) => updateEntityField('fullName', e.target.value)} />
+                      <Label>{t('teachers.short_name_code')}</Label>
+                      <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
 
-                        <div className="space-y-2">
-                          <Label>{t('teachers.subjects')}</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
-                                {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 ? (
-                                  <span>{entityEditData.selectedSubjectIds.length} selected</span>
-                                ) : (
-                                  <span className="text-muted-foreground">{t('teachers.select_subjects_placeholder')}</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder={t('teachers.search_subjects')} />
-                                <CommandEmpty>{t('teachers.no_subject_found')}</CommandEmpty>
-                                <CommandGroup className="max-h-64 overflow-auto p-2">
-                                  {entitySubjects && entitySubjects.length > 0 && entitySubjects.map((subject) => (
-                                    <CommandItem key={subject.id} value={subject.name} onSelect={() => toggleEntitySubject(subject.id)}>
-                                      <Check className={`mr-2 h-4 w-4 ${entityEditData.selectedSubjectIds?.includes(subject.id) ? 'opacity-100' : 'opacity-0'}`} />
-                                      <span className="mr-2">{subject.emoji || '📖'}</span>
-                                      {subject.name}
-                                      <Badge variant="outline" className="ml-auto">{subject.shortName}</Badge>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-
-                          {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {entityEditData.selectedSubjectIds.map((subjectId: number) => {
-                                const s = entitySubjects.find((x: any) => x.id === subjectId);
-                                if (!s) return null;
-                                return (
-                                  <Badge key={subjectId} variant="secondary" className="pl-2 pr-1">
-                                    <span className="mr-1">{s.emoji || '📖'}</span>
-                                    {s.name}
-                                    <button onClick={() => removeEntitySubject(subjectId)} className="ml-2 text-xs">✕</button>
-                                  </Badge>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Availability for teacher */}
-                        <div className="bg-white rounded-lg border p-3 mt-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium">{t('teachers.teacher_availability')}</p>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('teachers.select_all')}</Button>
-                              <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('teachers.clear_all')}</Button>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <div className="grid grid-cols-8 gap-1 mb-1">
-                              <div className="p-1"></div>
-                              {periods.map((period) => (
-                                <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
-                                  P{period}
-                                </button>
-                              ))}
-                            </div>
-
-                            {days.map((day, dayIndex) => (
-                              <div key={day} className="grid grid-cols-8 gap-1">
-                                <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
-                                  {dayLabels[dayIndex]}
-                                </button>
-                                {periods.map((period) => {
-                                  const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
-                                  return (
-                                    <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
-                                      {isAvailable ? '✓' : '—'}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {entityEditType === 'subject' && (
-                      <>
-                        <Label>{t('subjects.name')}</Label>
-                        <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
-                        <Label>{t('subjects.short_name')}</Label>
-                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
-                      </>
-                    )}
-
-                    {entityEditType === 'class' && (
-                      <>
-                        <Label>{t('classes.class_name')}</Label>
-                        <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
-                        <Label>{t('classes.short_name')}</Label>
-                        <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
-
-                        <div className="space-y-2">
-                          <Label>{t('classes.class_teacher')}</Label>
-                          <Select
-                            value={entityEditData.classTeacher || undefined}
-                            onValueChange={(value) => updateEntityField('classTeacher', value)}
-                            disabled={!entityTeachers || entityTeachers.length === 0}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('classes.class_teacher')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {entityTeachers && entityTeachers.length > 0 ? (
-                                entityTeachers.map((teacher: any) => (
-                                  teacher.id ? (
-                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                      {teacher.fullName || teacher.name}
-                                    </SelectItem>
-                                  ) : null
-                                ))
+                      <div className="space-y-2">
+                        <Label>{t('teachers.subjects')}</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between">
+                              {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 ? (
+                                <span>{entityEditData.selectedSubjectIds.length} selected</span>
                               ) : (
-                                <div className="p-2 text-sm text-muted-foreground text-center">{t('teachers.no_teachers_found')}</div>
+                                <span className="text-muted-foreground">{t('teachers.select_subjects_placeholder')}</span>
                               )}
-                            </SelectContent>
-                          </Select>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder={t('teachers.search_subjects')} />
+                              <CommandEmpty>{t('teachers.no_subject_found')}</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto p-2">
+                                {entitySubjects && entitySubjects.length > 0 && entitySubjects.map((subject) => (
+                                  <CommandItem key={subject.id} value={subject.name} onSelect={() => toggleEntitySubject(subject.id)}>
+                                    <Check className={`mr-2 h-4 w-4 ${entityEditData.selectedSubjectIds?.includes(subject.id) ? 'opacity-100' : 'opacity-0'}`} />
+                                    <span className="mr-2">{subject.emoji || '📖'}</span>
+                                    {subject.name}
+                                    <Badge variant="outline" className="ml-auto">{subject.shortName}</Badge>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+
+                        {entityEditData.selectedSubjectIds && entityEditData.selectedSubjectIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {entityEditData.selectedSubjectIds.map((subjectId: number) => {
+                              const s = entitySubjects.find((x: any) => x.id === subjectId);
+                              if (!s) return null;
+                              return (
+                                <Badge key={subjectId} variant="secondary" className="pl-2 pr-1">
+                                  <span className="mr-1">{s.emoji || '📖'}</span>
+                                  {s.name}
+                                  <button onClick={() => removeEntitySubject(subjectId)} className="ml-2 text-xs">✕</button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Availability for teacher */}
+                      <div className="bg-white rounded-lg border p-3 mt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">{t('teachers.teacher_availability')}</p>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('teachers.select_all')}</Button>
+                            <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('teachers.clear_all')}</Button>
+                          </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label>{t('classes.rooms_optional')}</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
-                                {entityEditData.roomIds && entityEditData.roomIds.length > 0 ? (
-                                  <span>{entityEditData.roomIds.length} selected</span>
-                                ) : (
-                                  <span className="text-muted-foreground">{t('classes.select_rooms_placeholder') || 'Select rooms'}</span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder={t('classes.search_rooms') || 'Search rooms...'} />
-                                <CommandEmpty>{t('classes.no_rooms')}</CommandEmpty>
-                                <CommandGroup className="max-h-64 overflow-auto p-2">
-                                  {entityRooms && entityRooms.length > 0 ? (
-                                    entityRooms.map((room) => (
-                                      <CommandItem key={room.id} value={room.name} onSelect={() => toggleEntityRoom(String(room.id))}>
-                                        <Check className={`mr-2 h-4 w-4 ${entityEditData.roomIds?.includes(String(room.id)) ? 'opacity-100' : 'opacity-0'}`} />
-                                        <span className="mr-2">{room.name}</span>
-                                        <span className="text-muted-foreground ml-auto text-xs">Cap: {room.capacity || 0}</span>
-                                      </CommandItem>
-                                    ))
-                                  ) : null}
-                                </CommandGroup>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
+                        <div className="grid gap-2">
+                          <div className="grid grid-cols-8 gap-1 mb-1">
+                            <div className="p-1"></div>
+                            {periods.map((period) => (
+                              <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
+                                P{period}
+                              </button>
+                            ))}
+                          </div>
 
-                          {/* Selected rooms badges */}
-                          {entityEditData.roomIds && entityEditData.roomIds.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {entityEditData.roomIds.map((roomId: string) => {
-                                const room = entityRooms.find(r => String(r.id) === roomId);
-                                if (!room) return null;
+                          {days.map((day, dayIndex) => (
+                            <div key={day} className="grid grid-cols-8 gap-1">
+                              <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
+                                {dayLabels[dayIndex]}
+                              </button>
+                              {periods.map((period) => {
+                                const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
                                 return (
-                                  <Badge key={roomId} variant="secondary" className="pl-2 pr-1">
-                                    {room.name}
-                                    <button onClick={() => toggleEntityRoom(roomId)} className="ml-2 text-xs">✕</button>
-                                  </Badge>
+                                  <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                    {isAvailable ? '✓' : '—'}
+                                  </button>
                                 );
                               })}
                             </div>
-                          )}
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {entityEditType === 'subject' && (
+                    <>
+                      <Label>{t('subjects.name')}</Label>
+                      <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
+                      <Label>{t('subjects.short_name')}</Label>
+                      <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+                    </>
+                  )}
+
+                  {entityEditType === 'class' && (
+                    <>
+                      <Label>{t('classes.class_name')}</Label>
+                      <Input value={entityEditData.name || ''} onChange={(e) => updateEntityField('name', e.target.value)} />
+                      <Label>{t('classes.short_name')}</Label>
+                      <Input value={entityEditData.shortName || ''} onChange={(e) => updateEntityField('shortName', e.target.value)} />
+
+                      <div className="space-y-2">
+                        <Label>{t('classes.class_teacher')}</Label>
+                        <Select
+                          value={entityEditData.classTeacher || undefined}
+                          onValueChange={(value) => updateEntityField('classTeacher', value)}
+                          disabled={!entityTeachers || entityTeachers.length === 0}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('classes.class_teacher')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {entityTeachers && entityTeachers.length > 0 ? (
+                              entityTeachers.map((teacher: any) => (
+                                teacher.id ? (
+                                  <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                    {teacher.fullName || teacher.name}
+                                  </SelectItem>
+                                ) : null
+                              ))
+                            ) : (
+                              <div className="p-2 text-sm text-muted-foreground text-center">{t('teachers.no_teachers_found')}</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>{t('classes.rooms_optional')}</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-between">
+                              {entityEditData.roomIds && entityEditData.roomIds.length > 0 ? (
+                                <span>{entityEditData.roomIds.length} selected</span>
+                              ) : (
+                                <span className="text-muted-foreground">{t('classes.select_rooms_placeholder') || 'Select rooms'}</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder={t('classes.search_rooms') || 'Search rooms...'} />
+                              <CommandEmpty>{t('classes.no_rooms')}</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto p-2">
+                                {entityRooms && entityRooms.length > 0 ? (
+                                  entityRooms.map((room) => (
+                                    <CommandItem key={room.id} value={room.name} onSelect={() => toggleEntityRoom(String(room.id))}>
+                                      <Check className={`mr-2 h-4 w-4 ${entityEditData.roomIds?.includes(String(room.id)) ? 'opacity-100' : 'opacity-0'}`} />
+                                      <span className="mr-2">{room.name}</span>
+                                      <span className="text-muted-foreground ml-auto text-xs">Cap: {room.capacity || 0}</span>
+                                    </CommandItem>
+                                  ))
+                                ) : null}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Selected rooms badges */}
+                        {entityEditData.roomIds && entityEditData.roomIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {entityEditData.roomIds.map((roomId: string) => {
+                              const room = entityRooms.find(r => String(r.id) === roomId);
+                              if (!room) return null;
+                              return (
+                                <Badge key={roomId} variant="secondary" className="pl-2 pr-1">
+                                  {room.name}
+                                  <button onClick={() => toggleEntityRoom(roomId)} className="ml-2 text-xs">✕</button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Availability */}
+                      <div className="bg-white rounded-lg border p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">{t('classes.class_availability')}</p>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('classes.select_all')}</Button>
+                            <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('classes.clear_all')}</Button>
+                          </div>
                         </div>
 
-                        {/* Availability */}
-                        <div className="bg-white rounded-lg border p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm font-medium">{t('classes.class_availability')}</p>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={selectAllEntityAvailability}>{t('classes.select_all')}</Button>
-                              <Button variant="outline" size="sm" onClick={clearAllEntityAvailability}>{t('classes.clear_all')}</Button>
-                            </div>
-                          </div>
-
-                          <div className="grid gap-2">
-                            <div className="grid grid-cols-8 gap-1 mb-1">
-                              <div className="p-1"></div>
-                              {periods.map((period) => (
-                                <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
-                                  P{period}
-                                </button>
-                              ))}
-                            </div>
-
-                            {days.map((day, dayIndex) => (
-                              <div key={day} className="grid grid-cols-8 gap-1">
-                                <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
-                                  {dayLabels[dayIndex]}
-                                </button>
-                                {periods.map((period) => {
-                                  const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
-                                  return (
-                                    <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
-                                      {isAvailable ? '✓' : '—'}
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                        <div className="grid gap-2">
+                          <div className="grid grid-cols-8 gap-1 mb-1">
+                            <div className="p-1"></div>
+                            {periods.map((period) => (
+                              <button key={period} onClick={() => toggleEntityPeriodAcrossDays(period)} className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100">
+                                P{period}
+                              </button>
                             ))}
                           </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )
-              )}
-            </div>
 
-            <DialogFooter>
-              <div className="flex gap-2 w-full justify-end">
-                <Button variant="ghost" onClick={() => setEntityEditOpen(false)}>{t('actions.cancel')}</Button>
-                <Button onClick={saveEntityEdit} disabled={entitySaving}>{entitySaving ? t('actions.saving') : t('actions.save')}</Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <AddLessonModal
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          onSubmit={handleModalSubmit}
-          editingLesson={editingLesson}
-        />
+                          {days.map((day, dayIndex) => (
+                            <div key={day} className="grid grid-cols-8 gap-1">
+                              <button onClick={() => toggleEntityDay(day)} className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100">
+                                {dayLabels[dayIndex]}
+                              </button>
+                              {periods.map((period) => {
+                                const isAvailable = (entityEditData.availability?.[day] || []).includes(period);
+                                return (
+                                  <button key={period} onClick={() => toggleEntityAvailability(day, period)} className={`p-1 text-center rounded border text-xs ${isAvailable ? 'bg-green-500 border-green-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                    {isAvailable ? '✓' : '—'}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            )}
+          </div>
+
+          <DialogFooter>
+            <div className="flex gap-2 w-full justify-end">
+              <Button variant="ghost" onClick={() => setEntityEditOpen(false)}>{t('actions.cancel')}</Button>
+              <Button onClick={saveEntityEdit} disabled={entitySaving}>{entitySaving ? t('actions.saving') : t('actions.save')}</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AddLessonModal
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSubmit={handleModalSubmit}
+        editingLesson={editingLesson}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import API, { PaginatedResponse } from './api';
-import { mockRoomApi } from '../components/api/mockApi';
+
 import { TimeSlot } from './teachers';
 
 // Room Type Enum
@@ -39,8 +39,8 @@ export interface RoomResponse {
 
 export const RoomService = {
   getAll: async (): Promise<RoomResponse[]> => {
-    if (API.config.USE_MOCK) return mockRoomApi.getAll();
-    
+
+
     const response = await API.call<RoomResponse[]>(
       `${API.url('ROOMS')}/all`
     );
@@ -49,8 +49,8 @@ export const RoomService = {
   },
 
   getPaginated: async (page: number, size: number): Promise<PaginatedResponse<RoomResponse>> => {
-    if (API.config.USE_MOCK) return mockRoomApi.getPaginated(page, size);
-    
+
+
     const response = await API.call<PaginatedResponse<RoomResponse>>(
       `${API.url('ROOMS')}?page=${page}&size=${size}`
     );
@@ -59,8 +59,8 @@ export const RoomService = {
   },
 
   getById: async (id: number): Promise<RoomResponse> => {
-    if (API.config.USE_MOCK) return mockRoomApi.getById(id);
-    
+
+
     const response = await API.call<RoomResponse>(
       `${API.url('ROOMS')}/${id}`
     );
@@ -69,8 +69,8 @@ export const RoomService = {
   },
 
   create: async (data: RoomRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockRoomApi.create(data);
-    
+
+
     const response = await API.call(
       API.url('ROOMS'),
       {
@@ -82,8 +82,8 @@ export const RoomService = {
   },
 
   update: async (id: number, data: RoomRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockRoomApi.update(id, data);
-    
+
+
     const response = await API.call(
       `${API.url('ROOMS')}/${id}`,
       {
@@ -95,8 +95,8 @@ export const RoomService = {
   },
 
   delete: async (id: number): Promise<void> => {
-    if (API.config.USE_MOCK) return mockRoomApi.delete(id);
-    
+
+
     const response = await API.call(
       `${API.url('ROOMS')}/${id}`,
       { method: 'DELETE' }

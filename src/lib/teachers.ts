@@ -1,5 +1,5 @@
 import API, { PaginatedResponse } from './api';
-import { mockTeacherApi } from '../components/api/mockApi';
+
 
 // Types
 export interface TimeSlot {
@@ -41,8 +41,8 @@ export interface SubjectResponse {
 // Service
 export const TeacherService = {
   getAll: async (): Promise<TeacherResponse[]> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.getAll();
-    
+
+
     const response = await API.call<TeacherResponse[]>(
       `${API.url('TEACHERS')}/all`
     );
@@ -51,8 +51,8 @@ export const TeacherService = {
   },
 
   getPaginated: async (page: number, size: number): Promise<PaginatedResponse<TeacherResponse>> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.getPaginated(page, size);
-    
+
+
     const response = await API.call<PaginatedResponse<TeacherResponse>>(
       `${API.url('TEACHERS')}?page=${page}&size=${size}`
     );
@@ -61,8 +61,8 @@ export const TeacherService = {
   },
 
   getById: async (id: number): Promise<TeacherResponse> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.getById(id);
-    
+
+
     const response = await API.call<TeacherResponse>(
       `${API.url('TEACHERS')}/${id}`
     );
@@ -71,8 +71,8 @@ export const TeacherService = {
   },
 
   create: async (data: TeacherRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.create(data);
-    
+
+
     const response = await API.call(
       API.url('TEACHERS'),
       {
@@ -84,8 +84,8 @@ export const TeacherService = {
   },
 
   update: async (id: number, data: TeacherUpdateRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.update(id, data);
-    
+
+
     const response = await API.call(
       `${API.url('TEACHERS')}/${id}`,
       {
@@ -97,8 +97,8 @@ export const TeacherService = {
   },
 
   delete: async (id: number): Promise<void> => {
-    if (API.config.USE_MOCK) return mockTeacherApi.delete(id);
-    
+
+
     const response = await API.call(
       `${API.url('TEACHERS')}/${id}`,
       { method: 'DELETE' }

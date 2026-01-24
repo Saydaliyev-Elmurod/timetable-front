@@ -1,5 +1,5 @@
 import API, { PaginatedResponse } from './api';
-import { mockSubjectApi } from '../components/api/mockApi';
+
 import { TimeSlot } from './teachers';
 
 export interface SubjectRequest {
@@ -23,8 +23,8 @@ export interface SubjectResponse {
 
 export const SubjectService = {
   getAll: async (): Promise<SubjectResponse[]> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.getAll();
-    
+
+
     const response = await API.call<SubjectResponse[]>(
       `${API.url('SUBJECTS')}/all`
     );
@@ -33,8 +33,8 @@ export const SubjectService = {
   },
 
   getPaginated: async (page: number, size: number): Promise<PaginatedResponse<SubjectResponse>> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.getPaginated(page, size);
-    
+
+
     const response = await API.call<PaginatedResponse<SubjectResponse>>(
       `${API.url('SUBJECTS')}?page=${page}&size=${size}`
     );
@@ -43,8 +43,8 @@ export const SubjectService = {
   },
 
   getById: async (id: number): Promise<SubjectResponse> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.getById(id);
-    
+
+
     const response = await API.call<SubjectResponse>(
       `${API.url('SUBJECTS')}/${id}`
     );
@@ -53,8 +53,8 @@ export const SubjectService = {
   },
 
   create: async (data: SubjectRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.create(data);
-    
+
+
     const response = await API.call(
       API.url('SUBJECTS'),
       {
@@ -66,8 +66,8 @@ export const SubjectService = {
   },
 
   update: async (id: number, data: SubjectRequest): Promise<void> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.update(id, data);
-    
+
+
     const response = await API.call(
       `${API.url('SUBJECTS')}/${id}`,
       {
@@ -79,8 +79,8 @@ export const SubjectService = {
   },
 
   delete: async (id: number): Promise<void> => {
-    if (API.config.USE_MOCK) return mockSubjectApi.delete(id);
-    
+
+
     const response = await API.call(
       `${API.url('SUBJECTS')}/${id}`,
       { method: 'DELETE' }

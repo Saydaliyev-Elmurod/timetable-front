@@ -10,6 +10,14 @@ export interface ClassResponse {
     id: number;
     fullName: string;
   };
+  groups?: Array<{
+    id: number;
+    name: string;
+  }>;
+  rooms?: Array<{
+    id: number;
+    name: string;
+  }>;
   createdDate?: string;
   updatedDate?: string;
 }

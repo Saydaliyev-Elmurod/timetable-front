@@ -32,16 +32,26 @@ export interface SubjectResponse {
   name: string;
 }
 
+export interface GroupLessonDetailResponse {
+  group: GroupResponse;
+  teacher: TeacherResponse;
+  subject: SubjectResponse;
+  rooms: RoomResponse[];
+}
+
 export interface LessonResponse {
   id: number;
   class: ClassResponse;
   teacher: TeacherResponse;
   rooms: RoomResponse[];
   subject: SubjectResponse;
+  group?: GroupResponse;
+  groupDetails?: GroupLessonDetailResponse[];
   lessonCount: number;
   dayOfWeek: string;
   hour: number;
   period: number;
+  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
   createdDate: string;
   updatedDate: string;
 }
@@ -77,16 +87,24 @@ export interface GroupUpdateRequest {
   name: string;
 }
 
+export interface GroupLessonDetail {
+  groupId: number;
+  teacherId: number;
+  subjectId: number;
+  roomIds: number[];
+}
+
 export interface LessonRequest {
-  classId: number;
+  classId: number[];
   teacherId: number;
   roomIds: number[];
   subjectId: number;
   lessonCount: number;
-  dayOfWeek: string;
-  hour: number;
-  period: number;
+  dayOfWeek?: string;
+  hour?: number;
   frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
+  period: number;
+  groups?: GroupLessonDetail[];
 }
 
 export interface LessonUpdateRequest extends LessonRequest {
