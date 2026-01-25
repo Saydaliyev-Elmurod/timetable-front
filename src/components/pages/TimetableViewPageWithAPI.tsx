@@ -101,19 +101,20 @@ interface ClassResponse {
   createdDate: string;
 }
 
-interface ScheduledData {
-  day: string;
-  hour: number;
-  teacher: TeacherResponse;
+interface TimetableGroupDetail {
+  lessonId: number;
   subject: SubjectResponse;
-  classObj: ClassResponse;
-  roomId: number;
+  teacher: TeacherResponse;
+  room: RoomResponse;
+  group: GroupResponse | null;
+  originalLessonData: any; // detailed lesson info
 }
 
 interface UnscheduledLesson {
   classInfo: ClassResponse;
   teacher: TeacherResponse;
   subject: SubjectResponse;
+  room: RoomResponse[]; // Changed to array
   requiredCount: number;
   scheduledCount: number;
   missingCount: number;
@@ -123,15 +124,18 @@ interface TimetableDataEntity {
   id: string;
   timetableId: string;
   isScheduled: boolean;
-  subjectId: number;
   classId: number;
-  roomId: number;
-  teacherId: number;
   dayOfWeek: string;
   hour: number;
-  scheduledData: ScheduledData | null;
-  unscheduledData: UnscheduledLesson | null;
+  weekIndex: number | null; // 0 or 1 for bi-weekly
+  slotDetails: TimetableGroupDetail[]; // List of details instead of single scheduledData
+  unscheduledData: UnscheduledLesson | null; // Updated type
   version: number;
+}
+
+interface GroupResponse {
+  id: number;
+  name: string;
 }
 
 // Internal Lesson format (for DnD and display)
@@ -149,6 +153,12 @@ interface Lesson {
   day?: string;
   timeSlot?: number;
   isLocked?: boolean;
+  // New fields
+  groupName?: string;
+  groupId?: number;
+  weekIndex?: number | null;
+  isBiWeekly?: boolean;
+  rawDetails?: TimetableGroupDetail; // Store original detail for actions
 }
 
 interface UnplacedLesson extends Lesson {
@@ -323,6 +333,23 @@ const DraggableLessonCard = ({
                   {lesson.subject}
                 </div>
               )}
+
+              {/* Group Name & Bi-Weekly Info */}
+              {(lesson.groupName || (lesson.isBiWeekly && lesson.weekIndex !== undefined)) && (
+                <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
+                  {lesson.groupName && (
+                    <span className={cn("text-xs font-semibold text-indigo-700 bg-indigo-50 px-1 rounded", compact && "text-[10px]")}>
+                      {lesson.groupName}
+                    </span>
+                  )}
+                  {lesson.isBiWeekly && lesson.weekIndex !== undefined && (
+                    <span className={cn("text-xs font-bold text-purple-700 bg-purple-50 px-1 rounded", compact && "text-[10px]")}>
+                      {lesson.weekIndex === 0 ? "Week A" : "Week B"}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {showClass && (
                 <div
                   className={cn(
@@ -417,7 +444,7 @@ const DraggableLessonCard = ({
 const DroppableTimeSlot = ({
   day,
   timeSlot,
-  lesson,
+  lessons = [],
   onDrop,
   onEdit,
   onDelete,
@@ -433,7 +460,7 @@ const DroppableTimeSlot = ({
 }: {
   day: string;
   timeSlot: number;
-  lesson?: Lesson;
+  lessons?: Lesson[];
   onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
   onEdit: (lesson: Lesson) => void;
   onDelete: (lesson: Lesson) => void;
@@ -465,23 +492,6 @@ const DroppableTimeSlot = ({
     }),
     [day, timeSlot, rowClass],
   );
-
-  // Calculate conflict for the CURRENT lesson in this slot (if any)
-  const currentLessonConflict = useMemo(() => {
-    if (!lesson || !allLessons) return false;
-
-    return allLessons.some(l =>
-      l.id !== lesson.id &&
-      l.day === day &&
-      l.timeSlot === timeSlot &&
-      (
-        l.teacherId === lesson.teacherId || // Teacher double booking
-        (l.roomId !== 0 && l.roomId === lesson.roomId) || // Room double booking
-        l.classId === lesson.classId // Class double booking
-      )
-    );
-  }, [lesson, allLessons, day, timeSlot]);
-
 
 
   // MANUAL PLACEMENT VALIDATION logic
@@ -550,11 +560,12 @@ const DroppableTimeSlot = ({
     // 2. DRAG AND DROP STYLING (Existing)
     if (!draggedLesson || !allLessons) {
       // Default behavior when not dragging
+      // If lessons exist, maybe no hover effect needed as much?
       return cn(
         "border border-gray-200 p-1 transition-colors relative",
         compact ? "min-h-[60px]" : "min-h-[70px]",
         isOver && canDrop && "bg-blue-50 border-blue-300",
-        !lesson && "hover:bg-gray-50"
+        lessons.length === 0 && "hover:bg-gray-50"
       );
     }
 
@@ -596,7 +607,7 @@ const DroppableTimeSlot = ({
       );
     }
 
-    // 2. Room Conflict (Blue - "C" in docs - Questionable)
+    // 2. Room Conflict (Blue - "C" in docs)
     // Check if the dragged lesson's room is occupied at this time
     if (draggedLesson.roomId) {
       const roomConflict = allLessons.some(
@@ -632,28 +643,51 @@ const DroppableTimeSlot = ({
         }
       }}
     >
-      {lesson && (
-        <DraggableLessonCard
-          lesson={lesson}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onToggleLock={onToggleLock}
-          displayOptions={displayOptions}
-          compact={compact}
-          showClass={showClass}
-          hasConflict={currentLessonConflict}
-          isSelected={selectedLesson?.id === lesson.id}
-          onSelect={(l) => {
-            // We can allow re-selecting scheduled lessons to move them
-            // For now passing undefined to use parent handler if we want, 
-            // but `DroppableTimeSlot` doesn't get `onSelect` passed from parent in current code. 
-            // To enable moving scheduled lessons via click, we need to pass `onSelect` down.
-            // For now, let's assume we select via `onEdit` or add `onSelect` to props.
-            // Actually, the user asked for "Manual Lesson Placement", implying unplaced to placed.
-            // But usually this system allows moving placed lessons too.
-          }}
-        />
-      )}
+      <div className="flex h-full w-full gap-1">
+        {lessons.map((lesson) => {
+          // Check specific conflict for this lesson
+          const lessonConflict = allLessons ? allLessons.some(l =>
+            l.id !== lesson.id &&
+            l.day === day &&
+            l.timeSlot === timeSlot &&
+            (
+              l.teacherId === lesson.teacherId ||
+              (l.roomId !== 0 && l.roomId === lesson.roomId) ||
+              l.classId === lesson.classId
+            )
+          ) : false;
+
+          // Determine width logic
+          // If single lesson and bi-weekly -> 50% width
+          // Else -> flex-1 (share space)
+          const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
+
+          return (
+            <div
+              key={lesson.id}
+              className={cn(
+                "relative",
+                isSingleBiWeekly ? "w-1/2" : "flex-1"
+              )}
+            >
+              <DraggableLessonCard
+                lesson={lesson}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggleLock={onToggleLock}
+                displayOptions={displayOptions}
+                compact={compact || lessons.length > 1} // Force compact if shared
+                showClass={showClass}
+                hasConflict={lessonConflict}
+                isSelected={selectedLesson?.id === lesson.id}
+                onSelect={(l) => {
+                  // Logic for selection
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -688,8 +722,8 @@ const ClassViewGrid = ({
   onSelectLesson?: (lesson: Lesson | UnplacedLesson) => void; // NEW
   onManualPlace?: (day: string, timeSlot: number) => void; // NEW
 }) => {
-  const getLesson = (day: string, timeSlot: number) => {
-    return lessons.find(
+  const getLessons = (day: string, timeSlot: number) => {
+    return lessons.filter(
       (lesson) =>
         lesson.class === className &&
         lesson.day === day &&
@@ -740,7 +774,7 @@ const ClassViewGrid = ({
                     key={`${className}-${day}-${slotId}`}
                     day={day}
                     timeSlot={slotId}
-                    lesson={getLesson(day, slotId)}
+                    lessons={getLessons(day, slotId)}
                     onDrop={onDrop}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -791,8 +825,8 @@ const TeacherViewGrid = ({
   selectedLesson?: Lesson | UnplacedLesson | null;
   onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
-  const getLesson = (day: string, timeSlot: number) => {
-    return lessons.find(
+  const getLessons = (day: string, timeSlot: number) => {
+    return lessons.filter(
       (lesson) =>
         lesson.teacher === teacherName &&
         lesson.day === day &&
@@ -836,7 +870,7 @@ const TeacherViewGrid = ({
                     key={`${teacherName}-${day}-${slotId}`}
                     day={day}
                     timeSlot={slotId}
-                    lesson={getLesson(day, slotId)}
+                    lessons={getLessons(day, slotId)}
                     onDrop={onDrop}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -887,8 +921,8 @@ const RoomViewGrid = ({
   selectedLesson?: Lesson | UnplacedLesson | null;
   onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
-  const getLesson = (day: string, timeSlot: number) => {
-    return lessons.find(
+  const getLessons = (day: string, timeSlot: number) => {
+    return lessons.filter(
       (lesson) =>
         lesson.room === roomName &&
         lesson.day === day &&
@@ -932,7 +966,7 @@ const RoomViewGrid = ({
                     key={`${roomName}-${day}-${slotId}`}
                     day={day}
                     timeSlot={slotId}
-                    lesson={getLesson(day, slotId)}
+                    lessons={getLessons(day, slotId)}
                     onDrop={onDrop}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -983,8 +1017,8 @@ const CompactViewGrid = ({
   selectedLesson?: Lesson | UnplacedLesson | null;
   onManualPlace?: (day: string, timeSlot: number) => void;
 }) => {
-  const getLesson = (className: string, day: string, timeSlot: number) => {
-    return lessons.find(
+  const getLessons = (className: string, day: string, timeSlot: number) => {
+    return lessons.filter(
       (lesson) =>
         lesson.class === className &&
         lesson.day === day &&
@@ -1067,7 +1101,7 @@ const CompactViewGrid = ({
                           key={`${className}-${day}-${slotId}`}
                           day={day}
                           timeSlot={slotId}
-                          lesson={getLesson(className, day, slotId)}
+                          lessons={getLessons(className, day, slotId)}
                           onDrop={onDrop}
                           onEdit={onEdit}
                           onDelete={onDelete}
@@ -1216,33 +1250,69 @@ const TimetableContent = ({
     const unplaced: UnplacedLesson[] = [];
 
     data.forEach((entry) => {
-      if (entry.isScheduled && entry.scheduledData) {
-        const sd = entry.scheduledData;
-        scheduled.push({
-          id: entry.id,
-          subject: sd.subject.name,
-          subjectId: sd.subject.id,
-          teacher: sd.teacher.fullName,
-          teacherId: sd.teacher.id,
-          teacherShort: sd.teacher.shortName,
-          room: `Room ${sd.roomId}`,
-          roomId: sd.roomId,
-          class: sd.classObj.shortName,
-          classId: sd.classObj.id,
-          day: sd.day,
-          timeSlot: sd.hour,
-          isLocked: false,
+      // 1. Handle Scheduled Slots (slotDetails)
+      if (entry.slotDetails && entry.slotDetails.length > 0) {
+        entry.slotDetails.forEach((detail, index) => {
+          // We need class info. Assuming originalLessonData contains it.
+          // If originalLessonData is missing, we might have a problem getting class name 
+          // unless we fetch classes separately or use a map.
+          // For now, let's try to get it from originalLessonData.
+          const classInfo = detail.originalLessonData?.class;
+
+          if (!classInfo && !entry.classId) {
+            console.warn("Missing class info for scheduled lesson", entry);
+            return;
+          }
+
+          // Fallback or use classId lookup if we had a store. 
+          // Since we rely on data for display, we hope classInfo is there.
+          const className = classInfo?.shortName || `Class ${entry.classId}`;
+          const classId = classInfo?.id || entry.classId;
+
+          const lessonId = detail.lessonId ? `${detail.lessonId}` : `${entry.id}-${index}`;
+
+          scheduled.push({
+            id: lessonId,
+            subject: detail.subject.name,
+            subjectId: detail.subject.id,
+            teacher: detail.teacher?.fullName || "No Teacher",
+            teacherId: detail.teacher?.id || 0,
+            teacherShort: detail.teacher?.fullName || "", // fallback
+            room: detail.room ? detail.room.name : "No Room",
+            roomId: detail.room ? detail.room.id : 0,
+            class: className,
+            classId: classId,
+            day: entry.dayOfWeek,
+            timeSlot: entry.hour,
+            isLocked: false, // data doesn't seem to have locked status yet
+            groupName: detail.group?.name,
+            groupId: detail.group?.id,
+            weekIndex: entry.weekIndex,
+            isBiWeekly: entry.weekIndex !== null, // If weekIndex is present (0 or 1), it's bi-weekly
+            rawDetails: detail
+          });
         });
-      } else if (!entry.isScheduled && entry.unscheduledData) {
+      }
+
+      // 2. Handle Unscheduled/Unplaced Data
+      // Note: An entity can technically have BOTH or neither, but usually one.
+      // The user says "If not scheduled...". 
+      // But unscheduledData might exist alongside partial schedule? 
+      // The record has `UnscheduledLesson unscheduledData`.
+      if (entry.unscheduledData) {
         const ud = entry.unscheduledData;
+        const roomName = (ud.room && ud.room.length > 0)
+          ? ud.room.map(r => r.name).join(", ")
+          : "TBD";
+
         unplaced.push({
-          id: entry.id,
+          id: entry.id, // Using entity ID for unplaced container logic? Or need unique ID?
           subject: ud.subject.name,
           subjectId: ud.subject.id,
-          teacher: ud.teacher.fullName,
-          teacherId: ud.teacher.id,
-          teacherShort: ud.teacher.shortName,
-          room: "TBD",
+          teacher: ud.teacher?.fullName || "No Teacher",
+          teacherId: ud.teacher?.id || 0,
+          teacherShort: ud.teacher?.fullName || "",
+          room: roomName,
           roomId: 0,
           class: ud.classInfo.shortName,
           classId: ud.classInfo.id,
