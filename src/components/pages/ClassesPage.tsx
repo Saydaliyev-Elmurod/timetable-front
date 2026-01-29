@@ -78,7 +78,7 @@ import {
 import { cn } from '../ui/utils';
 
 import { organizationApi } from '../../api/organizationApi';
-const API_BASE_URL = 'http://localhost:8080';
+import { getApiUrl } from '@/config/api';
 
 export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation();
@@ -243,7 +243,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
   // Fetch teachers from API
   const fetchTeachers = useCallback(async () => {
     try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/teachers/v1/all`);
+      const response = await apiCall<any>(`${getApiUrl('TEACHERS')}/all`);
       if (!response.error && response.data) {
         const teacherList = Array.isArray(response.data) ? response.data : [];
         setTeachers(teacherList.map((t: any) => ({
@@ -259,7 +259,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
   // Fetch rooms from API
   const fetchRooms = useCallback(async () => {
     try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/rooms/v1/all`);
+      const response = await apiCall<any>(`${getApiUrl('ROOMS')}/all`);
       if (!response.error && response.data) {
         const roomList = Array.isArray(response.data) ? response.data : [];
         setRooms(roomList.map((r: any) => ({
@@ -277,7 +277,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
   const fetchClasses = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/classes/v1?page=${currentPage - 1}&size=${itemsPerPage}`);
+      const response = await apiCall<any>(`${getApiUrl('CLASSES')}?page=${currentPage - 1}&size=${itemsPerPage}`);
 
       if (response.error) {
         throw new Error('Failed to fetch classes');
@@ -333,7 +333,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
   // Fetch all classes for modal
   const fetchAllClasses = useCallback(async () => {
     try {
-      const response = await apiCall<any>(`${API_BASE_URL}/api/classes/v1/all`);
+      const response = await apiCall<any>(`${getApiUrl('CLASSES')}/all`);
       if (!response.error && response.data) {
         const data = Array.isArray(response.data) ? response.data : [];
         const convertedClasses = data.map((cls: any) => ({
@@ -514,7 +514,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         // Only send NEW groups (groups that don't have id property or have isNew: true)
         const newGroups = inlineFormData.groups.filter(g => !g.id || g.isNew).map(g => ({ name: g.name }));
         const updatedGroups = inlineFormData.groups.filter(g => g.id && !g.isNew).map(g => ({ id: g.id, name: g.name }));
-        
+
         requestData = {
           ...baseData,
           deletedRooms: [], // not tracking changes, so empty
@@ -527,8 +527,8 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         requestData = baseData;
       }
       const url = isEdit
-        ? `${API_BASE_URL}/api/classes/v1/${editingClassId}`
-        : `${API_BASE_URL}/api/classes/v1`;
+        ? `${getApiUrl('CLASSES')}/${editingClassId}`
+        : getApiUrl('CLASSES');
       const method = isEdit ? 'PUT' : 'POST';
 
       const response = await apiCall(url, {
@@ -652,7 +652,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
 
     setLoading(true);
     try {
-      const response = await apiCall(`${API_BASE_URL}/api/classes/v1/${deleteDialogClass.id}`, {
+      const response = await apiCall(`${getApiUrl('CLASSES')}/${deleteDialogClass.id}`, {
         method: 'DELETE',
       });
 
@@ -839,7 +839,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
     try {
       // Create all classes via API
       const promises = newClasses.map(classData =>
-        apiCall(`${API_BASE_URL}/api/classes/v1`, {
+        apiCall(getApiUrl('CLASSES'), {
           method: 'POST',
           body: JSON.stringify(classData),
         })
@@ -947,7 +947,7 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
         timeOff: timeSlots
       };
 
-      const response = await apiCall(`${API_BASE_URL}/api/classes/v1/timeoff`, {
+      const response = await apiCall(`${getApiUrl('CLASSES')}/timeoff`, {
         method: 'POST',
         body: JSON.stringify(requestBody),
       });
@@ -1242,53 +1242,53 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
 
                     {/* Groups Grid 2x2 - Collapsible */}
                     {showGroupsInForm && (
-                    <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                      {inlineFormData.groups && inlineFormData.groups.map((group, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-800">
-                          <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full text-xs font-semibold">
-                            {index + 1}
-                          </span>
-                          <input
-                            type="text"
-                            value={group.name}
-                            onChange={(e) => {
-                              const newGroups = [...inlineFormData.groups];
-                              newGroups[index] = { ...group, name: e.target.value };
-                              updateInlineFormField('groups', newGroups);
-                            }}
-                            className="flex-1 px-2 py-1 text-sm border rounded bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder={t('classes.group_name')}
-                          />
-                          <button
-                            onClick={() => {
-                              const newGroups = inlineFormData.groups.filter((_, i) => i !== index);
-                              updateInlineFormField('groups', newGroups);
-                            }}
-                            className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                      <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                        {inlineFormData.groups && inlineFormData.groups.map((group, index) => (
+                          <div key={index} className="flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-800">
+                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full text-xs font-semibold">
+                              {index + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={group.name}
+                              onChange={(e) => {
+                                const newGroups = [...inlineFormData.groups];
+                                newGroups[index] = { ...group, name: e.target.value };
+                                updateInlineFormField('groups', newGroups);
+                              }}
+                              className="flex-1 px-2 py-1 text-sm border rounded bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder={t('classes.group_name')}
+                            />
+                            <button
+                              onClick={() => {
+                                const newGroups = inlineFormData.groups.filter((_, i) => i !== index);
+                                updateInlineFormField('groups', newGroups);
+                              }}
+                              className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
 
                     {/* Add Group Button */}
                     {showGroupsInForm && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full border-dashed"
-                      onClick={() => {
-                        updateInlineFormField('groups', [
-                          ...inlineFormData.groups,
-                          { name: `${t('classes.default_groups.group1')} ${inlineFormData.groups.length + 1}`, isNew: true }
-                        ]);
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t('classes.add_new_group')}
-                    </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full border-dashed"
+                        onClick={() => {
+                          updateInlineFormField('groups', [
+                            ...inlineFormData.groups,
+                            { name: `${t('classes.default_groups.group1')} ${inlineFormData.groups.length + 1}`, isNew: true }
+                          ]);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t('classes.add_new_group')}
+                      </Button>
                     )}
                   </div>
                 )}

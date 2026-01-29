@@ -1,8 +1,8 @@
-import { 
-  TimetableState, 
-  Position, 
-  Lesson, 
-  MoveValidationResult 
+import {
+  TimetableState,
+  Position,
+  Lesson,
+  MoveValidationResult
 } from '@/types/timetable';
 
 /**
@@ -49,15 +49,16 @@ export function validateMove(
   }
 
   // Yumshoq cheklovlarni baholash
-  const softConstraints = evaluateSoftConstraints({
+  const newState: TimetableState = {
     ...timetableState,
-    lessons: updateLessonPosition(lesson, targetPosition, timetableState)
-  });
+    unplacedLessons: updateLessonPosition(lesson, targetPosition, timetableState)
+  };
+  const softConstraints = evaluateSoftConstraints(newState);
 
-  return { 
-    isValid: true, 
+  return {
+    isValid: true,
     reason: null,
-    softConstraints 
+    softConstraints
   };
 }
 
@@ -92,10 +93,11 @@ export function validateSwap(
   }
 
   // Yumshoq cheklovlarni baholash
-  const softConstraints = evaluateSoftConstraints({
+  const newState: TimetableState = {
     ...timetableState,
-    lessons: swapLessons(lessonA, lessonB, timetableState)
-  });
+    unplacedLessons: swapLessons(lessonA, lessonB, timetableState)
+  };
+  const softConstraints = evaluateSoftConstraints(newState);
 
   return {
     isValid: true,
@@ -129,7 +131,7 @@ function calculateGaps(timetableState: TimetableState): number {
 
       for (let hour = 1; hour <= 8; hour++) {
         const slot = daySchedule[hour];
-        
+
         if (slot !== 'FREE') {
           if (gapStarted && hasLesson) {
             gapCount++;
@@ -151,10 +153,10 @@ function calculateGaps(timetableState: TimetableState): number {
  */
 function calculateBalanceScore(timetableState: TimetableState): number {
   let score = 100;
-  
+
   // Har bir sinf uchun kunlik darslar sonining o'rtacha chetlanishini hisoblaydi
   Object.values(timetableState.classes).forEach(classObj => {
-    const lessonsPerDay = Object.values(classObj.schedule).map(day => 
+    const lessonsPerDay = Object.values(classObj.schedule).map(day =>
       Object.values(day).filter(slot => slot !== 'FREE' && slot !== 'TIME-OFF').length
     );
 
@@ -180,7 +182,7 @@ function calculatePreferenceScore(timetableState: TimetableState): number {
   Object.values(timetableState.teachers).forEach(teacher => {
     if (teacher.timePreferences) {
       const { preferredDays = [], preferredHours = [] } = teacher.timePreferences;
-      
+
       Object.entries(teacher.schedule).forEach(([day, hours]) => {
         Object.entries(hours).forEach(([hour, slot]) => {
           if (slot !== 'FREE' && slot !== 'TIME-OFF') {
@@ -202,21 +204,38 @@ function calculatePreferenceScore(timetableState: TimetableState): number {
 
 // Yordamchi funksiyalar
 function updateLessonPosition(
-  lesson: Lesson, 
-  position: Position, 
+  lesson: Lesson,
+  position: Position,
   state: TimetableState
 ): Lesson[] {
-  const lessons = Object.values(state.classes)
-    .flatMap(c => Object.values(c.schedule)
-      .flatMap(d => Object.values(d)
-        .filter((slot): slot is number => typeof slot === 'number')
-      )
-    );
-  
-  return lessons.map(l => 
-    l === lesson.id 
+  // Barcha darslarni to'plamdan olamiz
+  const allLessons: Lesson[] = [];
+
+  Object.entries(state.classes).forEach(([classId, classObj]) => {
+    Object.entries(classObj.schedule).forEach(([day, hours]) => {
+      Object.entries(hours).forEach(([hour, slot]) => {
+        if (typeof slot === 'number') {
+          // Bu lesson ID, uni Lesson obyektga aylantirish kerak
+          allLessons.push({
+            id: slot,
+            classId: parseInt(classId),
+            teacherId: 0, // Bu ma'lumot schedule'dan olinmaydi
+            subject: '', // Unknown subject
+            day: day,
+            hour: parseInt(hour),
+            roomId: undefined,
+            duration: 1
+          });
+        }
+      });
+    });
+  });
+
+  // Lesson pozitsiyasini yangilash
+  return allLessons.map(l =>
+    l.id === lesson.id
       ? { ...lesson, ...position }
-      : lesson
+      : l
   );
 }
 
@@ -225,28 +244,27 @@ function swapLessons(
   lessonB: Lesson,
   state: TimetableState
 ): Lesson[] {
-  const lessons = Object.values(state.classes)
-    .flatMap(c => Object.values(c.schedule)
-      .flatMap(d => Object.values(d)
-        .filter((slot): slot is number => typeof slot === 'number')
-      )
-    );
-    
-  return lessons.map(l => {
-    if (l === lessonA.id) {
-      return { 
-        ...lessonA, 
-        day: lessonB.day, 
-        hour: lessonB.hour, 
-        roomId: lessonB.roomId 
+  const allLessons = updateLessonPosition(lessonA, {
+    day: lessonA.day!,
+    hour: lessonA.hour!,
+    roomId: lessonA.roomId
+  }, state);
+
+  return allLessons.map(l => {
+    if (l.id === lessonA.id) {
+      return {
+        ...lessonA,
+        day: lessonB.day,
+        hour: lessonB.hour,
+        roomId: lessonB.roomId
       };
     }
-    if (l === lessonB.id) {
-      return { 
-        ...lessonB, 
-        day: lessonA.day, 
-        hour: lessonA.hour, 
-        roomId: lessonA.roomId 
+    if (l.id === lessonB.id) {
+      return {
+        ...lessonB,
+        day: lessonA.day,
+        hour: lessonA.hour,
+        roomId: lessonA.roomId
       };
     }
     return l;

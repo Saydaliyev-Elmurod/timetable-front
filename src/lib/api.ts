@@ -1,28 +1,9 @@
 import { getToken } from './auth';
 import { toast } from 'sonner';
+import { API_CONFIG, getApiUrl, ApiEndpoint } from '@/config/api';
 
-// API Configuration
-const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
-  USE_MOCK: import.meta.env.VITE_USE_MOCK_API === 'true',
-  VERSION: 'v1',
-  ENDPOINTS: {
-    TEACHERS: '/api/teachers',
-    SUBJECTS: '/api/subjects',
-    ROOMS: '/api/rooms',
-    TIMETABLES: '/api/timetables',
-    CLASSES: '/api/classes',
-    LESSONS: '/api/lessons'
-  }
-} as const;
-
-export type ApiEndpoint = keyof typeof API_CONFIG.ENDPOINTS;
-
-// URL builder
-export const getApiUrl = (endpoint: ApiEndpoint, version: boolean = true) => {
-  const base = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS[endpoint]}`;
-  return version ? `${base}/${API_CONFIG.VERSION}` : base;
-};
+// Re-export for convenience
+export { API_CONFIG, getApiUrl, type ApiEndpoint };
 
 // Error types
 export interface ApiError extends Error {

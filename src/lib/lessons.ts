@@ -1,4 +1,12 @@
 import API, { PaginatedResponse } from './api';
+import {
+  LessonResponseCompact,
+  LessonResponseFull,
+  LessonsWithMetadataResponse,
+  LessonRequest,
+  createLookupMaps,
+  expandCompactLesson
+} from '@/types/api';
 import { SubjectResponse } from './subjects';
 import { TeacherResponse } from './teachers';
 
@@ -13,10 +21,21 @@ export enum DayOfWeek {
   SUNDAY = 'SUNDAY',
 }
 
+// Re-export types for backward compatibility
+export type {
+  LessonResponseCompact,
+  LessonResponseFull,
+  LessonsWithMetadataResponse,
+  LessonRequest,
+};
+
+// Legacy type alias (prefer using specific types)
+export type LessonResponse = LessonResponseCompact;
+
 export interface RoomResponse {
   id: number;
   name: string;
-  shortName: string;
+  shortName?: string;
   type?: string;
 }
 
@@ -26,35 +45,6 @@ export interface ClassResponse {
   shortName: string;
 }
 
-export interface LessonRequest {
-  classId: number[];
-  teacherId: number;
-  roomIds: number[];
-  subjectId: number;
-  lessonCount: number;
-  dayOfWeek: DayOfWeek;
-  hour: number;
-  period: number;
-  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
-}
-
-export interface LessonResponse {
-  id: number;
-  classId: number;
-  teacherId: number;
-  roomIds: number[];
-  subjectId: number;
-  groupId?: number;
-  groupDetails?: GroupLessonDetailResponse[];
-  lessonCount: number;
-  dayOfWeek: DayOfWeek;
-  hour: number;
-  period: number;
-  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
-  createdDate: string;
-  updatedDate: string;
-}
-
 export interface GroupLessonDetailResponse {
   groupId: number;
   teacherId?: number;
@@ -62,21 +52,16 @@ export interface GroupLessonDetailResponse {
   roomIds: number[];
 }
 
-export interface LessonsWithMetadataResponse {
-  lessons: LessonResponse[];
-  classes: ClassResponse[];
-  teachers: TeacherResponse[];
-  rooms: RoomResponse[];
-  subjects: SubjectResponse[];
-}
-
 export interface PagedLessonResponse {
-  content: LessonResponse[];
+  content: LessonResponseCompact[];
   totalPages: number;
   totalElements: number;
   size: number;
   number: number;
 }
+
+// Abort controller for cleanup
+let currentAbortController: AbortController | null = null;
 
 export const LessonService = {
   /**
@@ -84,33 +69,55 @@ export const LessonService = {
    * This is the optimized endpoint that reduces JSON size by avoiding duplicate data.
    */
   getAllWithMetadata: async (): Promise<LessonsWithMetadataResponse> => {
-    const response = await API.call<any>(
-      `${API.url('LESSONS')}/all`
-    );
-    if (response.error) throw response.error;
+    // Cancel any previous request
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+    currentAbortController = new AbortController();
 
-    const data = response.data;
-    if (!data) {
+    try {
+      const response = await API.call<any>(
+        `${API.url('LESSONS')}/all`,
+        { signal: currentAbortController.signal }
+      );
+
+      if (response.error) throw response.error;
+
+      const data = response.data;
+      if (!data) {
+        return { lessons: [], classes: [], teachers: [], rooms: [], subjects: [] };
+      }
+
+      // Handle new response format with metadata
+      if (data.lessons && Array.isArray(data.lessons)) {
+        return data as LessonsWithMetadataResponse;
+      }
+
+      // Fallback for legacy format (array of lessons)
+      if (Array.isArray(data)) {
+        return { lessons: data, classes: [], teachers: [], rooms: [], subjects: [] };
+      }
+
       return { lessons: [], classes: [], teachers: [], rooms: [], subjects: [] };
+    } finally {
+      currentAbortController = null;
     }
+  },
 
-    // Handle new response format with metadata
-    if (data.lessons && Array.isArray(data.lessons)) {
-      return data as LessonsWithMetadataResponse;
-    }
-
-    // Fallback for legacy format (array of lessons)
-    if (Array.isArray(data)) {
-      return { lessons: data, classes: [], teachers: [], rooms: [], subjects: [] };
-    }
-
-    return { lessons: [], classes: [], teachers: [], rooms: [], subjects: [] };
+  /**
+   * Get all lessons as full objects (expanded from compact + metadata)
+   * @deprecated Use getAllWithMetadata for better performance
+   */
+  getAllExpanded: async (): Promise<LessonResponseFull[]> => {
+    const metadata = await LessonService.getAllWithMetadata();
+    const lookups = createLookupMaps(metadata);
+    return metadata.lessons.map(lesson => expandCompactLesson(lesson, lookups));
   },
 
   /**
    * @deprecated Use getAllWithMetadata instead for optimized response
    */
-  getAll: async (): Promise<LessonResponse[]> => {
+  getAll: async (): Promise<LessonResponseCompact[]> => {
     const metadata = await LessonService.getAllWithMetadata();
     return metadata.lessons;
   },
@@ -123,8 +130,8 @@ export const LessonService = {
     return response.data!;
   },
 
-  getById: async (id: number): Promise<LessonResponse> => {
-    const response = await API.call<LessonResponse>(
+  getById: async (id: number): Promise<LessonResponseFull> => {
+    const response = await API.call<LessonResponseFull>(
       `${API.url('LESSONS')}/${id}`
     );
     if (response.error) throw response.error;
@@ -159,5 +166,15 @@ export const LessonService = {
       { method: 'DELETE' }
     );
     if (response.error) throw response.error;
+  },
+
+  /**
+   * Cancel any ongoing request (for cleanup)
+   */
+  cancelPendingRequests: () => {
+    if (currentAbortController) {
+      currentAbortController.abort();
+      currentAbortController = null;
+    }
   }
 };
