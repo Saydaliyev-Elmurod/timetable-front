@@ -40,16 +40,34 @@ export interface LessonRequest {
 
 export interface LessonResponse {
   id: number;
-  class: ClassResponse;
-  teacher: TeacherResponse;
-  rooms: RoomResponse[];
-  subject: SubjectResponse;
+  classId: number;
+  teacherId: number;
+  roomIds: number[];
+  subjectId: number;
+  groupId?: number;
+  groupDetails?: GroupLessonDetailResponse[];
   lessonCount: number;
   dayOfWeek: DayOfWeek;
   hour: number;
   period: number;
+  frequency?: 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY';
   createdDate: string;
   updatedDate: string;
+}
+
+export interface GroupLessonDetailResponse {
+  groupId: number;
+  teacherId?: number;
+  subjectId?: number;
+  roomIds: number[];
+}
+
+export interface LessonsWithMetadataResponse {
+  lessons: LessonResponse[];
+  classes: ClassResponse[];
+  teachers: TeacherResponse[];
+  rooms: RoomResponse[];
+  subjects: SubjectResponse[];
 }
 
 export interface PagedLessonResponse {
@@ -61,29 +79,40 @@ export interface PagedLessonResponse {
 }
 
 export const LessonService = {
-  getAll: async (): Promise<LessonResponse[]> => {
+  /**
+   * Get all lessons with metadata (classes, teachers, rooms, subjects).
+   * This is the optimized endpoint that reduces JSON size by avoiding duplicate data.
+   */
+  getAllWithMetadata: async (): Promise<LessonsWithMetadataResponse> => {
     const response = await API.call<any>(
       `${API.url('LESSONS')}/all`
     );
     if (response.error) throw response.error;
 
     const data = response.data;
-    if (!data) return [];
+    if (!data) {
+      return { lessons: [], classes: [], teachers: [], rooms: [], subjects: [] };
+    }
 
-    // Normalize possible shapes:
-    // - Array of LessonResponse
-    // - Paginated { content: LessonResponse[] }
-    // - Wrapped { response: [...] } (if apiCall didn't unwrap for some reason)
-    if (Array.isArray(data)) return data as LessonResponse[];
-    if (Array.isArray(data.content)) return data.content as LessonResponse[];
-    if (Array.isArray(data.response)) return data.response as LessonResponse[];
-    if (data.response && Array.isArray(data.response.content)) return data.response.content as LessonResponse[];
+    // Handle new response format with metadata
+    if (data.lessons && Array.isArray(data.lessons)) {
+      return data as LessonsWithMetadataResponse;
+    }
 
-    // Last-resort: try to find a content-like field
-    const maybeContent = data.content || (data.response && data.response.content);
-    if (Array.isArray(maybeContent)) return maybeContent as LessonResponse[];
+    // Fallback for legacy format (array of lessons)
+    if (Array.isArray(data)) {
+      return { lessons: data, classes: [], teachers: [], rooms: [], subjects: [] };
+    }
 
-    return [];
+    return { lessons: [], classes: [], teachers: [], rooms: [], subjects: [] };
+  },
+
+  /**
+   * @deprecated Use getAllWithMetadata instead for optimized response
+   */
+  getAll: async (): Promise<LessonResponse[]> => {
+    const metadata = await LessonService.getAllWithMetadata();
+    return metadata.lessons;
   },
 
   getPaginated: async (page: number, size: number): Promise<PagedLessonResponse> => {

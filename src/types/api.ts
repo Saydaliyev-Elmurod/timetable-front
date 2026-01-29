@@ -125,3 +125,12 @@ export interface PageResponse<T> {
   size: number;
   number: number;
 }
+
+// Lessons with metadata response - contains lessons along with related entities
+export interface LessonsWithMetadataResponse {
+  lessons: LessonResponse[];
+  classes: ClassResponse[];
+  teachers: TeacherResponse[];
+  rooms: RoomResponse[];
+  subjects: SubjectResponse[];
+}

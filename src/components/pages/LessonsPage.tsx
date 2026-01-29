@@ -520,25 +520,46 @@ export default function LessonsPage() {
   const fetchLessons = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await LessonService.getAll();
+      const metadata = await LessonService.getAllWithMetadata();
+
+      // Create lookup maps from metadata
+      const classesById = new Map(metadata.classes.map(c => [c.id, c]));
+      const teachersById = new Map(metadata.teachers.map(t => [t.id, t]));
+      const subjectsById = new Map(metadata.subjects.map(s => [s.id, s]));
+      const roomsById = new Map(metadata.rooms.map(r => [r.id, r]));
 
       // Convert API format to internal flat format but keep original for grouping
-      const flat = data.map((lesson: LessonResponse) => ({
-        id: lesson.id,
-        raw: lesson,
-        subject: lesson.subject?.name || t('lessons.unknown_subject'),
-        teacher: lesson.teacher?.fullName || t('lessons.unknown_teacher'),
-        className: lesson.class?.shortName || lesson.class?.name || t('lessons.unknown_class'),
-        classId: lesson.class?.id,
-        day: lesson.dayOfWeek,
-        startTime: `${lesson.hour}:00`,
-        endTime: `${lesson.hour + 1}:00`,
-        period: lesson.period,
-        frequency: `${lesson.lessonCount}x`,
-        rooms: lesson.rooms || [],
-        roomNames: lesson.rooms?.map((r: any) => r.name).join(', ') || t('lessons.no_room'),
-        duration: '45 min'
-      }));
+      const flat = metadata.lessons.map((lesson: any) => {
+        const classEntity = classesById.get(lesson.classId);
+        const teacherEntity = teachersById.get(lesson.teacherId);
+        const subjectEntity = subjectsById.get(lesson.subjectId);
+        const roomEntities = (lesson.roomIds || []).map((id: number) => roomsById.get(id)).filter(Boolean);
+
+        return {
+          id: lesson.id,
+          raw: {
+            ...lesson,
+            class: classEntity,
+            teacher: teacherEntity,
+            subject: subjectEntity,
+            rooms: roomEntities,
+          },
+          subject: subjectEntity?.name || t('lessons.unknown_subject'),
+          teacher: teacherEntity?.fullName || t('lessons.unknown_teacher'),
+          className: classEntity?.shortName || classEntity?.name || t('lessons.unknown_class'),
+          classId: lesson.classId,
+          teacherId: lesson.teacherId,
+          subjectId: lesson.subjectId,
+          day: lesson.dayOfWeek,
+          startTime: `${lesson.hour}:00`,
+          endTime: `${lesson.hour + 1}:00`,
+          period: lesson.period,
+          frequency: `${lesson.lessonCount}x`,
+          rooms: roomEntities,
+          roomNames: roomEntities.map((r: any) => r.name).join(', ') || t('lessons.no_room'),
+          duration: '45 min'
+        };
+      });
 
       // Group by class and compute unique teacher/subject counts
       const classesMap = new Map<string | number, any>();
@@ -568,11 +589,11 @@ export default function LessonsPage() {
         // accumulate totalPeriods from lesson counts when available (default to 1)
         c.totalPeriods += (f.raw?.lessonCount && Number(f.raw.lessonCount)) ? Number(f.raw.lessonCount) : 1;
         // record unique teacher/subject ids
-        if (f.raw?.teacher?.id) c._teacherIds.add(f.raw.teacher.id);
-        if (f.raw?.subject?.id) c._subjectIds.add(f.raw.subject.id);
+        if (f.teacherId) c._teacherIds.add(f.teacherId);
+        if (f.subjectId) c._subjectIds.add(f.subjectId);
 
         // teachers
-        const teacherKey = f.raw.teacher?.id ?? f.teacher ?? `teacher-${f.id}`;
+        const teacherKey = f.teacherId ?? f.teacher ?? `teacher-${f.id}`;
         if (!teachersMap.has(teacherKey)) {
           teachersMap.set(teacherKey, {
             id: String(teacherKey),
@@ -592,7 +613,7 @@ export default function LessonsPage() {
         if (f.classId) tr._classIds.add(f.classId);
 
         // subjects
-        const subjectKey = f.raw.subject?.id ?? f.subject ?? `subject-${f.id}`;
+        const subjectKey = f.subjectId ?? f.subject ?? `subject-${f.id}`;
         if (!subjectsMap.has(subjectKey)) {
           subjectsMap.set(subjectKey, {
             id: String(subjectKey),
@@ -609,7 +630,7 @@ export default function LessonsPage() {
         s.lessons.push(f);
         s.totalLessons += 1;
         if (f.classId) s._classIds.add(f.classId);
-        if (f.raw?.teacher?.id) s._teacherIds.add(f.raw.teacher.id);
+        if (f.teacherId) s._teacherIds.add(f.teacherId);
 
         // rooms (a lesson can belong to multiple rooms)
         (f.rooms || []).forEach((r: any) => {
@@ -630,7 +651,7 @@ export default function LessonsPage() {
           rm.lessons.push(f);
           rm.totalLessons += 1;
           if (f.classId) rm._classIds.add(f.classId);
-          if (f.raw?.teacher?.id) rm._teacherIds.add(f.raw.teacher.id);
+          if (f.teacherId) rm._teacherIds.add(f.teacherId);
         });
       });
 
@@ -665,7 +686,7 @@ export default function LessonsPage() {
         rooms: finalize(Array.from(roomsMap.values())),
       });
 
-      setTotalElements(data.length);
+      setTotalElements(metadata.lessons.length);
       setTotalPages(1);
     } catch (error) {
       console.error('Error fetching lessons:', error);
