@@ -93,7 +93,7 @@ const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
     sunday: [],
   };
 
-  timeSlots.forEach((slot) => {
+  (timeSlots || []).forEach((slot) => {
     const dayKey = slot.dayOfWeek.toLowerCase();
     availability[dayKey] = slot.lessons;
   });
@@ -408,7 +408,7 @@ export default function RoomsPage() {
   };
 
   const getTotalAvailablePeriods = (availabilities: TimeSlot[]) => {
-    return availabilities.reduce((total, slot) => total + slot.lessons.length, 0);
+    return (availabilities || []).reduce((total, slot) => total + slot.lessons.length, 0);
   };
 
   const handleItemsPerPageChange = (value: string) => {

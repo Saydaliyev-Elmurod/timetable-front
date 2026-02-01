@@ -103,21 +103,32 @@ interface ClassResponse {
 
 interface TimetableGroupDetail {
   lessonId: number;
-  subject: SubjectResponse;
-  teacher: TeacherResponse;
-  room: RoomResponse;
-  group: GroupResponse | null;
+  subjectId: number;
+  teacherId: number;
+  roomId: number;
+  groupId: number | null;
   originalLessonData: any; // detailed lesson info
 }
 
-interface UnscheduledLesson {
-  classInfo: ClassResponse;
-  teacher: TeacherResponse;
-  subject: SubjectResponse;
-  room: RoomResponse[]; // Changed to array
+// Unscheduled data from API (contains IDs)
+interface UnscheduledLessonData {
+  classId: number;
+  teacherId: number;
+  subjectId: number;
+  roomIds: number[];
   requiredCount: number;
   scheduledCount: number;
   missingCount: number;
+}
+
+// Full API Response structure
+interface TimetableAPIResponse {
+  timetableData: TimetableDataEntity[];
+  classes: ClassResponse[];
+  teachers: TeacherResponse[];
+  subjects: SubjectResponse[];
+  rooms: RoomResponse[];
+  groups: GroupResponse[];
 }
 
 interface TimetableDataEntity {
@@ -129,7 +140,7 @@ interface TimetableDataEntity {
   hour: number;
   weekIndex: number | null; // 0 or 1 for bi-weekly
   slotDetails: TimetableGroupDetail[]; // List of details instead of single scheduledData
-  unscheduledData: UnscheduledLesson | null; // Updated type
+  unscheduledData: UnscheduledLessonData | null; // Full objects from API
   version: number;
 }
 
@@ -643,51 +654,130 @@ const DroppableTimeSlot = ({
         }
       }}
     >
-      <div className="flex h-full w-full gap-1">
-        {lessons.map((lesson) => {
-          // Check specific conflict for this lesson
-          const lessonConflict = allLessons ? allLessons.some(l =>
-            l.id !== lesson.id &&
-            l.day === day &&
-            l.timeSlot === timeSlot &&
-            (
-              l.teacherId === lesson.teacherId ||
-              (l.roomId !== 0 && l.roomId === lesson.roomId) ||
-              l.classId === lesson.classId
-            )
-          ) : false;
+      {(() => {
+        // Check for Diagonal Split Condition: Exactly 2 lessons, one Week A (0), one Week B (1)
+        const weekALesson = lessons.find(l => l.weekIndex === 0);
+        const weekBLesson = lessons.find(l => l.weekIndex === 1);
+        const isWeekABPair = lessons.length === 2 && !!weekALesson && !!weekBLesson;
 
-          // Determine width logic
-          // If single lesson and bi-weekly -> 50% width
-          // Else -> flex-1 (share space)
-          const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
-
+        if (isWeekABPair) {
+          // DIAGONAL SPLIT RENDERING
           return (
-            <div
-              key={lesson.id}
-              className={cn(
-                "relative",
-                isSingleBiWeekly ? "w-1/2" : "flex-1"
-              )}
-            >
-              <DraggableLessonCard
-                lesson={lesson}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onToggleLock={onToggleLock}
-                displayOptions={displayOptions}
-                compact={compact || lessons.length > 1} // Force compact if shared
-                showClass={showClass}
-                hasConflict={lessonConflict}
-                isSelected={selectedLesson?.id === lesson.id}
-                onSelect={(l) => {
-                  // Logic for selection
-                }}
-              />
+            <div className="relative w-full h-full">
+              {/* Top-Left Triangle (Week A) */}
+              <div
+                className="absolute inset-0"
+                style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 10 }}
+              >
+                <div className="h-full w-full pr-[50%] pb-[50%]">
+                  {/* We constrain content to top-left somewhat, but mostly rely on clip */}
+                  <DraggableLessonCard
+                    lesson={weekALesson!}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={true}
+                    showClass={showClass}
+                    // hasConflict logic needs to be calculated for this specific lesson
+                    hasConflict={allLessons ? allLessons.some(l =>
+                      l.id !== weekALesson!.id &&
+                      l.day === day &&
+                      l.timeSlot === timeSlot &&
+                      (
+                        l.teacherId === weekALesson!.teacherId ||
+                        (l.roomId !== 0 && l.roomId === weekALesson!.roomId) ||
+                        l.classId === weekALesson!.classId
+                      )
+                    ) : false}
+                    isSelected={selectedLesson?.id === weekALesson!.id}
+                    onSelect={(l) => { }}
+                  />
+                </div>
+              </div>
+
+              {/* Bottom-Right Triangle (Week B) */}
+              <div
+                className="absolute inset-0"
+                style={{ clipPath: 'polygon(100% 100%, 0 100%, 100% 0)', zIndex: 10 }}
+              >
+                <div className="h-full w-full pl-[50%] pt-[50%]">
+                  <DraggableLessonCard
+                    lesson={weekBLesson!}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={true}
+                    showClass={showClass}
+                    hasConflict={allLessons ? allLessons.some(l =>
+                      l.id !== weekBLesson!.id &&
+                      l.day === day &&
+                      l.timeSlot === timeSlot &&
+                      (
+                        l.teacherId === weekBLesson!.teacherId ||
+                        (l.roomId !== 0 && l.roomId === weekBLesson!.roomId) ||
+                        l.classId === weekBLesson!.classId
+                      )
+                    ) : false}
+                    isSelected={selectedLesson?.id === weekBLesson!.id}
+                    onSelect={(l) => { }}
+                  />
+                </div>
+              </div>
             </div>
           );
-        })}
-      </div>
+        }
+
+        // STANDARD / GROUP SPLIT RENDERING (Flex Row)
+        return (
+          <div className="flex h-full w-full gap-1">
+            {lessons.map((lesson) => {
+              // Check specific conflict for this lesson
+              const lessonConflict = allLessons ? allLessons.some(l =>
+                l.id !== lesson.id &&
+                l.day === day &&
+                l.timeSlot === timeSlot &&
+                (
+                  l.teacherId === lesson.teacherId ||
+                  (l.roomId !== 0 && l.roomId === lesson.roomId) ||
+                  l.classId === lesson.classId
+                )
+              ) : false;
+
+              // Determine width logic
+              // If single lesson and bi-weekly -> 50% width
+              // Else -> flex-1 (share space)
+              const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
+
+              return (
+                <div
+                  key={lesson.id}
+                  className={cn(
+                    "relative",
+                    isSingleBiWeekly ? "w-1/2" : "flex-1" // Keep strictly vertical split logic for single/group
+                  )}
+                >
+                  <DraggableLessonCard
+                    lesson={lesson}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={compact || lessons.length > 1} // Force compact if shared
+                    showClass={showClass}
+                    hasConflict={lessonConflict}
+                    isSelected={selectedLesson?.id === lesson.id}
+                    onSelect={(l) => {
+                      // Logic for selection
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -1220,17 +1310,44 @@ const TimetableContent = ({
       setIsLoading(true);
       setError(null);
 
-      const res = await apiCall<TimetableDataEntity[]>(`http://localhost:8080/api/timetable/v1/timetable/${id}`);
+      const res = await apiCall<TimetableAPIResponse>(`http://localhost:8080/api/timetable/v1/timetable/${id}`);
 
       if (res.error) {
         throw res.error;
       }
 
-      const data: TimetableDataEntity[] = res.data || [];
-      setTimetableData(data);
+      const apiResponse = res.data;
+      if (!apiResponse) {
+        throw new Error("Empty response from server");
+      }
 
-      // Process the data
-      processAPIData(data);
+      const timetableData = apiResponse.timetableData || [];
+      const classes = apiResponse.classes || [];
+      const teachers = apiResponse.teachers || [];
+      const subjects = apiResponse.subjects || [];
+      const rooms = apiResponse.rooms || [];
+      const groups = apiResponse.groups || [];
+
+      setTimetableData(timetableData);
+
+      // Debug: Log the full response structure
+      console.log("API Response:", {
+        timetableData: timetableData.slice(0, 3), // First 3 items
+        classes,
+        teachers,
+        subjects,
+        rooms,
+        groups
+      });
+
+      // Debug: Check slotDetails structure
+      const sampleWithDetails = timetableData.find(d => d.slotDetails?.length > 0);
+      if (sampleWithDetails) {
+        console.log("Sample slotDetails:", sampleWithDetails.slotDetails);
+      }
+
+      // Process the data with lookup maps
+      processAPIData(timetableData, classes, teachers, subjects, rooms, groups);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch timetable data";
@@ -1245,77 +1362,92 @@ const TimetableContent = ({
     }
   };
 
-  const processAPIData = (data: TimetableDataEntity[]) => {
+  const processAPIData = (
+    data: TimetableDataEntity[],
+    classes: ClassResponse[],
+    teachers: TeacherResponse[],
+    subjects: SubjectResponse[],
+    rooms: RoomResponse[],
+    groups: GroupResponse[]
+  ) => {
+    // Create lookup maps for efficient ID-to-object conversion
+    const classMap = new Map(classes.map(c => [c.id, c]));
+    const teacherMap = new Map(teachers.map(t => [t.id, t]));
+    const subjectMap = new Map(subjects.map(s => [s.id, s]));
+    const roomMap = new Map(rooms.map(r => [r.id, r]));
+    const groupMap = new Map(groups.map(g => [g.id, g]));
+
     const scheduled: Lesson[] = [];
     const unplaced: UnplacedLesson[] = [];
 
     data.forEach((entry) => {
+      // Get class info from lookup map
+      const classInfo = classMap.get(entry.classId);
+
       // 1. Handle Scheduled Slots (slotDetails)
-      if (entry.slotDetails && entry.slotDetails.length > 0) {
+      if (entry.isScheduled && entry.slotDetails && entry.slotDetails.length > 0) {
         entry.slotDetails.forEach((detail, index) => {
-          // We need class info. Assuming originalLessonData contains it.
-          // If originalLessonData is missing, we might have a problem getting class name 
-          // unless we fetch classes separately or use a map.
-          // For now, let's try to get it from originalLessonData.
-          const classInfo = detail.originalLessonData?.class;
-
-          if (!classInfo && !entry.classId) {
-            console.warn("Missing class info for scheduled lesson", entry);
-            return;
-          }
-
-          // Fallback or use classId lookup if we had a store. 
-          // Since we rely on data for display, we hope classInfo is there.
           const className = classInfo?.shortName || `Class ${entry.classId}`;
           const classId = classInfo?.id || entry.classId;
 
           const lessonId = detail.lessonId ? `${detail.lessonId}` : `${entry.id}-${index}`;
 
+          // Resolve entities from maps using IDs
+          const subj = subjectMap.get(detail.subjectId);
+          const tch = teacherMap.get(detail.teacherId);
+          const rm = roomMap.get(detail.roomId);
+          const grp = detail.groupId ? groupMap.get(detail.groupId) : null;
+
           scheduled.push({
             id: lessonId,
-            subject: detail.subject.name,
-            subjectId: detail.subject.id,
-            teacher: detail.teacher?.fullName || "No Teacher",
-            teacherId: detail.teacher?.id || 0,
-            teacherShort: detail.teacher?.fullName || "", // fallback
-            room: detail.room ? detail.room.name : "No Room",
-            roomId: detail.room ? detail.room.id : 0,
+            subject: subj?.name || "Unknown Subject",
+            subjectId: detail.subjectId || 0,
+            teacher: tch?.fullName || "No Teacher",
+            teacherId: detail.teacherId || 0,
+            teacherShort: tch?.shortName || tch?.fullName || "",
+            room: rm ? rm.name : "No Room",
+            roomId: detail.roomId || 0,
             class: className,
             classId: classId,
             day: entry.dayOfWeek,
             timeSlot: entry.hour,
-            isLocked: false, // data doesn't seem to have locked status yet
-            groupName: detail.group?.name,
-            groupId: detail.group?.id,
-            weekIndex: entry.weekIndex,
-            isBiWeekly: entry.weekIndex !== null, // If weekIndex is present (0 or 1), it's bi-weekly
+            isLocked: false,
+            groupName: grp?.name,
+            groupId: detail.groupId,
+            weekIndex: entry.weekIndex ?? undefined,
+            isBiWeekly: entry.weekIndex !== null,
             rawDetails: detail
           });
         });
       }
 
-      // 2. Handle Unscheduled/Unplaced Data
-      // Note: An entity can technically have BOTH or neither, but usually one.
-      // The user says "If not scheduled...". 
-      // But unscheduledData might exist alongside partial schedule? 
-      // The record has `UnscheduledLesson unscheduledData`.
-      if (entry.unscheduledData) {
+      // 2. Handle Unscheduled/Unplaced Data (full objects from API)
+      if (!entry.isScheduled && entry.unscheduledData) {
         const ud = entry.unscheduledData;
-        const roomName = (ud.room && ud.room.length > 0)
-          ? ud.room.map(r => r.name).join(", ")
+
+        // Resolve entities from maps
+        const subj = subjectMap.get(ud.subjectId);
+        const tch = teacherMap.get(ud.teacherId);
+        const cls = classMap.get(ud.classId);
+
+        // Resolve rooms
+        const roomsList = ud.roomIds ? ud.roomIds.map(rid => roomMap.get(rid)).filter(r => r) : [];
+        const roomName = roomsList.length > 0
+          ? roomsList.map(r => r!.name).join(", ")
           : "TBD";
+        const firstRoomId = roomsList.length > 0 ? roomsList[0]!.id : 0;
 
         unplaced.push({
-          id: entry.id, // Using entity ID for unplaced container logic? Or need unique ID?
-          subject: ud.subject.name,
-          subjectId: ud.subject.id,
-          teacher: ud.teacher?.fullName || "No Teacher",
-          teacherId: ud.teacher?.id || 0,
-          teacherShort: ud.teacher?.fullName || "",
+          id: entry.id,
+          subject: subj?.name || "Unknown Subject",
+          subjectId: ud.subjectId || 0,
+          teacher: tch?.fullName || "No Teacher",
+          teacherId: ud.teacherId || 0,
+          teacherShort: tch?.shortName || tch?.fullName || "",
           room: roomName,
-          roomId: 0,
-          class: ud.classInfo.shortName,
-          classId: ud.classInfo.id,
+          roomId: firstRoomId,
+          class: cls?.shortName || "Unknown Class",
+          classId: ud.classId || 0,
           isLocked: false,
           reason: `Missing ${ud.missingCount} out of ${ud.requiredCount} required lessons`,
           requiredCount: ud.requiredCount,
@@ -1327,6 +1459,8 @@ const TimetableContent = ({
 
     setScheduledLessons(scheduled);
     setUnplacedLessons(unplaced);
+
+    console.log("Processed lessons:", { scheduled: scheduled.length, unplaced: unplaced.length });
   };
 
   // Extract unique classes, teachers, rooms from scheduled lessons
