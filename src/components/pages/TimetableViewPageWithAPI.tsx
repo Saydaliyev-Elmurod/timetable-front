@@ -121,6 +121,19 @@ interface UnscheduledLessonData {
   missingCount: number;
 }
 
+// Timetable metadata for score/quality display
+interface TimetableMeta {
+  id: string;
+  name: string;
+  scheduled: number | null;
+  unscheduled: number | null;
+  score: number | null;
+  teacherGaps: number | null;
+  classGaps: number | null;
+  createdDate: string;
+  updatedDate: string;
+}
+
 // Full API Response structure
 interface TimetableAPIResponse {
   timetableData: TimetableDataEntity[];
@@ -1247,6 +1260,9 @@ const TimetableContent = ({
   const [timetableVersion, setTimetableVersion] = useState(1);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
+  // Timetable Metadata (score, gaps)
+  const [timetableMeta, setTimetableMeta] = useState<TimetableMeta | null>(null);
+
   // Processed data
   const [scheduledLessons, setScheduledLessons] = useState<Lesson[]>([]);
   const [unplacedLessons, setUnplacedLessons] = useState<UnplacedLesson[]>([]);
@@ -1297,6 +1313,27 @@ const TimetableContent = ({
     isDragging: monitor.isDragging(),
     draggedLesson: monitor.getItem() as Lesson | null,
   }));
+
+  // Fetch timetable metadata (score, gaps) from the list endpoint
+  useEffect(() => {
+    if (timetableId) {
+      fetchTimetableMeta(timetableId);
+    }
+  }, [timetableId]);
+
+  const fetchTimetableMeta = async (id: string) => {
+    try {
+      const res = await apiCall<TimetableMeta[]>('http://localhost:8080/api/timetable/v1/timetable');
+      if (res.data) {
+        const meta = res.data.find(t => t.id === id);
+        if (meta) {
+          setTimetableMeta(meta);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch timetable metadata:', err);
+    }
+  };
 
   // Fetch timetable data from API
   useEffect(() => {
@@ -1713,12 +1750,12 @@ const TimetableContent = ({
 
   const handleOptimize = async () => {
     if (!timetableId) {
-      toast.error('No timetable selected for optimization');
+      toast.error('Optimallashtirish uchun jadval tanlanmagan');
       return;
     }
 
     setIsProcessingAction(true);
-    toast.info('Optimizing timetable...');
+    toast.info('Jadval optimallashtirilmoqda...');
 
     const body = {
       applySoftConstraint: true,
@@ -1736,27 +1773,51 @@ const TimetableContent = ({
       });
 
       if (res.error) {
-        toast.error('Optimization failed', { description: res.error.message });
+        toast.error('Optimallashtirish xatolik', { description: res.error.message });
       } else {
-        toast.success('Optimization request sent');
-        // refresh timetable data after optimization
+        toast.success('Optimallashtirish muvaffaqiyatli!');
+        // Refresh timetable data and metadata after optimization
         try {
-          await fetchTimetableData(timetableId);
+          await Promise.all([
+            fetchTimetableData(timetableId),
+            fetchTimetableMeta(timetableId),
+          ]);
         } catch (e) {
           // ignore refresh errors
         }
       }
     } catch (err) {
       console.error('Optimize error:', err);
-      toast.error('Optimization request failed');
+      toast.error('Optimallashtirish so\'rovi amalga oshmadi');
     } finally {
       setIsProcessingAction(false);
     }
   };
 
-  const handleExport = () => {
-    console.log("Export to PDF");
-    toast.info("Exporting to PDF...");
+  const handleExport = async () => {
+    if (!timetableId) return;
+    try {
+      toast.info('PDF eksport qilinmoqda...');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/export/pdf/${timetableId}`, {
+        method: 'GET',
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+      });
+      if (!response.ok) throw new Error('PDF eksport xatolik');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${timetableMeta?.name || 'timetable'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('PDF muvaffaqiyatli yuklandi!');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('PDF eksport xatolik');
+    }
   };
 
   const getFilteredLessons = () => {
@@ -1851,8 +1912,11 @@ const TimetableContent = ({
     );
   }
 
+
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       <div className="container mx-auto p-6 max-w-[1800px]">
         {/* Error Alert */}
         {error && (
@@ -1867,26 +1931,75 @@ const TimetableContent = ({
           <Alert className="mb-6 bg-blue-50 border-blue-300">
             <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
             <AlertDescription className="text-blue-800">
-              Processing action... Please wait.
+              Amal bajarilmoqda... Iltimos kuting.
             </AlertDescription>
           </Alert>
         )}
 
         {/* Redesigned Header - Single Line, Persistent */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 mb-6 sticky top-0 z-10">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/80 px-6 py-4 mb-6 sticky top-0 z-10">
           <div className="flex items-center justify-between gap-6">
-            {/* Left: Page Title */}
-            <div className="flex items-center gap-3">
+            {/* Left: Page Title + Score Badges */}
+            <div className="flex items-center gap-4">
               {onNavigate && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => onNavigate("timetables")}
+                  className="rounded-xl hover:bg-indigo-50"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
-              <h1>Timetable</h1>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 bg-clip-text text-transparent">
+                  {timetableMeta?.name || 'Dars Jadvali'}
+                </h1>
+              </div>
+
+              {/* Compact score/gaps badges */}
+              {timetableMeta && (
+                <div className="flex items-center gap-2 ml-2">
+                  {/* Score */}
+                  <Badge variant="outline" className={`gap-1 px-2.5 py-1 font-bold border ${timetableMeta.score !== null && timetableMeta.score !== undefined
+                    ? timetableMeta.score >= 70
+                      ? 'border-green-300 bg-green-50 text-green-700'
+                      : timetableMeta.score >= 50
+                        ? 'border-yellow-300 bg-yellow-50 text-yellow-700'
+                        : 'border-red-300 bg-red-50 text-red-700'
+                    : 'border-gray-200 text-gray-400'
+                    }`}>
+                    <Info className="h-3 w-3" />
+                    {timetableMeta.score ?? '—'} ball
+                  </Badge>
+
+                  <Separator orientation="vertical" className="h-5" />
+
+                  {/* Scheduled / Unscheduled */}
+                  <Badge variant="outline" className="gap-1 px-2 py-1 border-green-200 bg-green-50/80 text-green-700">
+                    <CheckCircle2 className="h-3 w-3" />
+                    {timetableMeta.scheduled ?? scheduledLessons.length}
+                  </Badge>
+                  {(timetableMeta.unscheduled ?? 0) > 0 && (
+                    <Badge variant="outline" className="gap-1 px-2 py-1 border-red-200 bg-red-50/80 text-red-600">
+                      <AlertCircle className="h-3 w-3" />
+                      {timetableMeta.unscheduled}
+                    </Badge>
+                  )}
+
+                  <Separator orientation="vertical" className="h-5" />
+
+                  {/* Gaps */}
+                  <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.teacherGaps ?? 0) > 0 ? 'border-amber-200 bg-amber-50/80 text-amber-700' : 'text-gray-400'}`}>
+                    <User className="h-3 w-3" />
+                    {timetableMeta.teacherGaps ?? 0}
+                  </Badge>
+                  <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.classGaps ?? 0) > 0 ? 'border-purple-200 bg-purple-50/80 text-purple-700' : 'text-gray-400'}`}>
+                    <Users className="h-3 w-3" />
+                    {timetableMeta.classGaps ?? 0}
+                  </Badge>
+                </div>
+              )}
             </div>
 
             {/* Center: View Mode Switcher (Segmented Control) */}
@@ -2158,6 +2271,8 @@ const TimetableContent = ({
                       timeSlots={timeSlots}
                       draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
+                      selectedLesson={selectedLesson}
+                      onManualPlace={handleManualPlace}
                     />
                   ))
                 ) : (

@@ -18,13 +18,6 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -33,20 +26,65 @@ import {
   TableRow,
 } from '../ui/table';
 import { Badge } from '../ui/badge';
-import { Plus, Download, Eye, Trash2, FileSpreadsheet, FileText, Printer, Loader2, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import {
+  Plus,
+  Eye,
+  Trash2,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  AlertCircle,
+  Zap,
+  Trophy,
+  CheckCircle2,
+  XCircle,
+  Clock,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
 
-// API Types
+// API Types — TimetableResponse.java dan olingan
 interface TimetableEntity {
   id: string;
-  orgId: number;
   taskId: string;
   name: string;
+  scheduled: number | null;
+  unscheduled: number | null;
+  score: number | null;
+  teacherGaps: number | null;
+  classGaps: number | null;
   deleted: boolean;
   createdDate: string;
   updatedDate: string;
 }
+
+// Score rangini aniqlash
+const getScoreColor = (score: number | null): string => {
+  if (score === null || score === undefined) return 'text-gray-400';
+  if (score >= 90) return 'text-emerald-600';
+  if (score >= 70) return 'text-green-600';
+  if (score >= 50) return 'text-yellow-600';
+  if (score >= 30) return 'text-orange-500';
+  return 'text-red-500';
+};
+
+const getScoreBg = (score: number | null): string => {
+  if (score === null || score === undefined) return 'bg-gray-100 text-gray-500';
+  if (score >= 90) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (score >= 70) return 'bg-green-50 text-green-700 border-green-200';
+  if (score >= 50) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+  if (score >= 30) return 'bg-orange-50 text-orange-700 border-orange-200';
+  return 'bg-red-50 text-red-700 border-red-200';
+};
+
+const getScoreLabel = (score: number | null): string => {
+  if (score === null || score === undefined) return '—';
+  if (score >= 90) return "A'lo";
+  if (score >= 70) return 'Yaxshi';
+  if (score >= 50) return "O'rta";
+  if (score >= 30) return 'Past';
+  return 'Yomon';
+};
 
 export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation();
@@ -55,17 +93,12 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTimetable, setSelectedTimetable] = useState<TimetableEntity | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [generateName, setGenerateName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterClass, setFilterClass] = useState('all');
-  const [filterTeacher, setFilterTeacher] = useState('all');
   const itemsPerPage = 10;
 
-  // Fetch timetables from API
   useEffect(() => {
     fetchTimetables();
   }, []);
@@ -74,46 +107,18 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
     try {
       setIsLoading(true);
       setError(null);
-
       const response = await apiCall<TimetableEntity[]>('http://localhost:8080/api/timetable/v1/timetable');
-
       if (response.error) {
         throw new Error(`Failed to fetch timetables: ${response.error.message}`);
       }
-
       const data = response.data || [];
-      console.log('API Response:', data);
-
-      // Filter out deleted timetables
       const activeTimetables = data.filter(t => !t.deleted);
-      console.log('Active Timetables:', activeTimetables);
       setTimetables(activeTimetables);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch timetables';
       setError(errorMessage);
       toast.error(errorMessage);
-
-      // Fallback to mock data for demo purposes
-      setTimetables([
-        {
-          id: '1',
-          orgId: 1,
-          taskId: 'task-1',
-          name: 'Semester 1 - 2024',
-          deleted: false,
-          createdDate: new Date('2024-09-15T10:30:00').toISOString(),
-          updatedDate: new Date('2024-09-15T10:30:00').toISOString(),
-        },
-        {
-          id: '2',
-          orgId: 1,
-          taskId: 'task-2',
-          name: 'Semester 2 - 2024',
-          deleted: false,
-          createdDate: new Date('2024-09-20T14:15:00').toISOString(),
-          updatedDate: new Date('2024-09-20T14:15:00').toISOString(),
-        },
-      ]);
+      setTimetables([]);
     } finally {
       setIsLoading(false);
     }
@@ -128,123 +133,89 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
 
   const totalPages = Math.ceil(filteredTimetables.length / itemsPerPage);
   const paginatedTimetables = React.useMemo(() => {
-    const paginated = filteredTimetables.slice(
+    return filteredTimetables.slice(
       (currentPage - 1) * itemsPerPage,
       currentPage * itemsPerPage
     );
-    console.log('Paginated Timetables:', paginated);
-    return paginated;
   }, [filteredTimetables, currentPage, itemsPerPage]);
 
   const handleView = (timetable: TimetableEntity) => {
     if (onNavigate) {
-      // Navigate to the full-page timetable view with actual ID
       onNavigate(`timetable-view-${timetable.id}`);
-    } else {
-      // Fallback to modal if onNavigate is not available
-      setSelectedTimetable(timetable);
-      setIsViewDialogOpen(true);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('timetables.delete_confirm') || 'Are you sure you want to delete this timetable?')) {
+    if (!confirm(t('timetables.delete_confirm') || "Rostdan ham bu jadvalni o'chirmoqchimisiz?")) {
       return;
     }
-
     try {
       const response = await apiCall<void>(`http://localhost:8080/api/timetable/v1/timetable/${id}`, {
         method: 'DELETE',
       });
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      // Remove from list
+      if (response.error) throw new Error(response.error.message);
       setTimetables(prev => prev.filter((t) => t.id !== id));
-      toast.success(t('timetables.deleted_success') || 'Timetable deleted successfully');
+      toast.success("Jadval muvaffaqiyatli o'chirildi");
     } catch (err) {
       console.error('Delete error:', err);
-      toast.error(t('timetables.delete_failed') || 'Failed to delete timetable');
+      toast.error("Jadvalni o'chirishda xatolik");
     }
   };
 
   const handleExportExcel = async (timetable: TimetableEntity) => {
     try {
-      toast(t('timetables.exporting_excel').replace('{{name}}', timetable.name));
-
+      toast.info(`"${timetable.name}" Excel formatda yuklanmoqda...`);
       const token = localStorage.getItem('authToken');
       const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/export/${timetable.id}`, {
         method: 'GET',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' },
       });
-
-      if (!response.ok) {
-        throw new Error(`Export failed: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`Export failed: ${response.statusText}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `timetable.xlsx`;
+      a.download = `${timetable.name || 'timetable'}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      toast.success(t('timetables.export_success').replace('{{name}}', timetable.name));
+      toast.success(`"${timetable.name}" Excel formatda yuklandi!`);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(t('timetables.export_failed') || 'Failed to export timetable');
+      toast.error('Excel eksport xatolik');
     }
   };
 
   const handleExportPDF = async (timetable: TimetableEntity) => {
     try {
-      toast(t('timetables.exporting_pdf').replace('{{name}}', timetable.name));
-
+      toast.info(`"${timetable.name}" PDF formatda yuklanmoqda...`);
       const token = localStorage.getItem('authToken');
       const response = await fetch(`http://localhost:8080/api/timetable/v1/timetable/export/pdf/${timetable.id}`, {
         method: 'GET',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers: { 'Authorization': token ? `Bearer ${token}` : '' },
       });
-
-      if (!response.ok) {
-        throw new Error(`PDF export failed: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`PDF export failed: ${response.statusText}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `timetable.pdf`;
+      a.download = `${timetable.name || 'timetable'}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      toast.success(t('timetables.pdf_export_success').replace('{{name}}', timetable.name));
+      toast.success(`"${timetable.name}" PDF formatda yuklandi!`);
     } catch (error) {
       console.error('PDF export error:', error);
-      toast.error(t('timetables.pdf_export_failed') || 'Failed to export timetable to PDF');
+      toast.error('PDF eksport xatolik');
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
-    toast(t('timetables.opening_print'));
   };
 
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleString('en-US', {
+      return date.toLocaleString('uz-UZ', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -258,140 +229,245 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* Page Header */}
+      <div className="flex justify-between items-start">
         <div>
-          <h2>{t('timetables.title')}</h2>
-          <p className="text-muted-foreground">{t('timetables.description')}</p>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Dars Jadvallari
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Barcha yaratilgan dars jadvallarini boshqaring
+          </p>
         </div>
-        <div className="flex gap-3">
-          {onNavigate && (
-            <Button
-              variant="outline"
-              onClick={() => onNavigate('timetable-view')}
-              className="border-blue-300 text-blue-700 hover:bg-blue-50"
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              {t('timetables.interactive_view')}
-            </Button>
-          )}
-          <Button onClick={() => setIsGenerateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('timetables.generate')}
-          </Button>
-        </div>
+        <Button
+          onClick={() => setIsGenerateOpen(true)}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 transition-all hover:shadow-xl hover:shadow-indigo-300"
+          size="lg"
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Yangi Jadval Yaratish
+        </Button>
       </div>
 
+      {/* Error Alert */}
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error} - {t('timetables.showing_demo')}
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
+      {/* Main Table Card */}
+      <Card className="border border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>{t('timetables.all_title')}</CardTitle>
-              <CardDescription>{t('timetables.all_description')}</CardDescription>
+              <CardTitle>Jadvallar ro'yxati</CardTitle>
+              <CardDescription>
+                Jami {filteredTimetables.length} ta jadval
+              </CardDescription>
             </div>
             <Input
-              placeholder={t('timetables.search_placeholder')}
+              placeholder="Jadval nomini qidirish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
+              className="max-w-xs h-10 rounded-lg"
             />
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <span className="ml-3 text-muted-foreground">{t('timetables.loading')}</span>
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mr-3" />
+              <span className="text-muted-foreground">Jadvallar yuklanmoqda...</span>
+            </div>
+          ) : paginatedTimetables.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
+                <AlertCircle className="h-8 w-8 text-indigo-400" />
+              </div>
+              <p className="font-medium text-gray-700 mb-1">Hali jadval yaratilmagan</p>
+              <p className="text-sm">Birinchi dars jadvalingizni yaratish uchun yuqoridagi tugmani bosing.</p>
             </div>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Created At</TableHead>
-                    <TableHead>Updated At</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedTimetables.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                        No timetables found. Create your first timetable to get started.
-                      </TableCell>
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50/80">
+                      <TableHead className="font-semibold text-gray-700">Nomi</TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-center w-[100px]">
+                        <div className="flex items-center justify-center gap-1">
+                          <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                          Ball
+                        </div>
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-center w-[110px]">
+                        <div className="flex items-center justify-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                          Joylashgan
+                        </div>
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-center w-[120px]">
+                        <div className="flex items-center justify-center gap-1">
+                          <XCircle className="h-3.5 w-3.5 text-red-400" />
+                          Joylashmagan
+                        </div>
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-center w-[110px]">
+                        O'qit. Oynalari
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-center w-[100px]">
+                        Sinf Oynalari
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 w-[160px]">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-gray-400" />
+                          Yaratilgan
+                        </div>
+                      </TableHead>
+                      <TableHead className="font-semibold text-gray-700 text-right w-[180px]">Amallar</TableHead>
                     </TableRow>
-                  ) : (
-                    paginatedTimetables.map((timetable) => (
-                      <TableRow key={timetable.id}>
-                        <TableCell>
-                          <Badge variant="outline">{timetable.id.substring(0, 8)}</Badge>
-                        </TableCell>
-                        <TableCell>{timetable.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(timetable.createdDate)}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(timetable.updatedDate)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleView(timetable)}
-                              title="View Timetable"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleExportExcel(timetable)}
-                              title="Export to Excel"
-                            >
-                              <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleExportPDF(timetable)}
-                              title="Export to PDF"
-                            >
-                              <FileText className="h-4 w-4 text-red-600" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(timetable.id)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTimetables.map((timetable) => {
+                      const totalLessons = (timetable.scheduled || 0) + (timetable.unscheduled || 0);
+                      const integrity = totalLessons > 0
+                        ? Math.round(((timetable.scheduled || 0) / totalLessons) * 100)
+                        : 0;
+
+                      return (
+                        <TableRow
+                          key={timetable.id}
+                          className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
+                          onClick={() => handleView(timetable)}
+                        >
+                          {/* Nomi */}
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors truncate">
+                                  {timetable.name}
+                                </p>
+                                {/* Mini progress bar */}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${integrity >= 90
+                                          ? 'bg-emerald-400'
+                                          : integrity >= 50
+                                            ? 'bg-yellow-400'
+                                            : 'bg-red-400'
+                                        }`}
+                                      style={{ width: `${integrity}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[11px] text-gray-400">{integrity}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Score */}
+                          <TableCell className="text-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${getScoreBg(timetable.score)}`}>
+                              {timetable.score !== null && timetable.score !== undefined ? (
+                                <>
+                                  {timetable.score}
+                                  <span className="text-[10px] font-medium opacity-75">
+                                    {getScoreLabel(timetable.score)}
+                                  </span>
+                                </>
+                              ) : '—'}
+                            </span>
+                          </TableCell>
+
+                          {/* Scheduled */}
+                          <TableCell className="text-center">
+                            <span className="text-sm font-semibold text-green-700">
+                              {timetable.scheduled ?? 0}
+                            </span>
+                          </TableCell>
+
+                          {/* Unscheduled */}
+                          <TableCell className="text-center">
+                            <span className={`text-sm font-semibold ${(timetable.unscheduled ?? 0) > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                              {timetable.unscheduled ?? 0}
+                            </span>
+                          </TableCell>
+
+                          {/* Teacher Gaps */}
+                          <TableCell className="text-center">
+                            <span className={`text-sm font-medium ${(timetable.teacherGaps ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                              {timetable.teacherGaps ?? 0}
+                            </span>
+                          </TableCell>
+
+                          {/* Class Gaps */}
+                          <TableCell className="text-center">
+                            <span className={`text-sm font-medium ${(timetable.classGaps ?? 0) > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
+                              {timetable.classGaps ?? 0}
+                            </span>
+                          </TableCell>
+
+                          {/* Date */}
+                          <TableCell className="text-muted-foreground text-sm">
+                            {formatDate(timetable.createdDate)}
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="text-right">
+                            <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 gap-1.5"
+                                onClick={(e) => { e.stopPropagation(); handleView(timetable); }}
+                              >
+                                <Eye className="h-4 w-4" />
+                                Ko'rish
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                onClick={(e) => { e.stopPropagation(); handleExportExcel(timetable); }}
+                                title="Excel eksport"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={(e) => { e.stopPropagation(); handleExportPDF(timetable); }}
+                                title="PDF eksport"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(timetable.id); }}
+                                title="O'chirish"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {/* Pagination */}
-              {paginatedTimetables.length > 0 && (
+              {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
-                  <p className="text-muted-foreground">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                    {Math.min(currentPage * itemsPerPage, filteredTimetables.length)} of{' '}
-                    {filteredTimetables.length} timetables
+                  <p className="text-sm text-muted-foreground">
+                    {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredTimetables.length)} / {filteredTimetables.length} jadval
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -400,7 +476,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                     >
-                      Previous
+                      Oldingi
                     </Button>
                     <Button
                       variant="outline"
@@ -408,7 +484,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                     >
-                      Next
+                      Keyingi
                     </Button>
                   </div>
                 </div>
@@ -422,26 +498,36 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('timetables.generate_modal_title')}</DialogTitle>
-            <DialogDescription>{t('timetables.generate_modal_description')}</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+                <Zap className="h-5 w-5 text-white" />
+              </div>
+              Yangi Jadval Yaratish
+            </DialogTitle>
+            <DialogDescription>
+              Tashkilot ma'lumotlari asosida avtomatik dars jadvali yaratiladi.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            <Input
-              placeholder={t('timetables.generate_name_placeholder')}
-              value={generateName}
-              onChange={(e) => setGenerateName(e.target.value)}
-            />
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Jadval nomi</label>
+              <Input
+                placeholder="Masalan: 2024-yil 1-semester"
+                value={generateName}
+                onChange={(e) => setGenerateName(e.target.value)}
+                className="h-11"
+              />
+            </div>
 
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setIsGenerateOpen(false)}>
-                {t('timetables.cancel')}
+                Bekor qilish
               </Button>
               <Button
                 onClick={async () => {
-                  // call generate API
                   if (!generateName.trim()) {
-                    toast.error(t('timetables.generate_name_required'));
+                    toast.error('Jadval nomini kiriting');
                     return;
                   }
                   setIsGenerating(true);
@@ -452,61 +538,36 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                     });
 
                     if (res.error) {
-                      toast.error(res.error.message || t('timetables.generate_failed'));
+                      toast.error(res.error.message || "Jadval yaratib bo'lmadi");
                     } else {
-                      toast.success(t('timetables.generate_success'));
+                      toast.success('Jadval muvaffaqiyatli yaratildi!');
                       setIsGenerateOpen(false);
                       setGenerateName('');
-                      // refresh list
                       await fetchTimetables();
-                      // Optionally navigate to the generated timetable if id returned
-                      if (res.data && res.data.response && res.data.response.timetableId) {
-                        const id = res.data.response.timetableId;
-                        if (onNavigate) onNavigate(`timetable-view-${id}`);
-                      }
                     }
                   } catch (err) {
                     console.error('Generate error', err);
-                    toast.error(t('timetables.generate_failed'));
+                    toast.error('Jadval yaratishda xatolik');
                   } finally {
                     setIsGenerating(false);
                   }
                 }}
                 disabled={isGenerating}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 min-w-[140px]"
               >
-                {isGenerating ? t('timetables.generating') : t('timetables.generate')}
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Yaratilmoqda...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Yaratish
+                  </>
+                )}
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Timetable Dialog - This is a simplified preview */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{selectedTimetable?.name}</DialogTitle>
-            <DialogDescription>
-              Created on {selectedTimetable && formatDate(selectedTimetable.createdDate)}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4">
-            <p className="text-muted-foreground mb-4">
-              Click the button below to view the full interactive timetable.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => {
-                if (selectedTimetable && onNavigate) {
-                  onNavigate(`timetable-view-${selectedTimetable.id}`);
-                  setIsViewDialogOpen(false);
-                }
-              }}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Open Interactive View
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
