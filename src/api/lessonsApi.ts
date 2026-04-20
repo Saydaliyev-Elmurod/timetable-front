@@ -70,7 +70,6 @@ export const lessonsApi = USE_MOCK_API ? {
       groupDetails: (lesson.groups || []).map(g => ({
         group: { id: g.groupId, name: "Group " + g.groupId },
         teacher: { id: g.teacherId, fullName: "Teacher " + g.teacherId },
-        subject: { id: g.subjectId, name: "Subject " + g.subjectId },
         rooms: g.roomIds.map(id => ({ id, name: "Room " + id, type: "SHARED" }))
       })),
       createdDate: new Date().toISOString(),
@@ -106,7 +105,6 @@ export const lessonsApi = USE_MOCK_API ? {
       groupDetails: (lesson.groups || []).map(g => ({
         group: { id: g.groupId, name: "Group " + g.groupId },
         teacher: { id: g.teacherId, fullName: "Teacher " + g.teacherId },
-        subject: { id: g.subjectId, name: "Subject " + g.subjectId },
         rooms: g.roomIds.map(id => ({ id, name: "Room " + id, type: "SHARED" }))
       })),
       createdDate: existingLesson?.createdDate || new Date().toISOString(),

@@ -1,13 +1,23 @@
 /**
  * DraggableLessonCard Component
- * 
- * Draggable lesson card for timetable with popover actions
- * 
+ *
+ * Draggable lesson card for the timetable grid with popover actions.
+ *
+ * Pass 4B: migrated from `react-dnd` to `@dnd-kit/core`.
+ *
+ * Behaviour notes:
+ *  - This card is always a `sub`-kind draggable (single lesson). Whole-slot
+ *    dragging is owned by `DraggableSlotCard`, which wraps the cell.
+ *  - The page decides which of the nested draggables is "live" for a given
+ *    gesture by toggling `disabled` on the sub vs slot wrapper based on the
+ *    Alt key. In this file we just expose the sub-card; the `disabled` prop
+ *    lets the parent gate it.
+ *
  * @module components/timetable/DraggableLessonCard
  */
 
 import React, { useState } from 'react';
-import { useDrag } from 'react-dnd';
+import { useDraggable } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
@@ -22,8 +32,21 @@ import {
     GripVertical,
 } from 'lucide-react';
 import { cn } from '@/components/ui/utils';
-import { DraggableLessonCardProps, Lesson, UnplacedLesson } from './types';
-import { SUBJECT_COLORS } from './constants';
+import { DraggableLessonCardProps } from './types';
+import { SUBJECT_PALETTE } from './utils/subjectColor';
+
+interface ExtendedProps extends DraggableLessonCardProps {
+    /**
+     * When true, the sub-level draggable is inert. Used by the page to "win"
+     * the gesture for the outer slot handle when Alt is NOT held.
+     */
+    disabled?: boolean;
+    /**
+     * Optional stable id override. Defaults to `lesson.id`. Used when the same
+     * lesson id could appear in multiple contexts (unplaced list vs grid).
+     */
+    draggableIdOverride?: string;
+}
 
 export function DraggableLessonCard({
     lesson,
@@ -37,36 +60,46 @@ export function DraggableLessonCard({
     hasConflict = false,
     isSelected = false,
     onSelect,
-}: DraggableLessonCardProps) {
-    const [{ opacity }, drag] = useDrag(
-        () => ({
-            type: 'lesson',
-            item: lesson,
-            collect: (monitor) => ({
-                opacity: monitor.isDragging() ? 0.4 : 1,
-            }),
-        }),
-        [lesson]
-    );
+    disabled = false,
+    draggableIdOverride,
+}: ExtendedProps) {
+    const draggableId = draggableIdOverride ?? lesson.id;
+
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: draggableId,
+        disabled,
+        data: {
+            kind: isUnplaced ? 'unplaced' : 'sub',
+            lesson,
+        },
+    });
 
     const [popoverOpen, setPopoverOpen] = useState(false);
 
+    // Deterministic subject color by id (stable across renames/i18n).
+    // Index < 0 means "no subject resolved" -> neutral palette slot 0.
     const subjectColor =
-        SUBJECT_COLORS[lesson.subject as keyof typeof SUBJECT_COLORS] ||
-        'bg-gray-100 border-gray-300 text-gray-900';
+        lesson.subjectColorIndex >= 0
+            ? SUBJECT_PALETTE[lesson.subjectColorIndex]
+            : SUBJECT_PALETTE[0];
 
     // Visual strips logic
     const hasNoRoom = !lesson.roomId || lesson.roomId === 0;
 
+    // While dragging, fade the source card per UX blueprint.
+    const dragStateClass = isDragging ? 'opacity-40 pointer-events-none' : '';
+
     if (isUnplaced) {
         return (
             <div
-                ref={drag}
-                style={{ opacity }}
+                ref={setNodeRef}
+                {...listeners}
+                {...attributes}
                 className={cn(
                     'p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden',
                     isSelected ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg' : subjectColor,
-                    'mb-3'
+                    'mb-3',
+                    dragStateClass,
                 )}
                 onClick={(e) => {
                     e.stopPropagation();
@@ -101,14 +134,16 @@ export function DraggableLessonCard({
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
                 <div
-                    ref={drag}
-                    style={{ opacity }}
+                    ref={setNodeRef}
+                    {...listeners}
+                    {...attributes}
                     className={cn(
                         'p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden',
                         subjectColor,
                         lesson.isLocked && 'ring-2 ring-yellow-500',
                         isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-lg',
-                        compact && 'p-1.5'
+                        compact && 'p-1.5',
+                        dragStateClass,
                     )}
                     onClick={(e) => {
                         if (onSelect) {

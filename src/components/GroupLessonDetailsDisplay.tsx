@@ -32,22 +32,13 @@ export default function GroupLessonDetailsDisplay({ groupDetails }: GroupLessonD
                 </Badge>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 ml-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-2 text-sm">
                 {/* Teacher */}
                 <div className="flex items-start gap-2">
                   <GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="text-xs text-muted-foreground">Teacher</div>
                     <div className="font-medium">{detail.teacher.fullName}</div>
-                  </div>
-                </div>
-
-                {/* Subject */}
-                <div className="flex items-start gap-2">
-                  <BookOpen className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <div className="text-xs text-muted-foreground">Subject</div>
-                    <div className="font-medium">{detail.subject.name}</div>
                   </div>
                 </div>
 

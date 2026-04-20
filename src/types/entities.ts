@@ -270,7 +270,6 @@ export interface ClassWithAvailability extends Omit<Class, 'availabilities'> {
 export interface GroupLessonDetail {
     groupId: number;
     teacherId: number;
-    subjectId: number;
     roomIds: number[];
 }
 
@@ -280,7 +279,6 @@ export interface GroupLessonDetail {
 export interface GroupLessonDetailFull {
     group: Group;
     teacher: Teacher;
-    subject: Subject;
     rooms: Room[];
 }
 

@@ -40,26 +40,40 @@ const MOCK_TEACHERS = ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Dav
 const MOCK_ROOMS = ['Room 101', 'Room 102', 'Room 103', 'Lab A', 'Lab B', 'Gym'];
 const MOCK_TIME_SLOTS = [1, 2, 3, 4, 5, 6, 7, 8];
 
+// Helper to fill the Pass-4A slot-grouping metadata on mock lessons.
+// Mocks here are all 1-per-slot, so groupIndex=0 / groupCount=1.
+const withSlotMeta = <T extends Omit<Lesson, 'slotKey' | 'groupIndex' | 'groupCount' | 'subjectColorIndex' | 'entityId' | 'version'>>(
+    lesson: T
+): T & Pick<Lesson, 'slotKey' | 'groupIndex' | 'groupCount' | 'subjectColorIndex' | 'entityId' | 'version'> => ({
+    ...lesson,
+    slotKey: `${lesson.classId}::${lesson.day ?? 'NONE'}::${lesson.timeSlot ?? 0}::W`,
+    groupIndex: 0,
+    groupCount: 1,
+    subjectColorIndex: Math.abs(lesson.subjectId) % 12,
+    entityId: String(lesson.id),
+    version: 1,
+});
+
 const MOCK_SCHEDULED_LESSONS: Lesson[] = [
-    { id: '1', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '5-A', classId: 1, day: 'MONDAY', timeSlot: 1, isLocked: false },
-    { id: '2', subject: 'Physics', subjectId: 2, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '5-A', classId: 1, day: 'MONDAY', timeSlot: 2, isLocked: false },
-    { id: '3', subject: 'English', subjectId: 3, teacher: 'Michael Brown', teacherId: 3, teacherShort: 'MB', room: 'Room 102', roomId: 2, class: '5-A', classId: 1, day: 'TUESDAY', timeSlot: 1, isLocked: true },
-    { id: '4', subject: 'Chemistry', subjectId: 4, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Lab B', roomId: 5, class: '5-A', classId: 1, day: 'WEDNESDAY', timeSlot: 3, isLocked: false },
-    { id: '5', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '5-B', classId: 2, day: 'MONDAY', timeSlot: 3, isLocked: false },
-    { id: '6', subject: 'English', subjectId: 3, teacher: 'Michael Brown', teacherId: 3, teacherShort: 'MB', room: 'Room 102', roomId: 2, class: '5-B', classId: 2, day: 'MONDAY', timeSlot: 4, isLocked: false },
-    { id: '7', subject: 'History', subjectId: 5, teacher: 'David Wilson', teacherId: 5, teacherShort: 'DW', room: 'Room 103', roomId: 3, class: '5-B', classId: 2, day: 'TUESDAY', timeSlot: 2, isLocked: false },
-    { id: '8', subject: 'Biology', subjectId: 6, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '6-A', classId: 3, day: 'MONDAY', timeSlot: 1, isLocked: false },
-    { id: '9', subject: 'P.E.', subjectId: 7, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Gym', roomId: 6, class: '6-A', classId: 3, day: 'TUESDAY', timeSlot: 5, isLocked: false },
-    { id: '10', subject: 'Art', subjectId: 8, teacher: 'David Wilson', teacherId: 5, teacherShort: 'DW', room: 'Room 103', roomId: 3, class: '6-A', classId: 3, day: 'WEDNESDAY', timeSlot: 2, isLocked: false },
-    { id: '11', subject: 'Physics', subjectId: 2, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '6-B', classId: 4, day: 'THURSDAY', timeSlot: 1, isLocked: false },
-    { id: '12', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '7-A', classId: 5, day: 'FRIDAY', timeSlot: 2, isLocked: false },
-    { id: '13', subject: 'Chemistry', subjectId: 4, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Lab B', roomId: 5, class: '7-B', classId: 6, day: 'WEDNESDAY', timeSlot: 4, isLocked: false },
+    withSlotMeta({ id: '1', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '5-A', classId: 1, day: 'MONDAY', timeSlot: 1, isLocked: false }),
+    withSlotMeta({ id: '2', subject: 'Physics', subjectId: 2, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '5-A', classId: 1, day: 'MONDAY', timeSlot: 2, isLocked: false }),
+    withSlotMeta({ id: '3', subject: 'English', subjectId: 3, teacher: 'Michael Brown', teacherId: 3, teacherShort: 'MB', room: 'Room 102', roomId: 2, class: '5-A', classId: 1, day: 'TUESDAY', timeSlot: 1, isLocked: true }),
+    withSlotMeta({ id: '4', subject: 'Chemistry', subjectId: 4, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Lab B', roomId: 5, class: '5-A', classId: 1, day: 'WEDNESDAY', timeSlot: 3, isLocked: false }),
+    withSlotMeta({ id: '5', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '5-B', classId: 2, day: 'MONDAY', timeSlot: 3, isLocked: false }),
+    withSlotMeta({ id: '6', subject: 'English', subjectId: 3, teacher: 'Michael Brown', teacherId: 3, teacherShort: 'MB', room: 'Room 102', roomId: 2, class: '5-B', classId: 2, day: 'MONDAY', timeSlot: 4, isLocked: false }),
+    withSlotMeta({ id: '7', subject: 'History', subjectId: 5, teacher: 'David Wilson', teacherId: 5, teacherShort: 'DW', room: 'Room 103', roomId: 3, class: '5-B', classId: 2, day: 'TUESDAY', timeSlot: 2, isLocked: false }),
+    withSlotMeta({ id: '8', subject: 'Biology', subjectId: 6, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '6-A', classId: 3, day: 'MONDAY', timeSlot: 1, isLocked: false }),
+    withSlotMeta({ id: '9', subject: 'P.E.', subjectId: 7, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Gym', roomId: 6, class: '6-A', classId: 3, day: 'TUESDAY', timeSlot: 5, isLocked: false }),
+    withSlotMeta({ id: '10', subject: 'Art', subjectId: 8, teacher: 'David Wilson', teacherId: 5, teacherShort: 'DW', room: 'Room 103', roomId: 3, class: '6-A', classId: 3, day: 'WEDNESDAY', timeSlot: 2, isLocked: false }),
+    withSlotMeta({ id: '11', subject: 'Physics', subjectId: 2, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '6-B', classId: 4, day: 'THURSDAY', timeSlot: 1, isLocked: false }),
+    withSlotMeta({ id: '12', subject: 'Mathematics', subjectId: 1, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Room 101', roomId: 1, class: '7-A', classId: 5, day: 'FRIDAY', timeSlot: 2, isLocked: false }),
+    withSlotMeta({ id: '13', subject: 'Chemistry', subjectId: 4, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Lab B', roomId: 5, class: '7-B', classId: 6, day: 'WEDNESDAY', timeSlot: 4, isLocked: false }),
 ];
 
 const MOCK_UNPLACED_LESSONS: UnplacedLesson[] = [
-    { id: '101', subject: 'P.E.', subjectId: 7, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Gym', roomId: 6, class: '5-A', classId: 1, isLocked: false, reason: 'No available time slots for this teacher' },
-    { id: '102', subject: 'Biology', subjectId: 6, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '5-B', classId: 2, isLocked: false, reason: 'Room conflict - Lab A fully booked' },
-    { id: '103', subject: 'Art', subjectId: 8, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Room 103', roomId: 3, class: '7-A', classId: 5, isLocked: false, reason: 'Teacher has back-to-back classes' },
+    withSlotMeta({ id: '101', subject: 'P.E.', subjectId: 7, teacher: 'John Smith', teacherId: 1, teacherShort: 'JS', room: 'Gym', roomId: 6, class: '5-A', classId: 1, isLocked: false, reason: 'No available time slots for this teacher' }),
+    withSlotMeta({ id: '102', subject: 'Biology', subjectId: 6, teacher: 'Sarah Johnson', teacherId: 2, teacherShort: 'SJ', room: 'Lab A', roomId: 4, class: '5-B', classId: 2, isLocked: false, reason: 'Room conflict - Lab A fully booked' }),
+    withSlotMeta({ id: '103', subject: 'Art', subjectId: 8, teacher: 'Emma Davis', teacherId: 4, teacherShort: 'ED', room: 'Room 103', roomId: 3, class: '7-A', classId: 5, isLocked: false, reason: 'Teacher has back-to-back classes' }),
 ];
 
 // ============================================================================

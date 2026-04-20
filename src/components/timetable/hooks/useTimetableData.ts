@@ -1,8 +1,8 @@
 /**
  * useTimetableData Hook
- * 
+ *
  * Manages timetable data fetching and processing
- * 
+ *
  * @module components/timetable/hooks/useTimetableData
  */
 
@@ -13,16 +13,28 @@ import { organizationApi } from '@/api/organizationApi';
 import { initializeMockLessons } from '@/components/api/timetableActionApi';
 import {
     TimetableDataEntity,
+    TimetableFullResponse,
+    ClassResponse,
+    TeacherResponse,
+    SubjectResponse,
+    RoomResponse,
+    GroupResponse,
     Lesson,
     UnplacedLesson,
+    SlotGroup,
 } from '../types';
 import { DEFAULT_TIME_SLOTS } from '../constants';
+import { subjectColorIndex } from '../utils/subjectColor';
 
 export interface UseTimetableDataReturn {
     // Data
     scheduledLessons: Lesson[];
     unplacedLessons: UnplacedLesson[];
     timetableData: TimetableDataEntity[];
+
+    // Slot-group aggregates (Pass 4A)
+    slotGroups: SlotGroup[];
+    slotGroupsByKey: Map<string, SlotGroup>;
 
     // Derived data
     allClasses: string[];
@@ -59,44 +71,74 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
     const [companyPeriods, setCompanyPeriods] = useState<number[]>([]);
 
     // Process API data into internal format
-    const processAPIData = useCallback((data: TimetableDataEntity[]) => {
+    const processAPIData = useCallback((
+        data: TimetableDataEntity[],
+        classes: Map<number, ClassResponse>,
+        teachers: Map<number, TeacherResponse>,
+        subjects: Map<number, SubjectResponse>,
+        rooms: Map<number, RoomResponse>,
+        groups: Map<number, GroupResponse>
+    ) => {
         const scheduled: Lesson[] = [];
         const unplaced: UnplacedLesson[] = [];
 
         data.forEach((entry) => {
             // Handle Scheduled Slots
             if (entry.slotDetails && entry.slotDetails.length > 0) {
+                const classInfo = classes.get(entry.classId);
+                if (!classInfo && !entry.classId) {
+                    console.warn('Missing class info for scheduled lesson', entry);
+                    return;
+                }
+
+                const className = classInfo?.shortName || `Class ${entry.classId}`;
+                const classId = entry.classId;
+
+                const slotKey = `${entry.classId}::${entry.dayOfWeek}::${entry.hour}::${entry.weekIndex ?? 'W'}`;
+                const groupCount = entry.slotDetails.length;
+
                 entry.slotDetails.forEach((detail, index) => {
-                    const classInfo = detail.originalLessonData?.class;
+                    const teacherInfo = detail.teacherId ? teachers.get(detail.teacherId) : undefined;
+                    const roomInfo = detail.roomId ? rooms.get(detail.roomId) : undefined;
+                    const groupInfo = detail.groupId ? groups.get(detail.groupId) : undefined;
 
-                    if (!classInfo && !entry.classId) {
-                        console.warn('Missing class info for scheduled lesson', entry);
-                        return;
-                    }
+                    // Per-detail subject (schema: subjectId moved onto slotDetails entry).
+                    // Fall back to the parent entity for legacy payloads.
+                    const resolvedSubjectId =
+                        detail.subjectId ?? entry.subjectId ?? null;
+                    const subjectInfo =
+                        resolvedSubjectId != null ? subjects.get(resolvedSubjectId) : undefined;
+                    const subjectName = subjectInfo?.name || 'No Subject';
+                    const colorIndex = subjectColorIndex(resolvedSubjectId);
 
-                    const className = classInfo?.shortName || `Class ${entry.classId}`;
-                    const classId = classInfo?.id || entry.classId;
-                    const lessonId = detail.lessonId ? `${detail.lessonId}` : `${entry.id}-${index}`;
+                    // Stable id: entry.id + group discriminator + lessonId.
+                    const stableId = `${entry.id}::${detail.groupId ?? 'main'}::${detail.lessonId}`;
 
                     scheduled.push({
-                        id: lessonId,
-                        subject: detail.subject.name,
-                        subjectId: detail.subject.id,
-                        teacher: detail.teacher?.fullName || 'No Teacher',
-                        teacherId: detail.teacher?.id || 0,
-                        teacherShort: detail.teacher?.fullName || '',
-                        room: detail.room ? detail.room.name : 'No Room',
-                        roomId: detail.room ? detail.room.id : 0,
+                        id: stableId,
+                        subject: subjectName,
+                        subjectId: resolvedSubjectId ?? 0,
+                        teacher: teacherInfo?.fullName || 'No Teacher',
+                        teacherId: detail.teacherId || 0,
+                        teacherShort: teacherInfo?.shortName || teacherInfo?.fullName || '',
+                        room: roomInfo?.name || 'No Room',
+                        roomId: detail.roomId || 0,
                         class: className,
                         classId: classId,
                         day: entry.dayOfWeek,
                         timeSlot: entry.hour,
                         isLocked: false,
-                        groupName: detail.group?.name,
-                        groupId: detail.group?.id,
+                        groupName: groupInfo?.name,
+                        groupId: detail.groupId || undefined,
                         weekIndex: entry.weekIndex,
                         isBiWeekly: entry.weekIndex !== null,
                         rawDetails: detail,
+                        slotKey,
+                        groupIndex: index,
+                        groupCount,
+                        subjectColorIndex: colorIndex,
+                        entityId: entry.id,
+                        version: entry.version,
                     });
                 });
             }
@@ -108,6 +150,9 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
                     ud.room && ud.room.length > 0
                         ? ud.room.map((r) => r.name).join(', ')
                         : 'TBD';
+
+                const udColorIndex = subjectColorIndex(ud.subject?.id ?? null);
+                const udSlotKey = `unplaced::${entry.id}`;
 
                 unplaced.push({
                     id: entry.id,
@@ -125,6 +170,12 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
                     requiredCount: ud.requiredCount,
                     scheduledCount: ud.scheduledCount,
                     missingCount: ud.missingCount,
+                    slotKey: udSlotKey,
+                    groupIndex: 0,
+                    groupCount: 1,
+                    subjectColorIndex: udColorIndex,
+                    entityId: entry.id,
+                    version: entry.version,
                 });
             }
         });
@@ -139,7 +190,7 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
             setIsLoading(true);
             setError(null);
 
-            const res = await apiCall<TimetableDataEntity[]>(
+            const res = await apiCall<TimetableFullResponse>(
                 `http://localhost:8080/api/timetable/v1/timetable/${id}`
             );
 
@@ -147,9 +198,18 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
                 throw res.error;
             }
 
-            const data: TimetableDataEntity[] = res.data || [];
+            const fullData = res.data;
+            if (!fullData) return;
+
+            const classMap = new Map((fullData.classes || []).map(c => [c.id, c]));
+            const teacherMap = new Map((fullData.teachers || []).map(t => [t.id, t]));
+            const subjectMap = new Map((fullData.subjects || []).map(s => [s.id, s]));
+            const roomMap = new Map((fullData.rooms || []).map(r => [r.id, r]));
+            const groupMap = new Map((fullData.groups || []).map(g => [g.id, g]));
+
+            const data = fullData.timetableData || [];
             setTimetableData(data);
-            processAPIData(data);
+            processAPIData(data, classMap, teacherMap, subjectMap, roomMap, groupMap);
         } catch (err) {
             const errorMessage =
                 err instanceof Error ? err.message : 'Failed to fetch timetable data';
@@ -224,6 +284,57 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
         return Array.from(scheduledSlots).sort((a, b) => a - b);
     }, [scheduledLessons, companyPeriods]);
 
+    // Aggregate lessons into SlotGroups keyed by slotKey.
+    const slotGroupsByKey = useMemo<Map<string, SlotGroup>>(() => {
+        const map = new Map<string, SlotGroup>();
+        for (const lesson of scheduledLessons) {
+            const existing = map.get(lesson.slotKey);
+            if (existing) {
+                existing.lessons.push(lesson);
+                existing.isLocked = existing.isLocked || !!lesson.isLocked;
+            } else {
+                map.set(lesson.slotKey, {
+                    slotKey: lesson.slotKey,
+                    entityId: lesson.entityId,
+                    classId: lesson.classId,
+                    day: lesson.day ?? '',
+                    hour: lesson.timeSlot ?? 0,
+                    weekIndex: lesson.weekIndex ?? null,
+                    subjectId: lesson.subjectId || null,
+                    subjectName: lesson.subject,
+                    colorIndex: lesson.subjectColorIndex,
+                    lessons: [lesson],
+                    groupCount: lesson.groupCount,
+                    version: lesson.version,
+                    isLocked: !!lesson.isLocked,
+                });
+            }
+        }
+        // Reconcile aggregates: a slot can now hold parallel groups with
+        // different subjects, so the slot-level subject fields are only
+        // meaningful when all lessons agree. Otherwise they fall back to
+        // null / "Mixed" / -1 so consumers don't misrepresent heterogeneous slots.
+        for (const group of map.values()) {
+            group.groupCount = group.lessons.length;
+            group.lessons.sort((a, b) => a.groupIndex - b.groupIndex);
+            const firstSubjectId = group.lessons[0]?.subjectId ?? 0;
+            const homogeneous = group.lessons.every(
+                (l) => (l.subjectId ?? 0) === firstSubjectId
+            );
+            if (!homogeneous) {
+                group.subjectId = null;
+                group.subjectName = 'Mixed';
+                group.colorIndex = -1;
+            }
+        }
+        return map;
+    }, [scheduledLessons]);
+
+    const slotGroups = useMemo<SlotGroup[]>(
+        () => Array.from(slotGroupsByKey.values()),
+        [slotGroupsByKey]
+    );
+
     // Stats
     const totalLessons = scheduledLessons.length + unplacedLessons.length;
     const scheduleIntegrity =
@@ -234,6 +345,8 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
         scheduledLessons,
         unplacedLessons,
         timetableData,
+        slotGroups,
+        slotGroupsByKey,
         allClasses,
         allTeachers,
         allRooms,

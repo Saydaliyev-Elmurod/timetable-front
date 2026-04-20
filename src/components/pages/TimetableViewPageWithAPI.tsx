@@ -28,16 +28,8 @@ import {
 import { Separator } from "../ui/separator";
 import { Alert, AlertDescription } from "../ui/alert";
 import {
-  FileDown,
-  RefreshCw,
-  Zap,
-  Lock,
-  Unlock,
-  Edit,
-  Trash2,
   AlertCircle,
   CheckCircle2,
-  GripVertical,
   ArrowLeft,
   User,
   DoorOpen,
@@ -48,8 +40,11 @@ import {
   Grid3x3,
   Loader2,
   Info,
+  RefreshCw,
+  Zap,
+  FileDown,
 } from "lucide-react";
-import { DndProvider, useDrag, useDrop, useDragLayer } from "react-dnd";
+import { DndProvider, useDragLayer } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { cn } from "../ui/utils";
 import { toast } from "sonner";
@@ -62,55 +57,32 @@ import {
 } from "../api/timetableActionApi";
 import { apiCall } from '@/lib/api';
 import { organizationApi } from '../../api/organizationApi';
+import {
+  DraggableLessonCard,
+  DroppableTimeSlot,
+  ClassViewGrid,
+  TeacherViewGrid,
+  RoomViewGrid,
+  CompactViewGrid,
+} from '@/components/timetable';
+import type {
+  Lesson,
+  UnplacedLesson,
+  DisplayOptions,
+  TimetableDataEntity,
+  TimetableFullResponse,
+  ClassResponse,
+  TeacherResponse,
+  SubjectResponse,
+  RoomResponse,
+  GroupResponse,
+} from '@/components/timetable/types';
+import { DAYS, DAY_LABELS } from '@/components/timetable/constants';
+import { subjectColorIndex } from '@/components/timetable/utils/subjectColor';
 
-// API Types based on backend entities
-interface TimeSlot {
-  dayOfWeek: string;
-  lessons: number[];
-}
-
-interface TeacherResponse {
-  id: number;
-  fullName: string;
-  shortName: string;
-  availabilities: TimeSlot[];
-  createdDate: string;
-  updatedDate: string;
-}
-
-interface SubjectResponse {
-  id: number;
-  shortName: string;
-  name: string;
-  availabilities: TimeSlot[];
-}
-
-interface RoomResponse {
-  id: number;
-  name: string;
-}
-
-interface ClassResponse {
-  id: number;
-  shortName: string;
-  name: string;
-  availabilities: TimeSlot[];
-  teacher: TeacherResponse;
-  rooms: RoomResponse[];
-  updatedDate: string;
-  createdDate: string;
-}
-
-interface TimetableGroupDetail {
-  lessonId: number;
-  subjectId: number;
-  teacherId: number;
-  roomId: number;
-  groupId: number | null;
-  originalLessonData: any; // detailed lesson info
-}
-
-// Unscheduled data from API (contains IDs)
+// Page-local types — shapes NOT defined in @/components/timetable/types.
+// The UnscheduledLessonData shape used by this page's legacy fetcher differs
+// from `UnscheduledLessonResponse` (ids vs. full objects) so it stays local.
 interface UnscheduledLessonData {
   classId: number;
   teacherId: number;
@@ -121,7 +93,7 @@ interface UnscheduledLessonData {
   missingCount: number;
 }
 
-// Timetable metadata for score/quality display
+// Timetable metadata for score/quality display (list endpoint).
 interface TimetableMeta {
   id: string;
   name: string;
@@ -134,9 +106,15 @@ interface TimetableMeta {
   updatedDate: string;
 }
 
-// Full API Response structure
+// Legacy API envelope used by the page's inline fetcher. The shared types.ts
+// version (`TimetableFullResponse`) assumes the 4A schema (full unscheduled
+// objects); this page still reads the legacy id-based unscheduled shape.
+type LegacyTimetableDataEntity = Omit<TimetableDataEntity, 'unscheduledData'> & {
+  unscheduledData: UnscheduledLessonData | null;
+};
+
 interface TimetableAPIResponse {
-  timetableData: TimetableDataEntity[];
+  timetableData: LegacyTimetableDataEntity[];
   classes: ClassResponse[];
   teachers: TeacherResponse[];
   subjects: SubjectResponse[];
@@ -144,1091 +122,6 @@ interface TimetableAPIResponse {
   groups: GroupResponse[];
 }
 
-interface TimetableDataEntity {
-  id: string;
-  timetableId: string;
-  isScheduled: boolean;
-  classId: number;
-  dayOfWeek: string;
-  hour: number;
-  weekIndex: number | null; // 0 or 1 for bi-weekly
-  slotDetails: TimetableGroupDetail[]; // List of details instead of single scheduledData
-  unscheduledData: UnscheduledLessonData | null; // Full objects from API
-  version: number;
-}
-
-interface GroupResponse {
-  id: number;
-  name: string;
-}
-
-// Internal Lesson format (for DnD and display)
-interface Lesson {
-  id: string;
-  subject: string;
-  subjectId: number;
-  teacher: string;
-  teacherId: number;
-  teacherShort: string;
-  room: string;
-  roomId: number;
-  class: string;
-  classId: number;
-  day?: string;
-  timeSlot?: number;
-  isLocked?: boolean;
-  // New fields
-  groupName?: string;
-  groupId?: number;
-  weekIndex?: number | null;
-  isBiWeekly?: boolean;
-  rawDetails?: TimetableGroupDetail; // Store original detail for actions
-}
-
-interface UnplacedLesson extends Lesson {
-  reason: string;
-  requiredCount?: number;
-  scheduledCount?: number;
-  missingCount?: number;
-}
-
-interface DisplayOptions {
-  showTeacher: boolean;
-  showRoom: boolean;
-  showSubject: boolean;
-}
-
-const DAYS = [
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-];
-
-const DAY_LABELS: Record<string, string> = {
-  MONDAY: "Monday",
-  TUESDAY: "Tuesday",
-  WEDNESDAY: "Wednesday",
-  THURSDAY: "Thursday",
-  FRIDAY: "Friday",
-  SATURDAY: "Saturday",
-  SUNDAY: "Sunday",
-};
-
-const SUBJECT_COLORS: Record<string, string> = {
-  Mathematics: "bg-blue-100 border-blue-300 text-blue-900",
-  Physics: "bg-purple-100 border-purple-300 text-purple-900",
-  Chemistry: "bg-green-100 border-green-300 text-green-900",
-  English: "bg-orange-100 border-orange-300 text-orange-900",
-  History: "bg-amber-100 border-amber-300 text-amber-900",
-  "P.E.": "bg-red-100 border-red-300 text-red-900",
-  Biology: "bg-emerald-100 border-emerald-300 text-emerald-900",
-  Art: "bg-pink-100 border-pink-300 text-pink-900",
-};
-
-// Draggable Lesson Card Component
-// Draggable Lesson Card Component
-const DraggableLessonCard = ({
-  lesson,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  isUnplaced = false,
-  compact = false,
-  showClass = false,
-  hasConflict = false,
-  isSelected = false,
-  onSelect,
-}: {
-  lesson: Lesson | UnplacedLesson;
-  onEdit: (lesson: Lesson | UnplacedLesson) => void;
-  onDelete: (lesson: Lesson | UnplacedLesson) => void;
-  onToggleLock: (lesson: Lesson | UnplacedLesson) => void;
-  displayOptions: DisplayOptions;
-  isUnplaced?: boolean;
-  compact?: boolean;
-  showClass?: boolean;
-  hasConflict?: boolean;
-  isSelected?: boolean;
-  onSelect?: (lesson: Lesson | UnplacedLesson) => void;
-}) => {
-  const [{ opacity }, drag] = useDrag(
-    () => ({
-      type: "lesson",
-      item: lesson,
-      collect: (monitor) => ({
-        opacity: monitor.isDragging() ? 0.4 : 1,
-      }),
-    }),
-    [lesson],
-  );
-
-  const [popoverOpen, setPopoverOpen] = useState(false);
-
-  const subjectColor =
-    SUBJECT_COLORS[lesson.subject as keyof typeof SUBJECT_COLORS] ||
-    "bg-gray-100 border-gray-300 text-gray-900";
-
-  // Visual strips logic
-  const hasNoRoom = !lesson.roomId || lesson.roomId === 0;
-
-  if (isUnplaced) {
-    return (
-      <div
-        ref={drag}
-        style={{ opacity }}
-        className={cn(
-          "p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden",
-          isSelected ? "ring-2 ring-blue-500 border-blue-500 shadow-lg" : subjectColor,
-          "mb-3",
-        )}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect?.(lesson);
-        }}
-      >
-        {/* White strip for no room */}
-        {hasNoRoom && (
-          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
-        )}
-
-        <div className={cn("flex items-start gap-2", hasNoRoom && "pl-2")}>
-          <GripVertical className="h-4 w-4 mt-0.5 opacity-50" />
-          <div className="flex-1">
-            {displayOptions.showSubject && (
-              <div className="font-medium">{lesson.subject}</div>
-            )}
-            <div className="text-sm opacity-75">{lesson.class}</div>
-            {displayOptions.showTeacher && (
-              <div className="text-sm opacity-75">{lesson.teacher}</div>
-            )}
-            {displayOptions.showRoom && (
-              <div className="text-sm opacity-75">{lesson.room}</div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-      <PopoverTrigger asChild>
-        <div
-          ref={drag}
-          style={{ opacity }}
-          className={cn(
-            "p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden",
-            subjectColor,
-            lesson.isLocked && "ring-2 ring-yellow-500",
-            isSelected && "ring-2 ring-blue-500 border-blue-500 shadow-lg",
-            compact && "p-1.5",
-          )}
-          onClick={(e) => {
-            // If selecting, don't open popover
-            if (onSelect) {
-              e.stopPropagation();
-              onSelect(lesson);
-            }
-          }}
-        >
-          {/* White strip for no room */}
-          {hasNoRoom && (
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
-          )}
-
-          {/* Red strip for conflict/warning */}
-          {hasConflict && (
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500" />
-          )}
-
-          <div className={cn("flex items-start justify-between gap-1", hasNoRoom && "pl-2", hasConflict && "pt-1")}>
-            <div className="flex-1 min-w-0">
-              {displayOptions.showSubject && (
-                <div
-                  className={cn(
-                    "font-medium truncate",
-                    compact && "text-xs",
-                  )}
-                >
-                  {lesson.subject}
-                </div>
-              )}
-
-              {/* Group Name & Bi-Weekly Info */}
-              {(lesson.groupName || (lesson.isBiWeekly && lesson.weekIndex !== undefined)) && (
-                <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
-                  {lesson.groupName && (
-                    <span className={cn("text-xs font-semibold text-indigo-700 bg-indigo-50 px-1 rounded", compact && "text-[10px]")}>
-                      {lesson.groupName}
-                    </span>
-                  )}
-                  {lesson.isBiWeekly && lesson.weekIndex !== undefined && (
-                    <span className={cn("text-xs font-bold text-purple-700 bg-purple-50 px-1 rounded", compact && "text-[10px]")}>
-                      {lesson.weekIndex === 0 ? "Week A" : "Week B"}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {showClass && (
-                <div
-                  className={cn(
-                    "text-sm opacity-75 truncate",
-                    compact && "text-xs",
-                  )}
-                >
-                  {lesson.class}
-                </div>
-              )}
-              {displayOptions.showTeacher && (
-                <div
-                  className={cn(
-                    "text-sm opacity-75 truncate",
-                    compact && "text-xs",
-                  )}
-                >
-                  {lesson.teacher}
-                </div>
-              )}
-              {displayOptions.showRoom && (
-                <div
-                  className={cn(
-                    "text-sm opacity-75 truncate",
-                    compact && "text-xs",
-                  )}
-                >
-                  {lesson.room}
-                </div>
-              )}
-            </div>
-            {lesson.isLocked && (
-              <Lock className="h-3 w-3 text-yellow-600 flex-shrink-0" />
-            )}
-          </div>
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-48 p-2" align="start">
-        <div className="space-y-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => {
-              onEdit(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => {
-              onToggleLock(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            {lesson.isLocked ? (
-              <>
-                <Unlock className="mr-2 h-4 w-4" />
-                Unlock
-              </>
-            ) : (
-              <>
-                <Lock className="mr-2 h-4 w-4" />
-                Lock
-              </>
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={() => {
-              onDelete(lesson);
-              setPopoverOpen(false);
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
-// Droppable Time Slot Component
-const DroppableTimeSlot = ({
-  day,
-  timeSlot,
-  lessons = [],
-  onDrop,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  compact = false,
-  showClass = false,
-  draggedLesson,
-  allLessons,
-  rowClass,
-  selectedLesson, // NEW PROP
-  onManualPlace,  // NEW PROP
-}: {
-  day: string;
-  timeSlot: number;
-  lessons?: Lesson[];
-  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
-  onToggleLock: (lesson: Lesson) => void;
-  displayOptions: DisplayOptions;
-  compact?: boolean;
-  showClass?: boolean;
-  draggedLesson?: Lesson | null;
-  allLessons?: Lesson[];
-  rowClass?: string;
-  selectedLesson?: Lesson | UnplacedLesson | null;
-  onManualPlace?: (day: string, timeSlot: number) => void;
-}) => {
-  const [{ isOver, canDrop }, drop] = useDrop(
-    () => ({
-      accept: "lesson",
-      canDrop: (item: Lesson) => {
-        // Only allow dropping if it's the same class
-        if (rowClass && item.class !== rowClass) {
-          return false;
-        }
-        return true;
-      },
-      drop: (item: Lesson) => onDrop(item, day, timeSlot),
-      collect: (monitor) => ({
-        isOver: !!monitor.isOver(),
-        canDrop: !!monitor.canDrop(),
-      }),
-    }),
-    [day, timeSlot, rowClass],
-  );
-
-
-  // MANUAL PLACEMENT VALIDATION logic
-  const manualPlacementStatus = useMemo(() => {
-    if (!selectedLesson || !allLessons) return 'none';
-
-    // Target mismatch
-    if (rowClass && selectedLesson.class !== rowClass) {
-      return 'invalid-target';
-    }
-
-    // 1. Teacher Conflict
-    const teacherConflict = allLessons.some(
-      (l) =>
-        l.id !== selectedLesson.id &&
-        l.teacherId === selectedLesson.teacherId &&
-        l.day === day &&
-        l.timeSlot === timeSlot
-    );
-    if (teacherConflict) return 'teacher-conflict';
-
-    // 2. Room Conflict
-    if (selectedLesson.roomId) {
-      const roomConflict = allLessons.some(
-        (l) =>
-          l.id !== selectedLesson.id &&
-          l.roomId === selectedLesson.roomId &&
-          l.day === day &&
-          l.timeSlot === timeSlot
-      );
-      if (roomConflict) return 'room-conflict';
-    }
-
-    return 'valid';
-  }, [selectedLesson, allLessons, day, timeSlot, rowClass]);
-
-  // Conflict Detection Logic for DRAGGED lesson & MANUAL placement
-  const getSlotStyle = () => {
-    // 1. MANUAL PLACEMENT STYLING
-    if (selectedLesson) {
-      if (manualPlacementStatus === 'invalid-target') {
-        return cn(
-          "border border-gray-200 p-1 transition-colors relative opacity-40 bg-gray-50",
-          compact ? "min-h-[60px]" : "min-h-[70px]"
-        );
-      }
-      if (manualPlacementStatus === 'teacher-conflict') {
-        return cn(
-          "border border-red-300 p-1 transition-colors bg-red-50 relative cursor-pointer hover:bg-red-100",
-          compact ? "min-h-[60px]" : "min-h-[70px]"
-        );
-      }
-      if (manualPlacementStatus === 'room-conflict') {
-        return cn(
-          "border border-blue-300 p-1 transition-colors bg-blue-50 relative cursor-pointer hover:bg-blue-100",
-          compact ? "min-h-[60px]" : "min-h-[70px]"
-        );
-      }
-      // Valid
-      return cn(
-        "border border-green-400 p-1 transition-colors bg-green-50 relative cursor-pointer hover:bg-green-100 ring-1 ring-inset ring-green-200",
-        compact ? "min-h-[60px]" : "min-h-[70px]"
-      );
-    }
-
-    // 2. DRAG AND DROP STYLING (Existing)
-    if (!draggedLesson || !allLessons) {
-      // Default behavior when not dragging
-      // If lessons exist, maybe no hover effect needed as much?
-      return cn(
-        "border border-gray-200 p-1 transition-colors relative",
-        compact ? "min-h-[60px]" : "min-h-[70px]",
-        isOver && canDrop && "bg-blue-50 border-blue-300",
-        lessons.length === 0 && "hover:bg-gray-50"
-      );
-    }
-
-    // If we are dragging, but this slot is not a valid target (wrong class)
-    if (rowClass && draggedLesson.class !== rowClass) {
-      return cn(
-        "border border-gray-200 p-1 transition-colors relative opacity-50 bg-gray-100",
-        compact ? "min-h-[60px]" : "min-h-[70px]"
-      );
-    }
-
-    // If this is the source slot of the dragged lesson, keep it neutral
-    if (
-      draggedLesson.day === day &&
-      draggedLesson.timeSlot === timeSlot &&
-      draggedLesson.class === rowClass
-    ) {
-      return cn(
-        "border border-gray-200 p-1 transition-colors relative",
-        compact ? "min-h-[60px]" : "min-h-[70px]",
-        "bg-gray-50"
-      );
-    }
-
-    // 1. Teacher Conflict (Red - "B" in docs)
-    // Check if the dragged lesson's teacher already has a lesson at this time
-    const teacherConflict = allLessons.some(
-      (l) =>
-        l.id !== draggedLesson.id &&
-        l.teacherId === draggedLesson.teacherId &&
-        l.day === day &&
-        l.timeSlot === timeSlot
-    );
-
-    if (teacherConflict) {
-      return cn(
-        "border border-red-300 p-1 transition-colors bg-red-100 relative",
-        compact ? "min-h-[60px]" : "min-h-[70px]"
-      );
-    }
-
-    // 2. Room Conflict (Blue - "C" in docs)
-    // Check if the dragged lesson's room is occupied at this time
-    if (draggedLesson.roomId) {
-      const roomConflict = allLessons.some(
-        (l) =>
-          l.id !== draggedLesson.id &&
-          l.roomId === draggedLesson.roomId &&
-          l.day === day &&
-          l.timeSlot === timeSlot
-      );
-
-      if (roomConflict) {
-        return cn(
-          "border border-blue-300 p-1 transition-colors bg-blue-100 relative",
-          compact ? "min-h-[60px]" : "min-h-[70px]"
-        );
-      }
-    }
-
-    // 3. No Conflict (Green - "A" in docs)
-    return cn(
-      "border border-green-300 p-1 transition-colors bg-green-100 relative",
-      compact ? "min-h-[60px]" : "min-h-[70px]"
-    );
-  };
-
-  return (
-    <div
-      ref={drop}
-      className={getSlotStyle()}
-      onClick={() => {
-        if (selectedLesson && onManualPlace) {
-          onManualPlace(day, timeSlot);
-        }
-      }}
-    >
-      {(() => {
-        // Check for Diagonal Split Condition: Exactly 2 lessons, one Week A (0), one Week B (1)
-        const weekALesson = lessons.find(l => l.weekIndex === 0);
-        const weekBLesson = lessons.find(l => l.weekIndex === 1);
-        const isWeekABPair = lessons.length === 2 && !!weekALesson && !!weekBLesson;
-
-        if (isWeekABPair) {
-          // DIAGONAL SPLIT RENDERING
-          return (
-            <div className="relative w-full h-full">
-              {/* Top-Left Triangle (Week A) */}
-              <div
-                className="absolute inset-0"
-                style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 10 }}
-              >
-                <div className="h-full w-full pr-[50%] pb-[50%]">
-                  {/* We constrain content to top-left somewhat, but mostly rely on clip */}
-                  <DraggableLessonCard
-                    lesson={weekALesson!}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={true}
-                    showClass={showClass}
-                    // hasConflict logic needs to be calculated for this specific lesson
-                    hasConflict={allLessons ? allLessons.some(l =>
-                      l.id !== weekALesson!.id &&
-                      l.day === day &&
-                      l.timeSlot === timeSlot &&
-                      (
-                        l.teacherId === weekALesson!.teacherId ||
-                        (l.roomId !== 0 && l.roomId === weekALesson!.roomId) ||
-                        l.classId === weekALesson!.classId
-                      )
-                    ) : false}
-                    isSelected={selectedLesson?.id === weekALesson!.id}
-                    onSelect={(l) => { }}
-                  />
-                </div>
-              </div>
-
-              {/* Bottom-Right Triangle (Week B) */}
-              <div
-                className="absolute inset-0"
-                style={{ clipPath: 'polygon(100% 100%, 0 100%, 100% 0)', zIndex: 10 }}
-              >
-                <div className="h-full w-full pl-[50%] pt-[50%]">
-                  <DraggableLessonCard
-                    lesson={weekBLesson!}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={true}
-                    showClass={showClass}
-                    hasConflict={allLessons ? allLessons.some(l =>
-                      l.id !== weekBLesson!.id &&
-                      l.day === day &&
-                      l.timeSlot === timeSlot &&
-                      (
-                        l.teacherId === weekBLesson!.teacherId ||
-                        (l.roomId !== 0 && l.roomId === weekBLesson!.roomId) ||
-                        l.classId === weekBLesson!.classId
-                      )
-                    ) : false}
-                    isSelected={selectedLesson?.id === weekBLesson!.id}
-                    onSelect={(l) => { }}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        // STANDARD / GROUP SPLIT RENDERING (Flex Row)
-        return (
-          <div className="flex h-full w-full gap-1">
-            {lessons.map((lesson) => {
-              // Check specific conflict for this lesson
-              const lessonConflict = allLessons ? allLessons.some(l =>
-                l.id !== lesson.id &&
-                l.day === day &&
-                l.timeSlot === timeSlot &&
-                (
-                  l.teacherId === lesson.teacherId ||
-                  (l.roomId !== 0 && l.roomId === lesson.roomId) ||
-                  l.classId === lesson.classId
-                )
-              ) : false;
-
-              // Determine width logic
-              // If single lesson and bi-weekly -> 50% width
-              // Else -> flex-1 (share space)
-              const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
-
-              return (
-                <div
-                  key={lesson.id}
-                  className={cn(
-                    "relative",
-                    isSingleBiWeekly ? "w-1/2" : "flex-1" // Keep strictly vertical split logic for single/group
-                  )}
-                >
-                  <DraggableLessonCard
-                    lesson={lesson}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={compact || lessons.length > 1} // Force compact if shared
-                    showClass={showClass}
-                    hasConflict={lessonConflict}
-                    isSelected={selectedLesson?.id === lesson.id}
-                    onSelect={(l) => {
-                      // Logic for selection
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
-    </div>
-  );
-};
-
-// Class View Grid
-const ClassViewGrid = ({
-  className,
-  lessons,
-  onDrop,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  timeSlots,
-  draggedLesson,
-  allLessons,
-  selectedLesson,   // NEW
-  onSelectLesson,   // NEW
-  onManualPlace,    // NEW
-}: {
-  className: string;
-  lessons: Lesson[];
-  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
-  onToggleLock: (lesson: Lesson) => void;
-  displayOptions: DisplayOptions;
-  timeSlots: number[];
-  draggedLesson?: Lesson | null;
-  allLessons?: Lesson[];
-  selectedLesson?: Lesson | UnplacedLesson | null; // NEW
-  onSelectLesson?: (lesson: Lesson | UnplacedLesson) => void; // NEW
-  onManualPlace?: (day: string, timeSlot: number) => void; // NEW
-}) => {
-  const getLessons = (day: string, timeSlot: number) => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.class === className &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
-  };
-
-  const isTargetClass = draggedLesson?.class === className;
-
-  return (
-    <div
-      className={cn(
-        "bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all",
-        isTargetClass && "ring-4 ring-green-400 border-green-500 shadow-lg"
-      )}
-    >
-      <div className={cn(
-        "bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3",
-        isTargetClass && "from-green-600 to-green-700"
-      )}>
-        <h3 className="font-semibold">Class {className}</h3>
-      </div>
-
-      <div className="p-4 overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
-            </div>
-            {DAYS.map((day) => (
-              <div
-                key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
-              >
-                <span className="text-sm font-medium">
-                  {DAY_LABELS[day]}
-                </span>
-              </div>
-            ))}
-
-            {timeSlots.map((slotId) => (
-              <React.Fragment key={slotId}>
-                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
-                  <span className="text-xs">Period {slotId}</span>
-                </div>
-                {DAYS.map((day) => (
-                  <DroppableTimeSlot
-                    key={`${className}-${day}-${slotId}`}
-                    day={day}
-                    timeSlot={slotId}
-                    lessons={getLessons(day, slotId)}
-                    onDrop={onDrop}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={true}
-                    draggedLesson={draggedLesson}
-                    allLessons={allLessons}
-                    rowClass={className}
-                    selectedLesson={selectedLesson}
-                    onManualPlace={onManualPlace}
-                  />
-                ))}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Teacher View Grid
-const TeacherViewGrid = ({
-  teacherName,
-  lessons,
-  onDrop,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  timeSlots,
-  draggedLesson,
-  allLessons,
-  selectedLesson,
-  onManualPlace,
-}: {
-  teacherName: string;
-  lessons: Lesson[];
-  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
-  onToggleLock: (lesson: Lesson) => void;
-  displayOptions: DisplayOptions;
-  timeSlots: number[];
-  draggedLesson?: Lesson | null;
-  allLessons?: Lesson[];
-  selectedLesson?: Lesson | UnplacedLesson | null;
-  onManualPlace?: (day: string, timeSlot: number) => void;
-}) => {
-  const getLessons = (day: string, timeSlot: number) => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.teacher === teacherName &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3">
-        <div className="flex items-center gap-2">
-          <User className="h-5 w-5" />
-          <h3 className="font-semibold">{teacherName}</h3>
-        </div>
-      </div>
-
-      <div className="p-4 overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
-            </div>
-            {DAYS.map((day) => (
-              <div
-                key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
-              >
-                <span className="text-sm font-medium">
-                  {DAY_LABELS[day]}
-                </span>
-              </div>
-            ))}
-
-            {timeSlots.map((slotId) => (
-              <React.Fragment key={slotId}>
-                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
-                  <span className="text-xs">Period {slotId}</span>
-                </div>
-                {DAYS.map((day) => (
-                  <DroppableTimeSlot
-                    key={`${teacherName}-${day}-${slotId}`}
-                    day={day}
-                    timeSlot={slotId}
-                    lessons={getLessons(day, slotId)}
-                    onDrop={onDrop}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={true}
-                    showClass={true}
-                    draggedLesson={draggedLesson}
-                    allLessons={allLessons}
-                    selectedLesson={selectedLesson}
-                    onManualPlace={onManualPlace}
-                  />
-                ))}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Room View Grid
-const RoomViewGrid = ({
-  roomName,
-  lessons,
-  onDrop,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  timeSlots,
-  draggedLesson,
-  allLessons,
-  selectedLesson,
-  onManualPlace,
-}: {
-  roomName: string;
-  lessons: Lesson[];
-  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
-  onToggleLock: (lesson: Lesson) => void;
-  displayOptions: DisplayOptions;
-  timeSlots: number[];
-  draggedLesson?: Lesson | null;
-  allLessons?: Lesson[];
-  selectedLesson?: Lesson | UnplacedLesson | null;
-  onManualPlace?: (day: string, timeSlot: number) => void;
-}) => {
-  const getLessons = (day: string, timeSlot: number) => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.room === roomName &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-6 py-3">
-        <div className="flex items-center gap-2">
-          <DoorOpen className="h-5 w-5" />
-          <h3 className="font-semibold">{roomName}</h3>
-        </div>
-      </div>
-
-      <div className="p-4 overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
-            </div>
-            {DAYS.map((day) => (
-              <div
-                key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
-              >
-                <span className="text-sm font-medium">
-                  {DAY_LABELS[day]}
-                </span>
-              </div>
-            ))}
-
-            {timeSlots.map((slotId) => (
-              <React.Fragment key={slotId}>
-                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
-                  <span className="text-xs">Period {slotId}</span>
-                </div>
-                {DAYS.map((day) => (
-                  <DroppableTimeSlot
-                    key={`${roomName}-${day}-${slotId}`}
-                    day={day}
-                    timeSlot={slotId}
-                    lessons={getLessons(day, slotId)}
-                    onDrop={onDrop}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onToggleLock={onToggleLock}
-                    displayOptions={displayOptions}
-                    compact={true}
-                    showClass={true}
-                    draggedLesson={draggedLesson}
-                    allLessons={allLessons}
-                    selectedLesson={selectedLesson}
-                    onManualPlace={onManualPlace}
-                  />
-                ))}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Compact View Grid
-const CompactViewGrid = ({
-  lessons,
-  classes,
-  onDrop,
-  onEdit,
-  onDelete,
-  onToggleLock,
-  displayOptions,
-  timeSlots,
-  draggedLesson,
-  allLessons,
-  selectedLesson,
-  onManualPlace,
-}: {
-  lessons: Lesson[];
-  classes: string[];
-  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
-  onEdit: (lesson: Lesson) => void;
-  onDelete: (lesson: Lesson) => void;
-  onToggleLock: (lesson: Lesson) => void;
-  displayOptions: DisplayOptions;
-  timeSlots: number[];
-  draggedLesson?: Lesson | null;
-  allLessons?: Lesson[];
-  selectedLesson?: Lesson | UnplacedLesson | null;
-  onManualPlace?: (day: string, timeSlot: number) => void;
-}) => {
-  const getLessons = (className: string, day: string, timeSlot: number) => {
-    return lessons.filter(
-      (lesson) =>
-        lesson.class === className &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
-  };
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="p-4 overflow-x-auto">
-        <div className="min-w-max">
-          <div className="border border-gray-300 rounded-lg overflow-hidden">
-            {/* Header Row */}
-            <div
-              className="grid gap-0"
-              style={{
-                gridTemplateColumns: `100px 80px repeat(${classes.length}, 140px)`,
-              }}
-            >
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
-                <span className="text-sm font-medium">Day</span>
-              </div>
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
-                <span className="text-sm font-medium">Period</span>
-              </div>
-              {classes.map((className) => {
-                const isTargetClass = draggedLesson?.class === className;
-                return (
-                  <div
-                    key={className}
-                    className={cn(
-                      "text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors",
-                      isTargetClass
-                        ? "bg-gradient-to-r from-green-600 to-green-700"
-                        : "bg-gradient-to-r from-indigo-600 to-indigo-700"
-                    )}
-                  >
-                    <span className="text-sm font-medium">{className}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Body - Each day group */}
-            {DAYS.map((day, dayIndex) => (
-              <div
-                key={day}
-                className={cn(
-                  "flex border-t border-gray-200",
-                  dayIndex > 0 && "border-t-4 border-indigo-600"
-                )}
-              >
-                {/* Day name column */}
-                <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200 w-[100px] flex-shrink-0">
-                  <span className="text-sm font-medium">
-                    {DAY_LABELS[day]}
-                  </span>
-                </div>
-
-                {/* Periods and lessons */}
-                <div className="flex-1">
-                  {timeSlots.map((slotId) => (
-                    <div
-                      key={`${day}-${slotId}`}
-                      className="grid gap-0 border-t first:border-t-0 border-gray-200"
-                      style={{
-                        gridTemplateColumns: `80px repeat(${classes.length}, 140px)`,
-                      }}
-                    >
-                      {/* Period number */}
-                      <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200">
-                        <span className="text-xs font-medium">
-                          Period {slotId}
-                        </span>
-                      </div>
-
-                      {/* Lesson cells */}
-                      {classes.map((className) => (
-                        <DroppableTimeSlot
-                          key={`${className}-${day}-${slotId}`}
-                          day={day}
-                          timeSlot={slotId}
-                          lessons={getLessons(className, day, slotId)}
-                          onDrop={onDrop}
-                          onEdit={onEdit}
-                          onDelete={onDelete}
-                          onToggleLock={onToggleLock}
-                          displayOptions={displayOptions}
-                          compact={true}
-                          draggedLesson={draggedLesson}
-                          allLessons={allLessons}
-                          rowClass={className}
-                          selectedLesson={selectedLesson}
-                          onManualPlace={onManualPlace}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TimetableContent = ({
   timetableId,
@@ -1254,7 +147,7 @@ const TimetableContent = ({
   });
 
   // API Data State
-  const [timetableData, setTimetableData] = useState<TimetableDataEntity[]>([]);
+  const [timetableData, setTimetableData] = useState<LegacyTimetableDataEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timetableVersion, setTimetableVersion] = useState(1);
@@ -1400,7 +293,7 @@ const TimetableContent = ({
   };
 
   const processAPIData = (
-    data: TimetableDataEntity[],
+    data: LegacyTimetableDataEntity[],
     classes: ClassResponse[],
     teachers: TeacherResponse[],
     subjects: SubjectResponse[],
@@ -1423,22 +316,31 @@ const TimetableContent = ({
 
       // 1. Handle Scheduled Slots (slotDetails)
       if (entry.isScheduled && entry.slotDetails && entry.slotDetails.length > 0) {
+        const slotKey = `${entry.classId}::${entry.dayOfWeek}::${entry.hour}::${entry.weekIndex ?? 'W'}`;
+        const groupCount = entry.slotDetails.length;
+
         entry.slotDetails.forEach((detail, index) => {
           const className = classInfo?.shortName || `Class ${entry.classId}`;
           const classId = classInfo?.id || entry.classId;
 
-          const lessonId = detail.lessonId ? `${detail.lessonId}` : `${entry.id}-${index}`;
+          // Per-detail subject. Backend now sends `subjectId` on each slot
+          // detail; fall back to the legacy parent-entity field if absent.
+          const resolvedSubjectId = detail.subjectId ?? entry.subjectId ?? null;
+          const subj = resolvedSubjectId != null ? subjectMap.get(resolvedSubjectId) : undefined;
+          const subjectName = subj?.name || "No Subject";
+          const colorIndex = subjectColorIndex(resolvedSubjectId);
 
-          // Resolve entities from maps using IDs
-          const subj = subjectMap.get(detail.subjectId);
+          // Stable per-detail id: entity + group discriminator + lesson.
+          const stableId = `${entry.id}::${detail.groupId ?? 'main'}::${detail.lessonId}`;
+
           const tch = teacherMap.get(detail.teacherId);
           const rm = roomMap.get(detail.roomId);
           const grp = detail.groupId ? groupMap.get(detail.groupId) : null;
 
           scheduled.push({
-            id: lessonId,
-            subject: subj?.name || "Unknown Subject",
-            subjectId: detail.subjectId || 0,
+            id: stableId,
+            subject: subjectName,
+            subjectId: resolvedSubjectId ?? 0,
             teacher: tch?.fullName || "No Teacher",
             teacherId: detail.teacherId || 0,
             teacherShort: tch?.shortName || tch?.fullName || "",
@@ -1450,15 +352,21 @@ const TimetableContent = ({
             timeSlot: entry.hour,
             isLocked: false,
             groupName: grp?.name,
-            groupId: detail.groupId,
+            groupId: detail.groupId ?? undefined,
             weekIndex: entry.weekIndex ?? undefined,
             isBiWeekly: entry.weekIndex !== null,
-            rawDetails: detail
+            rawDetails: detail,
+            slotKey,
+            groupIndex: index,
+            groupCount,
+            subjectColorIndex: colorIndex,
+            entityId: entry.id,
+            version: entry.version,
           });
         });
       }
 
-      // 2. Handle Unscheduled/Unplaced Data (full objects from API)
+      // 2. Handle Unscheduled/Unplaced Data (legacy id-based shape)
       if (!entry.isScheduled && entry.unscheduledData) {
         const ud = entry.unscheduledData;
 
@@ -1473,6 +381,8 @@ const TimetableContent = ({
           ? roomsList.map(r => r!.name).join(", ")
           : "TBD";
         const firstRoomId = roomsList.length > 0 ? roomsList[0]!.id : 0;
+
+        const udColorIndex = subjectColorIndex(ud.subjectId ?? null);
 
         unplaced.push({
           id: entry.id,
@@ -1490,6 +400,12 @@ const TimetableContent = ({
           requiredCount: ud.requiredCount,
           scheduledCount: ud.scheduledCount,
           missingCount: ud.missingCount,
+          slotKey: `unplaced::${entry.id}`,
+          groupIndex: 0,
+          groupCount: 1,
+          subjectColorIndex: udColorIndex,
+          entityId: entry.id,
+          version: entry.version,
         });
       }
     });
@@ -1903,29 +819,66 @@ const TimetableContent = ({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground">Loading timetable data...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="container mx-auto p-6 max-w-[1800px]">
+          <div className="flex items-center gap-3 mb-6 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
+            <span className="text-sm">Loading timetable data...</span>
+          </div>
+          {/* 3-row skeleton so users see the grid scaffolding before content arrives */}
+          <div className="space-y-3">
+            <div className="animate-pulse bg-slate-100 rounded-md h-20" />
+            <div className="animate-pulse bg-slate-100 rounded-md h-20" />
+            <div className="animate-pulse bg-slate-100 rounded-md h-20" />
+          </div>
         </div>
       </div>
     );
   }
 
-
-
+  // Hard-error state: hide the grid entirely and let the user retry.
+  // Toast already fired from fetchTimetableData, but an inline recoverable
+  // state is mandatory so the page is never a blank white screen (Pass 4A).
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="container mx-auto p-6 max-w-[1800px]">
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="font-semibold mb-1">Failed to load timetable</div>
+              <div className="text-sm opacity-90">{error}</div>
+            </AlertDescription>
+          </Alert>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => timetableId && fetchTimetableData(timetableId)}
+              disabled={!timetableId}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+            {onNavigate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onNavigate("timetables")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       <div className="container mx-auto p-6 max-w-[1800px]">
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
         {/* Processing Action Indicator */}
         {isProcessingAction && (
           <Alert className="mb-6 bg-blue-50 border-blue-300">

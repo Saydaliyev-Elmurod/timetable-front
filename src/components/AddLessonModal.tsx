@@ -62,8 +62,7 @@ interface GroupLessonConfig {
   isSelected: boolean;
   teacherId: number | null;
   teacherName?: string;
-  subjectId: number | null;
-  subjectName?: string;
+  teacherName?: string;
   roomIds: number[];
   roomNames?: string[];
 }
@@ -204,8 +203,6 @@ export default function AddLessonModal({
                     isSelected: true,
                     teacherId: detail.teacher?.id || null,
                     teacherName: detail.teacher?.fullName || '',
-                    subjectId: detail.subject?.id || null,
-                    subjectName: detail.subject?.name || '',
                     roomIds: detail.rooms ? detail.rooms.map((r: any) => r.id) : [],
                     roomNames: detail.rooms ? detail.rooms.map((r: any) => r.name) : []
                   });
@@ -271,8 +268,6 @@ export default function AddLessonModal({
               isSelected: false,
               teacherId: null, // Default to null, user must select
               teacherName: '',
-              subjectId: null,
-              subjectName: '',
               roomIds: [],
               roomNames: []
             });
@@ -324,8 +319,6 @@ export default function AddLessonModal({
             isSelected: false,
             teacherId: null,
             teacherName: '',
-            subjectId: null,
-            subjectName: '',
             roomIds: [],
             roomNames: []
           });
@@ -362,16 +355,6 @@ export default function AddLessonModal({
       prev.map(g =>
         g.groupId === groupId
           ? { ...g, teacherId, teacherName: teacherName || '' }
-          : g
-      )
-    );
-  };
-
-  const handleGroupSubjectChange = (groupId: number, subjectId: number | null, subjectName?: string) => {
-    setGroupLessonConfigs(prev =>
-      prev.map(g =>
-        g.groupId === groupId
-          ? { ...g, subjectId, subjectName: subjectName || '' }
           : g
       )
     );
@@ -428,9 +411,9 @@ export default function AddLessonModal({
         toast.error('Please select at least one group');
         return;
       }
-      const incomplete = selectedGroups.some(g => !g.teacherId || !g.subjectId);
+      const incomplete = selectedGroups.some(g => !g.teacherId);
       if (incomplete) {
-        toast.error('All selected groups must have a teacher and subject assigned');
+        toast.error('All selected groups must have a teacher assigned');
         return;
       }
     } else {
@@ -446,7 +429,6 @@ export default function AddLessonModal({
     const groupDetails: GroupLessonDetail[] = selectedGroups.map(g => ({
       groupId: g.groupId,
       teacherId: g.teacherId!,
-      subjectId: g.subjectId!,
       roomIds: g.roomIds
     }));
 
@@ -466,12 +448,7 @@ export default function AddLessonModal({
       // Conditional mappings based on mode
       groups: isGroupMode ? groupDetails : undefined,
 
-      // IMPORTANT: Backend likely validates that subjectId exists. 
-      // We cannot send 0. We send the subject/teacher from the first group.
-      // It's a "dummy" main subject but required for the request object structure.
-      subjectId: isGroupMode
-        ? (firstGroup?.subjectId)
-        : parseInt(formData.subject),
+      subjectId: parseInt(formData.subject),
 
       teacherId: isGroupMode
         ? (firstGroup?.teacherId)
@@ -614,28 +591,29 @@ export default function AddLessonModal({
             </div>
 
             {/* Standard Mode Fields */}
+            {/* Subject Selection (Always visible, as subject applies to all groups) */}
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject *</Label>
+              <Select
+                value={formData.subject}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+              >
+                <SelectTrigger id="subject">
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((subject: any) => (
+                    <SelectItem key={subject.id} value={subject.id.toString()}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Standard Mode Fields */}
             {!isGroupMode && (
               <>
-                {/* Subject Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject *</Label>
-                  <Select
-                    value={formData.subject}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                  >
-                    <SelectTrigger id="subject">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subjects.map((subject: any) => (
-                        <SelectItem key={subject.id} value={subject.id.toString()}>
-                          {subject.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* Teachers Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="teacher">Main Teacher *</Label>
@@ -834,32 +812,6 @@ export default function AddLessonModal({
                                 {teachers.map((teacher: any) => (
                                   <SelectItem key={teacher.id} value={teacher.id.toString()}>
                                     {teacher.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Subject Selection for Group */}
-                          <div className="space-y-1">
-                            <Label htmlFor={`group-subject-${groupConfig.groupId}`} className="text-sm">
-                              Subject
-                            </Label>
-                            <Select
-                              value={groupConfig.subjectId?.toString() || ''}
-                              onValueChange={(value) => {
-                                const subjectId = parseInt(value);
-                                const subject = subjects.find(s => s.id === subjectId);
-                                handleGroupSubjectChange(groupConfig.groupId, subjectId, subject?.name);
-                              }}
-                            >
-                              <SelectTrigger id={`group-subject-${groupConfig.groupId}`} className="text-sm">
-                                <SelectValue placeholder="Select subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {subjects.map((subject: any) => (
-                                  <SelectItem key={subject.id} value={subject.id.toString()}>
-                                    {subject.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

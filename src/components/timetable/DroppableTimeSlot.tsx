@@ -12,6 +12,14 @@ import { cn } from '@/components/ui/utils';
 import { DraggableLessonCard } from './DraggableLessonCard';
 import { DroppableTimeSlotProps, Lesson } from './types';
 
+// Static lookup to avoid Tailwind JIT interpolation (grid-cols-${N} won't purge-safe).
+const GRID_COLS_LOOKUP: Record<number, string> = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+};
+
 export function DroppableTimeSlot({
     day,
     timeSlot,
@@ -193,44 +201,55 @@ export function DroppableTimeSlot({
                 }
             }}
         >
-            <div className="flex h-full w-full gap-1">
-                {lessons.map((lesson) => {
-                    // Check specific conflict for this lesson
-                    const lessonConflict = allLessons
-                        ? allLessons.some(
-                            (l) =>
-                                l.id !== lesson.id &&
-                                l.day === day &&
-                                l.timeSlot === timeSlot &&
-                                (l.teacherId === lesson.teacherId ||
-                                    (l.roomId !== 0 && l.roomId === lesson.roomId) ||
-                                    l.classId === lesson.classId)
-                        )
-                        : false;
+            {(() => {
+                const count = lessons.length;
+                if (count === 0) return null;
 
-                    // Determine width logic
-                    const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
+                // Vertical fallback for >4 sub-cards (rare, but CSS grid would squish them).
+                const useOverflow = count > 4;
+                const gridClass = useOverflow
+                    ? 'flex flex-col gap-1 overflow-y-auto max-h-28 h-full'
+                    : cn('grid gap-1 h-full', GRID_COLS_LOOKUP[Math.max(1, Math.min(count, 4))]);
 
-                    return (
-                        <div
-                            key={lesson.id}
-                            className={cn('relative', isSingleBiWeekly ? 'w-1/2' : 'flex-1')}
-                        >
-                            <DraggableLessonCard
-                                lesson={lesson}
-                                onEdit={onEdit}
-                                onDelete={onDelete}
-                                onToggleLock={onToggleLock}
-                                displayOptions={displayOptions}
-                                compact={compact || lessons.length > 1}
-                                showClass={showClass}
-                                hasConflict={lessonConflict}
-                                isSelected={selectedLesson?.id === lesson.id}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
+                return (
+                    <div className={gridClass}>
+                        {lessons.map((lesson) => {
+                            // Check specific conflict for this lesson
+                            const lessonConflict = allLessons
+                                ? allLessons.some(
+                                    (l) =>
+                                        l.id !== lesson.id &&
+                                        l.day === day &&
+                                        l.timeSlot === timeSlot &&
+                                        (l.teacherId === lesson.teacherId ||
+                                            (l.roomId !== 0 && l.roomId === lesson.roomId) ||
+                                            l.classId === lesson.classId)
+                                )
+                                : false;
+
+                            return (
+                                <div
+                                    key={lesson.id}
+                                    // min-w-0 / min-h-0 prevent grid blow-out when cards contain long text.
+                                    className="relative min-w-0 min-h-0"
+                                >
+                                    <DraggableLessonCard
+                                        lesson={lesson}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
+                                        onToggleLock={onToggleLock}
+                                        displayOptions={displayOptions}
+                                        compact={compact || count > 1}
+                                        showClass={showClass}
+                                        hasConflict={lessonConflict}
+                                        isSelected={selectedLesson?.id === lesson.id}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
         </div>
     );
 }

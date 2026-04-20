@@ -52,7 +52,6 @@ interface TimetableDataEntity {
   id: string;                              // UUID
   timetableId: string;                     // UUID
   isScheduled: boolean;                    // True if lesson is scheduled
-  subjectId: number;
   classId: number;
   roomId: number;
   teacherId: number;
@@ -126,7 +125,6 @@ interface TimeSlot {
     "id": "123e4567-e89b-12d3-a456-426614174002",
     "timetableId": "123e4567-e89b-12d3-a456-426614174000",
     "isScheduled": true,
-    "subjectId": 1,
     "classId": 1,
     "roomId": 101,
     "teacherId": 1,
@@ -173,7 +171,6 @@ interface TimeSlot {
     "id": "123e4567-e89b-12d3-a456-426614174003",
     "timetableId": "123e4567-e89b-12d3-a456-426614174000",
     "isScheduled": false,
-    "subjectId": 2,
     "classId": 2,
     "roomId": 0,
     "teacherId": 2,
