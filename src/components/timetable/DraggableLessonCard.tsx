@@ -88,6 +88,10 @@ export function DraggableLessonCard({
 
     // While dragging, fade the source card per UX blueprint.
     const dragStateClass = isDragging ? 'opacity-40 pointer-events-none' : '';
+    // Cursor affordance: grab at rest, grabbing during drag. We branch here
+    // rather than in the JSX so both card variants (unplaced + placed) stay
+    // in sync without duplicating the ternary at every use site.
+    const cursorClass = isDragging ? 'cursor-grabbing' : 'cursor-grab';
 
     if (isUnplaced) {
         return (
@@ -96,7 +100,8 @@ export function DraggableLessonCard({
                 {...listeners}
                 {...attributes}
                 className={cn(
-                    'p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden',
+                    'p-3 rounded-lg border-2 hover:shadow-md transition-shadow relative overflow-hidden',
+                    cursorClass,
                     isSelected ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg' : subjectColor,
                     'mb-3',
                     dragStateClass,
@@ -138,7 +143,8 @@ export function DraggableLessonCard({
                     {...listeners}
                     {...attributes}
                     className={cn(
-                        'p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden',
+                        'p-2 rounded-lg border-2 hover:shadow-md transition-shadow h-full relative overflow-hidden',
+                        cursorClass,
                         subjectColor,
                         lesson.isLocked && 'ring-2 ring-yellow-500',
                         isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-lg',
