@@ -3,21 +3,17 @@
  *
  * Draggable lesson card for the timetable grid with popover actions.
  *
- * Pass 4B: migrated from `react-dnd` to `@dnd-kit/core`.
- *
- * Behaviour notes:
- *  - This card is always a `sub`-kind draggable (single lesson). Whole-slot
- *    dragging is owned by `DraggableSlotCard`, which wraps the cell.
- *  - The page decides which of the nested draggables is "live" for a given
- *    gesture by toggling `disabled` on the sub vs slot wrapper based on the
- *    Alt key. In this file we just expose the sub-card; the `disabled` prop
- *    lets the parent gate it.
+ * Uses `react-dnd` `useDrag` to match `DroppableTimeSlot`'s `useDrop` and
+ * the page-level `DndProvider`. A previous migration to `@dnd-kit/core`
+ * was reverted because no `DndContext` provider was ever added, which meant
+ * the draggable listeners silently consumed click events — the Popover
+ * never opened and `onSelect` never fired.
  *
  * @module components/timetable/DraggableLessonCard
  */
 
 import React, { useState } from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDrag } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
@@ -35,19 +31,6 @@ import { cn } from '@/components/ui/utils';
 import { DraggableLessonCardProps } from './types';
 import { SUBJECT_PALETTE } from './utils/subjectColor';
 
-interface ExtendedProps extends DraggableLessonCardProps {
-    /**
-     * When true, the sub-level draggable is inert. Used by the page to "win"
-     * the gesture for the outer slot handle when Alt is NOT held.
-     */
-    disabled?: boolean;
-    /**
-     * Optional stable id override. Defaults to `lesson.id`. Used when the same
-     * lesson id could appear in multiple contexts (unplaced list vs grid).
-     */
-    draggableIdOverride?: string;
-}
-
 export function DraggableLessonCard({
     lesson,
     onEdit,
@@ -60,19 +43,17 @@ export function DraggableLessonCard({
     hasConflict = false,
     isSelected = false,
     onSelect,
-    disabled = false,
-    draggableIdOverride,
-}: ExtendedProps) {
-    const draggableId = draggableIdOverride ?? lesson.id;
-
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-        id: draggableId,
-        disabled,
-        data: {
-            kind: isUnplaced ? 'unplaced' : 'sub',
-            lesson,
-        },
-    });
+}: DraggableLessonCardProps) {
+    const [{ isDragging }, drag] = useDrag(
+        () => ({
+            type: 'lesson',
+            item: lesson,
+            collect: (monitor) => ({
+                isDragging: monitor.isDragging(),
+            }),
+        }),
+        [lesson]
+    );
 
     const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -83,22 +64,15 @@ export function DraggableLessonCard({
             ? SUBJECT_PALETTE[lesson.subjectColorIndex]
             : SUBJECT_PALETTE[0];
 
-    // Visual strips logic
     const hasNoRoom = !lesson.roomId || lesson.roomId === 0;
 
-    // While dragging, fade the source card per UX blueprint.
-    const dragStateClass = isDragging ? 'opacity-40 pointer-events-none' : '';
-    // Cursor affordance: grab at rest, grabbing during drag. We branch here
-    // rather than in the JSX so both card variants (unplaced + placed) stay
-    // in sync without duplicating the ternary at every use site.
+    const dragStateClass = isDragging ? 'opacity-40' : '';
     const cursorClass = isDragging ? 'cursor-grabbing' : 'cursor-grab';
 
     if (isUnplaced) {
         return (
             <div
-                ref={setNodeRef}
-                {...listeners}
-                {...attributes}
+                ref={drag}
                 className={cn(
                     'p-3 rounded-lg border-2 hover:shadow-md transition-shadow relative overflow-hidden',
                     cursorClass,
@@ -111,7 +85,6 @@ export function DraggableLessonCard({
                     onSelect?.(lesson);
                 }}
             >
-                {/* White strip for no room */}
                 {hasNoRoom && (
                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
                 )}
@@ -139,9 +112,7 @@ export function DraggableLessonCard({
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
                 <div
-                    ref={setNodeRef}
-                    {...listeners}
-                    {...attributes}
+                    ref={drag}
                     className={cn(
                         'p-2 rounded-lg border-2 hover:shadow-md transition-shadow h-full relative overflow-hidden',
                         cursorClass,
@@ -151,19 +122,11 @@ export function DraggableLessonCard({
                         compact && 'p-1.5',
                         dragStateClass,
                     )}
-                    onClick={(e) => {
-                        if (onSelect) {
-                            e.stopPropagation();
-                            onSelect(lesson);
-                        }
-                    }}
                 >
-                    {/* White strip for no room */}
                     {hasNoRoom && (
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
                     )}
 
-                    {/* Red strip for conflict/warning */}
                     {hasConflict && (
                         <div className="absolute top-0 left-0 right-0 h-1.5 bg-red-500" />
                     )}
@@ -176,7 +139,6 @@ export function DraggableLessonCard({
                                 </div>
                             )}
 
-                            {/* Group Name & Bi-Weekly Info */}
                             {(lesson.groupName || (lesson.isBiWeekly && lesson.weekIndex !== undefined)) && (
                                 <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
                                     {lesson.groupName && (
