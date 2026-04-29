@@ -34,6 +34,14 @@ export type DropReason =
     | 'availability'
     | 'wrong-class';
 
+export type SlotDragStatus = 'available' | 'optimal' | 'conflict' | 'source' | 'invalid-class';
+
+export interface SlotConflictEntry {
+    status: SlotDragStatus;
+    reason: DropReason;
+    message: string;
+}
+
 export interface DropCandidate {
     slotKey: string;
     isValid: boolean;
@@ -55,6 +63,7 @@ export interface TimetableDndState {
     activePayload: ActivePayload | null;
     dropCandidate: DropCandidate | null;
     altMode: boolean;
+    slotConflictMap: ReadonlyMap<string, SlotConflictEntry>;
 
     beginDrag(p: {
         activeId: string;
@@ -64,6 +73,7 @@ export interface TimetableDndState {
     }): void;
     setDropCandidate(c: DropCandidate | null): void;
     setAltMode(alt: boolean): void;
+    setSlotConflictMap(map: Map<string, SlotConflictEntry>): void;
     endDrag(): void;
 }
 
@@ -78,6 +88,7 @@ export const useTimetableDnd = create<TimetableDndState>()(
         activePayload: null,
         dropCandidate: null,
         altMode: false,
+        slotConflictMap: new Map(),
 
         beginDrag: ({ activeId, kind, payload, altMode }) =>
             set({
@@ -92,12 +103,15 @@ export const useTimetableDnd = create<TimetableDndState>()(
 
         setAltMode: (alt) => set({ altMode: alt }),
 
+        setSlotConflictMap: (map) => set({ slotConflictMap: map }),
+
         endDrag: () =>
             set({
                 activeId: null,
                 activeKind: null,
                 activePayload: null,
                 dropCandidate: null,
+                slotConflictMap: new Map(),
             }),
     })),
 );
@@ -228,6 +242,21 @@ export function validateDrop(
     }
 
     return { slotKey: over.slotKey, isValid: true, reason: 'ok' };
+}
+
+// ---------------------------------------------------------------------------
+// Slot-level conflict status selector
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the pre-computed conflict status for a single slot.
+ * Re-renders only if the status for this specific slot changes.
+ * During drag, the map is static, so cells re-render once at drag start, never again.
+ */
+export function useSlotConflictStatus(slotKey: string): SlotConflictEntry | null {
+    return useTimetableDnd(
+        useShallow((s) => s.slotConflictMap.get(slotKey) ?? null)
+    );
 }
 
 // ---------------------------------------------------------------------------

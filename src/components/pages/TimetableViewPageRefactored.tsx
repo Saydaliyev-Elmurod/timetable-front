@@ -183,7 +183,7 @@ function TimetableContent({
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-            <div className="container mx-auto p-6 max-w-[1800px]">
+            <div className="w-full p-6">
                 {/* Error Alert */}
                 {error && (
                     <Alert variant="destructive" className="mb-6">

@@ -2,16 +2,13 @@
  * DroppableTimeSlot Component
  *
  * Droppable time slot for timetable grid.
- *
- * Slice 1 of the Smart DnD Feedback system: the visual layer is unified
- * between drag (hover) and manual-placement (click-to-place) gestures via
- * `detectSlotConflict`. The underlying `react-dnd` drop mechanics are
- * unchanged — this file only reworks the *visual feedback* path.
+ * Reads conflict status from pre-computed Zustand map (set once at drag start, static during drag).
+ * Color overlay replaces expensive per-frame re-renders of cell content.
  *
  * @module components/timetable/DroppableTimeSlot
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useDrop } from 'react-dnd';
 import { cn } from '@/components/ui/utils';
 import {
@@ -24,8 +21,8 @@ import { DroppableTimeSlotProps, Lesson } from './types';
 import {
     detectSlotConflict,
     type ConflictResult,
-    type ConflictStatus,
 } from './utils/conflictDetection';
+import { useTimetableDnd, useActiveForSlot, useSlotConflictStatus } from './store/useTimetableDnd';
 
 // Static lookup to avoid Tailwind JIT interpolation (grid-cols-${N} won't purge-safe).
 const GRID_COLS_LOOKUP: Record<number, string> = {
@@ -35,52 +32,7 @@ const GRID_COLS_LOOKUP: Record<number, string> = {
     4: 'grid-cols-4',
 };
 
-/**
- * Resolves the slot background/border palette for a given conflict status
- * and gesture mode. Drag palettes are slightly more saturated than manual
- * palettes so the user perceives drag hover as the "stronger" interaction.
- *
- * Returns only color-related classes; sizing and transitions are applied
- * separately to keep the final class string easy to reason about.
- */
-function resolveSlotPalette(
-    status: ConflictStatus,
-    isManual: boolean,
-    isDrag: boolean
-): string {
-    // When no gesture is active, we keep the neutral default and let the
-    // caller layer a hover rule on top.
-    if (!isManual && !isDrag) {
-        return 'border-gray-200';
-    }
-
-    switch (status) {
-        case 'teacher-conflict':
-            return isDrag
-                ? 'bg-red-100 border-red-400 text-red-900'
-                : 'bg-red-50 border-red-300 text-red-800';
-        case 'room-conflict':
-            // SLOT bg is dark slate; cards inside keep their own palette.
-            return isDrag
-                ? 'bg-slate-800 border-slate-900 text-slate-50'
-                : 'bg-slate-700 border-slate-800 text-slate-50';
-        case 'class-conflict':
-            return isDrag
-                ? 'bg-amber-200 border-amber-500 text-amber-950'
-                : 'bg-amber-100 border-amber-400 text-amber-900';
-        case 'valid':
-            return isDrag
-                ? 'bg-emerald-100 border-emerald-400'
-                : 'bg-emerald-50 border-emerald-300 ring-1 ring-inset ring-emerald-200';
-        case 'invalid-target-class':
-            return 'bg-gray-100 border-gray-300 opacity-60';
-        case 'none':
-        default:
-            return 'border-gray-200';
-    }
-}
-
-export function DroppableTimeSlot({
+function DroppableTimeSlotComponent({
     day,
     timeSlot,
     lessons = [],
@@ -91,9 +43,9 @@ export function DroppableTimeSlot({
     displayOptions,
     compact = false,
     showClass = false,
-    draggedLesson,
     allLessons,
     rowClass,
+    entityKey,
     selectedLesson,
     onManualPlace,
 }: DroppableTimeSlotProps) {
@@ -116,30 +68,33 @@ export function DroppableTimeSlot({
         [day, timeSlot, rowClass]
     );
 
-    // Unified gesture target. Manual selection takes precedence because
-    // it is the more explicit user intent (a click, not a transient hover).
-    const gestureTarget = selectedLesson ?? draggedLesson ?? null;
+    // Construct grid slot key for Zustand lookup
+    const gridSlotKey = entityKey
+        ? `${entityKey}::${day}::${timeSlot}`
+        : `${day}::${timeSlot}`;
 
-    const conflict = useMemo<ConflictResult>(
+    // Read pre-computed conflict status from Zustand (set once at drag start, stable during drag)
+    const conflictEntry = useSlotConflictStatus(gridSlotKey);
+    const isDraggingActive = useTimetableDnd((s) => s.activeId !== null);
+
+    // Manual placement: detect conflict on click (click-based, acceptable cost)
+    const isManual = Boolean(selectedLesson);
+    const manualConflict = useMemo<ConflictResult>(
         () =>
-            detectSlotConflict(gestureTarget, {
-                day,
-                timeSlot,
-                rowClass,
-                allLessons: allLessons ?? [],
-            }),
-        [gestureTarget, day, timeSlot, rowClass, allLessons]
+            isManual
+                ? detectSlotConflict(selectedLesson, {
+                      day,
+                      timeSlot,
+                      rowClass,
+                      allLessons: allLessons ?? [],
+                  })
+                : { status: 'none' },
+        [isManual, selectedLesson, day, timeSlot, rowClass, allLessons]
     );
 
-    const isManual = Boolean(selectedLesson);
-    const isDrag = !isManual && Boolean(draggedLesson);
-    const isGestureActive = isManual || isDrag;
+    const isGestureActive = isDraggingActive || isManual;
 
-    // Per-lesson conflict flags hoisted out of the render loop.
-    // Keyed by lesson.id -> boolean. This is the "red strip" indicator shown
-    // on each card; it only depends on the lessons currently in this slot
-    // plus the global `allLessons` snapshot. Hoisting prevents an O(L*A)
-    // recomputation on every render when many cards share a slot.
+    // Per-lesson conflict flags (for red strip indicator on each card)
     const perLessonConflict = useMemo<Map<string, boolean>>(() => {
         const map = new Map<string, boolean>();
         if (!allLessons || lessons.length === 0) return map;
@@ -158,71 +113,96 @@ export function DroppableTimeSlot({
         return map;
     }, [lessons, allLessons, day, timeSlot]);
 
-    // Cursor semantics: during a gesture, broadcast actionability.
+    // Hover tooltip timer (600ms delay)
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [tooltipOpen, setTooltipOpen] = useState(false);
+
+    const handleMouseEnter = () => {
+        if (!isDraggingActive) return;
+        if (!conflictEntry || conflictEntry.status === 'source') return;
+
+        hoverTimerRef.current = setTimeout(() => {
+            setTooltipOpen(true);
+        }, 600);
+    };
+
+    const handleMouseLeave = () => {
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = null;
+        }
+        setTooltipOpen(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        };
+    }, []);
+
+    // Cursor semantics
     let cursorClass = '';
     if (isGestureActive) {
+        const statusForCursor = isDraggingActive && conflictEntry ? conflictEntry.status : manualConflict.status;
         if (
-            conflict.status === 'teacher-conflict' ||
-            conflict.status === 'room-conflict' ||
-            conflict.status === 'class-conflict' ||
-            conflict.status === 'invalid-target-class'
+            statusForCursor === 'conflict' ||
+            statusForCursor === 'invalid-class'
         ) {
             cursorClass = 'cursor-not-allowed';
-        } else if (conflict.status === 'valid') {
+        } else if (statusForCursor === 'available' || statusForCursor === 'optimal') {
             cursorClass = 'cursor-copy';
         }
-    } else if (lessons.length === 0) {
-        // Keep a subtle affordance for empty idle slots.
-        cursorClass = '';
     }
 
-    const palette = resolveSlotPalette(conflict.status, isManual, isDrag);
-
-    // Idle hover affordance: only applied when no gesture is active and the
-    // slot is empty, matching the pre-slice-1 behaviour.
+    // Idle hover affordance
     const idleHoverClass =
         !isGestureActive && lessons.length === 0 ? 'hover:bg-gray-50' : '';
 
-    // Legacy react-dnd over/canDrop visual (kept so `useDrop` state still
-    // reflects in the UI when `draggedLesson` prop isn't being threaded in).
-    // When a gesture is active via props, `palette` wins and this is a no-op.
-    const legacyDropHover =
-        !isGestureActive && isOver && canDrop ? 'bg-blue-50 border-blue-300' : '';
-
     const slotClass = cn(
         'border p-1 relative',
-        // Only animate colors — avoid `transition-colors` because it animates
-        // text color too, causing a flicker when palette text classes change.
         'transition-[background-color,border-color] duration-200 ease-out',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
-        palette,
         idleHoverClass,
-        legacyDropHover,
         cursorClass
     );
 
-    // Tooltip: only show on real conflicts during an active gesture. Valid
-    // and "none" (origin) slots should not emit tooltips — they'd be noise.
-    const showTooltip =
-        Boolean(gestureTarget) &&
-        conflict.status !== 'valid' &&
-        conflict.status !== 'none';
+    // Tooltip visibility
+    const showManualTooltip =
+        isManual &&
+        manualConflict.status !== 'valid' &&
+        manualConflict.status !== 'none';
 
     const slotInner = (
         <div
             ref={drop}
             className={slotClass}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             onClick={() => {
                 if (selectedLesson && onManualPlace) {
                     onManualPlace(day, timeSlot);
                 }
             }}
         >
+            {/* Color overlay during drag (pointer-events-none, doesn't affect interactions) */}
+            {isDraggingActive && !isManual && conflictEntry && (
+                <div
+                    className={cn(
+                        'absolute inset-0 pointer-events-none rounded',
+                        conflictEntry.status === 'available' && 'bg-emerald-200/60',
+                        conflictEntry.status === 'optimal' && 'bg-blue-200/60',
+                        conflictEntry.status === 'conflict' && 'bg-red-200/60',
+                        conflictEntry.status === 'source' && 'bg-gray-200/40 opacity-50',
+                        conflictEntry.status === 'invalid-class' && 'bg-gray-100/40'
+                    )}
+                />
+            )}
+
             {(() => {
                 const count = lessons.length;
                 if (count === 0) return null;
 
-                // Vertical fallback for >4 sub-cards (rare, but CSS grid would squish them).
+                // Vertical fallback for >4 sub-cards (rare)
                 const useOverflow = count > 4;
                 const gridClass = useOverflow
                     ? 'flex flex-col gap-1 overflow-y-auto max-h-28 h-full'
@@ -240,7 +220,6 @@ export function DroppableTimeSlot({
                             return (
                                 <div
                                     key={lesson.id}
-                                    // min-w-0 / min-h-0 prevent grid blow-out when cards contain long text.
                                     className="relative min-w-0 min-h-0"
                                 >
                                     <DraggableLessonCard
@@ -265,14 +244,8 @@ export function DroppableTimeSlot({
         </div>
     );
 
-    // Always mount the Tooltip wrapper so the slot's React tree shape stays
-    // stable across renders. Conditionally swapping between a bare div and a
-    // <Tooltip>-wrapped div would unmount/remount the nested DraggableLessonCard
-    // — and with it its @dnd-kit useDraggable hook — the instant a drag begins
-    // over the slot, breaking the in-flight gesture. Radix no-ops when
-    // `open={false}`, so the idle cost is limited to a portal subscription.
     return (
-        <Tooltip open={showTooltip}>
+        <Tooltip open={tooltipOpen || showManualTooltip}>
             <TooltipTrigger asChild>{slotInner}</TooltipTrigger>
             <TooltipContent
                 side="top"
@@ -280,10 +253,12 @@ export function DroppableTimeSlot({
                 collisionPadding={8}
                 className="text-xs font-medium leading-snug px-2 py-1.5 rounded-md max-w-[220px] whitespace-normal break-words"
             >
-                {conflict.reason?.message}
+                {isDraggingActive && conflictEntry
+                    ? conflictEntry.message
+                    : manualConflict.reason?.message}
             </TooltipContent>
         </Tooltip>
     );
 }
 
-export default DroppableTimeSlot;
+export const DroppableTimeSlot = React.memo(DroppableTimeSlotComponent);

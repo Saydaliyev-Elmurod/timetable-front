@@ -30,8 +30,9 @@ import {
 import { cn } from '@/components/ui/utils';
 import { DraggableLessonCardProps } from './types';
 import { SUBJECT_PALETTE } from './utils/subjectColor';
+import { useTimetableDnd } from './store/useTimetableDnd';
 
-export function DraggableLessonCard({
+function DraggableLessonCardImpl({
     lesson,
     onEdit,
     onDelete,
@@ -44,15 +45,41 @@ export function DraggableLessonCard({
     isSelected = false,
     onSelect,
 }: DraggableLessonCardProps) {
+    const { beginDrag, endDrag } = useTimetableDnd((s) => ({
+        beginDrag: s.beginDrag,
+        endDrag: s.endDrag,
+    }));
+
     const [{ isDragging }, drag] = useDrag(
         () => ({
             type: 'lesson',
-            item: lesson,
+            item: () => {
+                // Called once by react-dnd when drag starts
+                beginDrag({
+                    activeId: lesson.id,
+                    kind: isUnplaced ? 'unplaced' : 'sub',
+                    payload: {
+                        slotKey: lesson.slotKey,
+                        lessonId: lesson.id,
+                        entityId: lesson.entityId,
+                        day: lesson.day,
+                        hour: lesson.timeSlot,
+                        classId: lesson.classId,
+                    },
+                    altMode: false,
+                });
+                return lesson;
+            },
+            end: (_item, monitor) => {
+                if (!monitor.didDrop()) {
+                    endDrag();
+                }
+            },
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
             }),
         }),
-        [lesson]
+        [lesson, isUnplaced, beginDrag, endDrag]
     );
 
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -228,5 +255,7 @@ export function DraggableLessonCard({
         </Popover>
     );
 }
+
+export const DraggableLessonCard = React.memo(DraggableLessonCardImpl);
 
 export default DraggableLessonCard;

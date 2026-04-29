@@ -12,7 +12,7 @@ import { DroppableTimeSlot } from '../DroppableTimeSlot';
 import { CompactViewGridProps, Lesson } from '../types';
 import { DAYS, DAY_LABELS } from '../constants';
 
-export function CompactViewGrid({
+function CompactViewGridImpl({
     lessons,
     classes,
     onDrop,
@@ -21,7 +21,6 @@ export function CompactViewGrid({
     onToggleLock,
     displayOptions,
     timeSlots,
-    draggedLesson,
     allLessons,
     selectedLesson,
     onManualPlace,
@@ -53,22 +52,14 @@ export function CompactViewGrid({
                             <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
                                 <span className="text-sm font-medium">Period</span>
                             </div>
-                            {classes.map((className) => {
-                                const isTargetClass = draggedLesson?.class === className;
-                                return (
-                                    <div
-                                        key={className}
-                                        className={cn(
-                                            'text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors',
-                                            isTargetClass
-                                                ? 'bg-gradient-to-r from-green-600 to-green-700'
-                                                : 'bg-gradient-to-r from-indigo-600 to-indigo-700'
-                                        )}
-                                    >
-                                        <span className="text-sm font-medium">{className}</span>
-                                    </div>
-                                );
-                            })}
+                            {classes.map((className) => (
+                                <div
+                                    key={className}
+                                    className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors"
+                                >
+                                    <span className="text-sm font-medium">{className}</span>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Body - Each day group */}
@@ -113,9 +104,9 @@ export function CompactViewGrid({
                                                     onToggleLock={onToggleLock}
                                                     displayOptions={displayOptions}
                                                     compact={true}
-                                                    draggedLesson={draggedLesson}
                                                     allLessons={allLessons}
                                                     rowClass={className}
+                                                    entityKey={className}
                                                     selectedLesson={selectedLesson}
                                                     onManualPlace={onManualPlace}
                                                 />
@@ -131,5 +122,7 @@ export function CompactViewGrid({
         </div>
     );
 }
+
+export const CompactViewGrid = React.memo(CompactViewGridImpl);
 
 export default CompactViewGrid;

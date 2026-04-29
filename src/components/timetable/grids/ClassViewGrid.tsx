@@ -12,7 +12,7 @@ import { DroppableTimeSlot } from '../DroppableTimeSlot';
 import { ClassViewGridProps, Lesson } from '../types';
 import { DAYS, DAY_LABELS } from '../constants';
 
-export function ClassViewGrid({
+function ClassViewGridImpl({
     className,
     lessons,
     onDrop,
@@ -21,7 +21,6 @@ export function ClassViewGrid({
     onToggleLock,
     displayOptions,
     timeSlots,
-    draggedLesson,
     allLessons,
     selectedLesson,
     onManualPlace,
@@ -35,21 +34,9 @@ export function ClassViewGrid({
         );
     };
 
-    const isTargetClass = draggedLesson?.class === className;
-
     return (
-        <div
-            className={cn(
-                'bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all',
-                isTargetClass && 'ring-4 ring-green-400 border-green-500 shadow-lg'
-            )}
-        >
-            <div
-                className={cn(
-                    'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3',
-                    isTargetClass && 'from-green-600 to-green-700'
-                )}
-            >
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all">
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3">
                 <h3 className="font-semibold">Class {className}</h3>
             </div>
 
@@ -85,9 +72,9 @@ export function ClassViewGrid({
                                         onToggleLock={onToggleLock}
                                         displayOptions={displayOptions}
                                         compact={true}
-                                        draggedLesson={draggedLesson}
                                         allLessons={allLessons}
                                         rowClass={className}
+                                        entityKey={className}
                                         selectedLesson={selectedLesson}
                                         onManualPlace={onManualPlace}
                                     />
@@ -100,5 +87,7 @@ export function ClassViewGrid({
         </div>
     );
 }
+
+export const ClassViewGrid = React.memo(ClassViewGridImpl);
 
 export default ClassViewGrid;

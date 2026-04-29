@@ -350,13 +350,71 @@
     "cancel": "Bekor qilish"
   },
   "landing": {
+    "nav": {
+      "benefits": "Afzalliklar",
+      "integrations": "Integratsiyalar",
+      "pricing": "Narxlar",
+      "faq": "Savollar"
+    },
     "hero": {
-      "badge": "🎓 Dunyo bo'ylab 500+ maktab ishonadi",
+      "badge": "Dunyo bo'ylab 500+ maktab ishonadi",
       "titlePrefix": "Maktabingiz jadvalini soddalashtiring",
       "titleHighlight": "Timetable.uz",
       "subtitle": "Sinflaringizni, o'qituvchilarni va xonalarni bitta aqlli platformada boshqaring. Ideal jadvalni daqiqalarda yarating.",
       "start": "Bepul boshlash",
-      "demo": "Demonsterni ko'rish"
+      "demo": "Demonsterni ko'rish",
+      "eyebrow": "Ai asosidagi jadval tuzish",
+      "titleLead": "Maktab jadvalining",
+      "titleHighlightNew": "murakkabligini",
+      "titleTail": "AI bilan yenging",
+      "subtitleNew": "E-maktab.uz bilan bir klikda ulanib, Google OR-Tools asosida konfliktsiz, teng yuklamali 2 haftalik jadvalni daqiqalarda yarating.",
+      "ctaPrimary": "Jadvalni bepul yarating",
+      "ctaSecondary": "Demoni ko'rish",
+      "previewTitle": "10-A sinf • 2-hafta",
+      "previewMeta": "32 o'quvchi • 12 fan",
+      "conflictSr": "Nizo avtomatik hal qilinmoqda"
+    },
+    "trust": {
+      "eyebrow": "Ishonch bildiradi",
+      "subtitle": "O'zbekiston maktab va litseylari e-maktab.uz orqali E-timetable'ni tanlaydi."
+    },
+    "bento": {
+      "eyebrow": "Imkoniyatlar",
+      "heading": "Sizga kerak bo'lgan hamma narsa, ortiqchasiz",
+      "subtitle": "Uchta yadroviy imkoniyat — ma'lumot integratsiyasi, matematik aniqlik va murakkab mantiqni qamrab oladi.",
+      "sync": {
+        "title": "E-maktab.uz sinxronizatsiyasi",
+        "desc": "O'qituvchi, sinf va fanlarni qo'lda kiritmang. Bir klikda e-maktab.uz'dan sinxronlang.",
+        "pill": "Real vaqtda ulangan"
+      },
+      "solver": {
+        "title": "Matematik aniqlik",
+        "desc": "Google OR-Tools CP-SAT hal qiluvchisi 0% nizo va minimal \"oyna\" bilan eng optimal jadvalni topadi.",
+        "mono": "solver := CP-SAT"
+      },
+      "abweeks": {
+        "title": "Murakkab mantiqqa to'liq qo'llab-quvvatlash",
+        "desc": "A va B haftalar, bo'lingan guruhlar (til, jismoniy tarbiya), maxsus xonalar — barchasi hisobga olinadi.",
+        "badgeA": "Hafta A",
+        "badgeB": "Hafta B"
+      }
+    },
+    "how": {
+      "eyebrow": "Qanday ishlaydi",
+      "heading": "Uch qadamda ishlayotgan jadval",
+      "subtitle": "Ma'lumotni ulang, cheklovlarni belgilang va natijani AI'ga topshiring.",
+      "s1": {
+        "title": "Ulang",
+        "desc": "E-maktab.uz'dan o'qituvchi, sinf va fanlarni bir klikda import qiling."
+      },
+      "s2": {
+        "title": "Belgilang",
+        "desc": "Xonalar, o'qituvchi mavjudligi va maxsus cheklovlarni kiriting."
+      },
+      "s3": {
+        "title": "Yeching",
+        "desc": "AI 2 haftalik optimal jadvalni yaratadi — nizosiz, teng yuklamali."
+      }
     },
     "features": {
       "smart": {
@@ -391,15 +449,51 @@
       }
     },
     "pricing": {
+      "eyebrow": "Narxlar",
+      "heading": "Maktab o'lchamiga mos tarif",
+      "subtitle": "Bepul'dan boshlang, kerak bo'lganda kengayting.",
+      "note": "Barcha narxlar so'mda, QQS bilan. Yillik to'lovda 20% chegirma.",
       "free": {
-        "name": "Bepul",
-        "period": "abadiy",
+        "name": "Free",
+        "price": "0",
+        "period": "doimiy bepul",
+        "tagline": "Kichik o'quv markazlari uchun",
         "description": "Kichik maktablar uchun ajoyib boshlanish",
+        "cta": "Bepul boshlash",
         "features": {
-          "1": "5 gacha sinf",
-          "2": "Asosiy rejalashtirish",
-          "3": "Email bilan qo'llab-quvvatlash",
-          "4": "Standart shablonlar"
+          "1": "15 tagacha o'qituvchi",
+          "2": "20 tagacha fan",
+          "3": "10 tagacha sinf",
+          "4": "Asosiy algoritm"
+        }
+      },
+      "mini": {
+        "name": "Mini",
+        "price": "290 000",
+        "period": "so'm / oyiga",
+        "tagline": "O'rta umumiy ta'lim maktablari uchun",
+        "popular": "Ko'p tanlanadi",
+        "cta": "Mini'ni tanlash",
+        "features": {
+          "1": "50 tagacha o'qituvchi",
+          "2": "50 tagacha fan",
+          "3": "50 tagacha sinf",
+          "4": "E-maktab.uz integratsiyasi",
+          "5": "A/B haftalar va guruh bo'linishi"
+        }
+      },
+      "max": {
+        "name": "Max",
+        "price": "890 000",
+        "period": "so'm / oyiga",
+        "tagline": "Yirik universitet va kollejlar uchun",
+        "cta": "Max'ni tanlash",
+        "features": {
+          "1": "200 tagacha o'qituvchi",
+          "2": "Cheksiz fanlar va sinflar",
+          "3": "Kengaytirilgan optimallashtirish",
+          "4": "PDF va Excel eksport",
+          "5": "Ustuvor qo'llab-quvvatlash"
         }
       },
       "pro": {
@@ -427,6 +521,71 @@
           "5": "Moslashtirilgan integratsiyalar",
           "6": "Ajratilgan menejer"
         }
+      }
+    },
+    "faq": {
+      "eyebrow": "Ko'p beriladigan savollar",
+      "heading": "Hali savolingiz bormi?",
+      "items": {
+        "privacy": {
+          "q": "Maktab ma'lumotlari xavfsizmi?",
+          "a": "Ha. Barcha ma'lumotlar shifrlangan holda saqlanadi va faqat sizning maktab ma'muriyati ruxsati bilan ishlanadi. Biz ma'lumotlarni sotmaymiz."
+        },
+        "abweeks": {
+          "q": "A va B haftalar qanday ishlaydi?",
+          "a": "Har bir sinf uchun ikki haftalik sikl yaratiladi: A haftada bir jadval, B haftada boshqa jadval. Tizim ularni avtomatik chergir qiladi."
+        },
+        "manual": {
+          "q": "Natijani qo'lda tuzata olamanmi?",
+          "a": "Albatta. Drag-and-drop orqali darsni ko'chiring — tizim darhol nizolarni tekshiradi va taklif beradi."
+        },
+        "emaktab": {
+          "q": "E-maktab.uz bilan integratsiya qanday ishlaydi?",
+          "a": "Bir marta ulaning — o'qituvchilar, sinflar va fanlar avtomatik import qilinadi va keyingi o'zgarishlar bilan yangilab turiladi."
+        },
+        "ortools": {
+          "q": "Google OR-Tools nima?",
+          "a": "Google'ning ochiq kodli optimallashtirish kutubxonasi. Biz CP-SAT hal qiluvchisini maktab jadvali uchun mantiqiy cheklovlarga moslashtirdik."
+        },
+        "freeLimits": {
+          "q": "Bepul rejada qanday cheklovlar bor?",
+          "a": "15 o'qituvchi, 20 fan va 10 sinfgacha asosiy algoritm bilan foydalaning. E-maktab.uz integratsiyasi Mini tarifidan boshlanadi."
+        },
+        "migration": {
+          "q": "O'tish qancha vaqt oladi?",
+          "a": "Odatda 30 daqiqa: e-maktab.uz bilan ulanish, cheklovlarni kiritish va birinchi jadvalni yaratish. Yirik tashkilotlarga jamoamiz yordam beradi."
+        }
+      }
+    },
+    "finalCta": {
+      "eyebrow": "Bugundan boshlang",
+      "heading": "Maktabingiz jadvalini bugunoq avtomatlashtiring",
+      "subtitle": "Bir zumda ulang, bepul sinab ko'ring. Karta talab qilinmaydi.",
+      "cta": "Bepul boshlash"
+    },
+    "footer": {
+      "tagline": "O'zbekiston ta'limining kelajagi uchun qurildi.",
+      "copyright": "© 2026 E-timetable. Barcha huquqlar himoyalangan.",
+      "product": {
+        "title": "Mahsulot",
+        "features": "Imkoniyatlar",
+        "pricing": "Narxlar",
+        "demo": "Demo"
+      },
+      "company": {
+        "title": "Kompaniya",
+        "about": "Biz haqimizda",
+        "contact": "Bog'lanish"
+      },
+      "legal": {
+        "title": "Huquqiy",
+        "privacy": "Maxfiylik siyosati",
+        "terms": "Foydalanish shartlari"
+      },
+      "connect": {
+        "title": "Aloqa",
+        "telegram": "Telegram",
+        "email": "Email"
       }
     }
   }

@@ -353,13 +353,71 @@
     "cancel": "Cancel"
   },
   "landing": {
+    "nav": {
+      "benefits": "Benefits",
+      "integrations": "Integrations",
+      "pricing": "Pricing",
+      "faq": "FAQ"
+    },
     "hero": {
-      "badge": "🎓 Trusted by 500+ Schools Worldwide",
+      "badge": "Trusted by 500+ Schools Worldwide",
       "titlePrefix": "Simplify Your School Scheduling with",
       "titleHighlight": "Timetable.uz",
       "subtitle": "Manage your classes, teachers, and rooms all in one smart platform. Create perfect timetables in minutes, not hours.",
       "start": "Start Free",
-      "demo": "See Demo"
+      "demo": "See Demo",
+      "eyebrow": "AI-powered scheduling",
+      "titleLead": "Tame the complexity",
+      "titleHighlightNew": "of school scheduling",
+      "titleTail": "with AI",
+      "subtitleNew": "Connect to e-maktab.uz with one click and generate a conflict-free, balanced-load two-week schedule in minutes, powered by Google OR-Tools.",
+      "ctaPrimary": "Create schedule for free",
+      "ctaSecondary": "Watch demo",
+      "previewTitle": "Grade 10-A • Week 2",
+      "previewMeta": "32 students • 12 subjects",
+      "conflictSr": "Conflict being resolved automatically"
+    },
+    "trust": {
+      "eyebrow": "Trusted by",
+      "subtitle": "Uzbekistan's schools and lyceums choose E-timetable through e-maktab.uz."
+    },
+    "bento": {
+      "eyebrow": "Capabilities",
+      "heading": "Everything you need, nothing you don't",
+      "subtitle": "Three core capabilities — data integration, mathematical precision, and complex-logic support.",
+      "sync": {
+        "title": "e-maktab.uz synchronization",
+        "desc": "No manual entry of teachers, classes, or subjects. Sync from e-maktab.uz in one click.",
+        "pill": "Connected in real time"
+      },
+      "solver": {
+        "title": "Mathematical precision",
+        "desc": "The Google OR-Tools CP-SAT solver finds the most optimal schedule with 0% conflicts and minimal gaps.",
+        "mono": "solver := CP-SAT"
+      },
+      "abweeks": {
+        "title": "Full support for complex logic",
+        "desc": "A and B weeks, split groups (language, PE), special rooms — all accounted for.",
+        "badgeA": "Week A",
+        "badgeB": "Week B"
+      }
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "heading": "A working schedule in three steps",
+      "subtitle": "Connect your data, define your constraints, and let AI handle the rest.",
+      "s1": {
+        "title": "Connect",
+        "desc": "Import teachers, classes, and subjects from e-maktab.uz in one click."
+      },
+      "s2": {
+        "title": "Configure",
+        "desc": "Set rooms, teacher availability, and any special constraints."
+      },
+      "s3": {
+        "title": "Solve",
+        "desc": "AI generates a two-week optimal schedule — conflict-free and balanced."
+      }
     },
     "features": {
       "smart": {
@@ -394,15 +452,51 @@
       }
     },
     "pricing": {
+      "eyebrow": "Pricing",
+      "heading": "A plan sized to your school",
+      "subtitle": "Start free, expand when you need to.",
+      "note": "All prices in UZS, VAT included. 20% discount on annual billing.",
       "free": {
         "name": "Free",
-        "period": "forever",
+        "price": "0",
+        "period": "free forever",
+        "tagline": "For small learning centers",
         "description": "Perfect for small schools getting started",
+        "cta": "Start free",
         "features": {
-          "1": "Up to 5 classes",
-          "2": "Basic scheduling",
-          "3": "Email support",
-          "4": "Standard templates"
+          "1": "Up to 15 teachers",
+          "2": "Up to 20 subjects",
+          "3": "Up to 10 classes",
+          "4": "Core algorithm"
+        }
+      },
+      "mini": {
+        "name": "Mini",
+        "price": "290 000",
+        "period": "UZS / month",
+        "tagline": "For general-education schools",
+        "popular": "Most popular",
+        "cta": "Choose Mini",
+        "features": {
+          "1": "Up to 50 teachers",
+          "2": "Up to 50 subjects",
+          "3": "Up to 50 classes",
+          "4": "e-maktab.uz integration",
+          "5": "A/B weeks and group splits"
+        }
+      },
+      "max": {
+        "name": "Max",
+        "price": "890 000",
+        "period": "UZS / month",
+        "tagline": "For large universities and colleges",
+        "cta": "Choose Max",
+        "features": {
+          "1": "Up to 200 teachers",
+          "2": "Unlimited subjects and classes",
+          "3": "Advanced optimization",
+          "4": "PDF and Excel export",
+          "5": "Priority support"
         }
       },
       "pro": {
@@ -430,6 +524,71 @@
           "5": "Custom integrations",
           "6": "Dedicated manager"
         }
+      }
+    },
+    "faq": {
+      "eyebrow": "Frequently asked questions",
+      "heading": "Still have a question?",
+      "items": {
+        "privacy": {
+          "q": "Is school data secure?",
+          "a": "Yes. All data is stored encrypted and only processed with your school administration's permission. We do not sell data."
+        },
+        "abweeks": {
+          "q": "How do A and B weeks work?",
+          "a": "A two-week cycle is created for each class: one schedule for Week A, another for Week B. The system alternates them automatically."
+        },
+        "manual": {
+          "q": "Can I edit the result manually?",
+          "a": "Of course. Drag and drop a lesson — the system instantly checks for conflicts and suggests alternatives."
+        },
+        "emaktab": {
+          "q": "How does e-maktab.uz integration work?",
+          "a": "Connect once — teachers, classes, and subjects are imported automatically and kept up to date with later changes."
+        },
+        "ortools": {
+          "q": "What is Google OR-Tools?",
+          "a": "Google's open-source optimization library. We've adapted its CP-SAT solver to school-timetable logic constraints."
+        },
+        "freeLimits": {
+          "q": "What are the free-plan limits?",
+          "a": "Use up to 15 teachers, 20 subjects, and 10 classes with the core algorithm. e-maktab.uz integration starts from the Mini plan."
+        },
+        "migration": {
+          "q": "How long does migration take?",
+          "a": "Usually 30 minutes: connect to e-maktab.uz, set constraints, and generate the first schedule. Our team assists larger organizations."
+        }
+      }
+    },
+    "finalCta": {
+      "eyebrow": "Start today",
+      "heading": "Automate your school's schedule today",
+      "subtitle": "Connect in an instant, try for free. No credit card required.",
+      "cta": "Start free"
+    },
+    "footer": {
+      "tagline": "Built for the future of Uzbekistan's education.",
+      "copyright": "© 2026 E-timetable. All rights reserved.",
+      "product": {
+        "title": "Product",
+        "features": "Features",
+        "pricing": "Pricing",
+        "demo": "Demo"
+      },
+      "company": {
+        "title": "Company",
+        "about": "About us",
+        "contact": "Contact"
+      },
+      "legal": {
+        "title": "Legal",
+        "privacy": "Privacy policy",
+        "terms": "Terms of service"
+      },
+      "connect": {
+        "title": "Connect",
+        "telegram": "Telegram",
+        "email": "Email"
       }
     }
   }

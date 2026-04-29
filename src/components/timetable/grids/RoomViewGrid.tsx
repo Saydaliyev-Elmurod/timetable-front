@@ -12,7 +12,7 @@ import { DroppableTimeSlot } from '../DroppableTimeSlot';
 import { RoomViewGridProps, Lesson } from '../types';
 import { DAYS, DAY_LABELS } from '../constants';
 
-export function RoomViewGrid({
+function RoomViewGridImpl({
     roomName,
     lessons,
     onDrop,
@@ -21,7 +21,6 @@ export function RoomViewGrid({
     onToggleLock,
     displayOptions,
     timeSlots,
-    draggedLesson,
     allLessons,
     selectedLesson,
     onManualPlace,
@@ -77,8 +76,8 @@ export function RoomViewGrid({
                                         displayOptions={displayOptions}
                                         compact={true}
                                         showClass={true}
-                                        draggedLesson={draggedLesson}
                                         allLessons={allLessons}
+                                        entityKey={roomName}
                                         selectedLesson={selectedLesson}
                                         onManualPlace={onManualPlace}
                                     />
@@ -91,5 +90,7 @@ export function RoomViewGrid({
         </div>
     );
 }
+
+export const RoomViewGrid = React.memo(RoomViewGridImpl);
 
 export default RoomViewGrid;

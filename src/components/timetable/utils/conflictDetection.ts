@@ -17,6 +17,7 @@
  */
 
 import type { Lesson, UnplacedLesson } from '../types';
+import type { SlotDragStatus, SlotConflictEntry, DropReason } from '../store/useTimetableDnd';
 
 export type ConflictStatus =
     | 'valid'
@@ -139,4 +140,86 @@ export function detectSlotConflict(
 
     // 7. All clear.
     return { status: 'valid' };
+}
+
+/**
+ * Computes a map of all slot statuses for a dragged lesson, run ONCE at drag start.
+ * Maps each slotKey to its visual status (available, optimal, conflict, source, invalid-class).
+ * This eliminates per-frame conflict detection during the drag.
+ */
+export function computeSlotConflictMap(
+    draggedLesson: Lesson | UnplacedLesson,
+    allLessons: Lesson[],
+    allSlotKeys: Array<{ slotKey: string; day: string; timeSlot: number; rowClass?: string }>
+): Map<string, SlotConflictEntry> {
+    const map = new Map<string, SlotConflictEntry>();
+
+    for (const { slotKey, day, timeSlot, rowClass } of allSlotKeys) {
+        // Mark the source slot (where the lesson currently is)
+        if (draggedLesson.day === day && draggedLesson.timeSlot === timeSlot &&
+            (!rowClass || draggedLesson.class === rowClass)) {
+            map.set(slotKey, {
+                status: 'source',
+                reason: 'ok',
+                message: '',
+            });
+            continue;
+        }
+
+        // Detect conflict for this target slot
+        const conflict = detectSlotConflict(draggedLesson, { day, timeSlot, rowClass, allLessons });
+
+        let status: SlotDragStatus;
+        let reason: DropReason;
+        let message: string;
+
+        switch (conflict.status) {
+            case 'invalid-target-class':
+                status = 'invalid-class';
+                reason = 'wrong-class';
+                message = conflict.reason?.message ?? '';
+                break;
+
+            case 'teacher-conflict':
+                status = 'conflict';
+                reason = 'teacher-busy';
+                message = conflict.reason?.message ?? '';
+                break;
+
+            case 'room-conflict':
+                status = 'conflict';
+                reason = 'room-busy';
+                message = conflict.reason?.message ?? '';
+                break;
+
+            case 'class-conflict':
+                status = 'conflict';
+                reason = 'class-busy';
+                message = conflict.reason?.message ?? '';
+                break;
+
+            case 'valid': {
+                // Check if target slot is occupied by same class (swap candidate = optimal)
+                const targetLessons = allLessons.filter(
+                    (l) => l.day === day && l.timeSlot === timeSlot && (!rowClass || l.class === rowClass)
+                );
+                const hasSameClassLesson = targetLessons.some((l) => l.classId === draggedLesson.classId);
+                status = hasSameClassLesson ? 'optimal' : 'available';
+                reason = 'ok';
+                message = '';
+                break;
+            }
+
+            case 'none':
+            default:
+                status = 'available';
+                reason = 'ok';
+                message = '';
+                break;
+        }
+
+        map.set(slotKey, { status, reason, message });
+    }
+
+    return map;
 }

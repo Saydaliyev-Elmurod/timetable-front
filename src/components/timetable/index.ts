@@ -12,6 +12,7 @@ export * from './constants';
 // Components
 export { DraggableLessonCard } from './DraggableLessonCard';
 export { DroppableTimeSlot } from './DroppableTimeSlot';
+export { DragLegend } from './DragLegend';
 export { TimetableToolbar } from './TimetableToolbar';
 export { UnplacedSidebar } from './UnplacedSidebar';
 

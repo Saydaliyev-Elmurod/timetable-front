@@ -12,7 +12,7 @@ import { DroppableTimeSlot } from '../DroppableTimeSlot';
 import { TeacherViewGridProps, Lesson } from '../types';
 import { DAYS, DAY_LABELS } from '../constants';
 
-export function TeacherViewGrid({
+function TeacherViewGridImpl({
     teacherName,
     lessons,
     onDrop,
@@ -21,7 +21,6 @@ export function TeacherViewGrid({
     onToggleLock,
     displayOptions,
     timeSlots,
-    draggedLesson,
     allLessons,
     selectedLesson,
     onManualPlace,
@@ -77,8 +76,8 @@ export function TeacherViewGrid({
                                         displayOptions={displayOptions}
                                         compact={true}
                                         showClass={true}
-                                        draggedLesson={draggedLesson}
                                         allLessons={allLessons}
+                                        entityKey={teacherName}
                                         selectedLesson={selectedLesson}
                                         onManualPlace={onManualPlace}
                                     />
@@ -91,5 +90,7 @@ export function TeacherViewGrid({
         </div>
     );
 }
+
+export const TeacherViewGrid = React.memo(TeacherViewGridImpl);
 
 export default TeacherViewGrid;

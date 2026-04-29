@@ -217,9 +217,9 @@ export interface DroppableTimeSlotProps {
     displayOptions: DisplayOptions;
     compact?: boolean;
     showClass?: boolean;
-    draggedLesson?: Lesson | null;
     allLessons?: Lesson[];
     rowClass?: string;
+    entityKey?: string;
     selectedLesson?: Lesson | UnplacedLesson | null;
     onManualPlace?: (day: string, timeSlot: number) => void;
 }
@@ -232,7 +232,6 @@ export interface GridProps {
     onToggleLock: (lesson: Lesson) => void;
     displayOptions: DisplayOptions;
     timeSlots: number[];
-    draggedLesson?: Lesson | null;
     allLessons?: Lesson[];
     selectedLesson?: Lesson | UnplacedLesson | null;
     onManualPlace?: (day: string, timeSlot: number) => void;

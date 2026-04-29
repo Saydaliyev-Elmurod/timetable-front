@@ -268,7 +268,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className={`flex-1 overflow-auto ${currentPage.startsWith('timetable-view') ? '' : 'p-6'}`}>
           {renderPage}
         </main>
       </div>

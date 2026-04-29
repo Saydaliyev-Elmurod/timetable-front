@@ -44,7 +44,7 @@ import {
   Zap,
   FileDown,
 } from "lucide-react";
-import { DndProvider, useDragLayer } from "react-dnd";
+import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { cn } from "../ui/utils";
 import { toast } from "sonner";
@@ -64,7 +64,10 @@ import {
   TeacherViewGrid,
   RoomViewGrid,
   CompactViewGrid,
+  DragLegend,
 } from '@/components/timetable';
+import { useTimetableDnd } from '@/components/timetable/store/useTimetableDnd';
+import { computeSlotConflictMap } from '@/components/timetable/utils/conflictDetection';
 import type {
   Lesson,
   UnplacedLesson,
@@ -201,11 +204,11 @@ const TimetableContent = ({
     fetchOrganizationSettings();
   }, []);
 
-  // Drag Layer to track dragged item globally
-  const { isDragging, draggedLesson } = useDragLayer((monitor) => ({
-    isDragging: monitor.isDragging(),
-    draggedLesson: monitor.getItem() as Lesson | null,
-  }));
+  // Zustand DnD state - resubscribe only on drag start/end (not per-pointer-move)
+  const isDragging = useTimetableDnd((s) => s.activeId !== null);
+  const activePayload = useTimetableDnd((s) => s.activePayload);
+  const setSlotConflictMap = useTimetableDnd((s) => s.setSlotConflictMap);
+  const endDrag = useTimetableDnd((s) => s.endDrag);
 
   // Fetch timetable metadata (score, gaps) from the list endpoint
   useEffect(() => {
@@ -452,6 +455,51 @@ const TimetableContent = ({
     totalLessons > 0 ? Math.round((scheduledLessons.length / totalLessons) * 100) : 100;
   const conflicts = 0; // TODO: Implement conflict detection
 
+  // Helper to enumerate all grid slot keys for conflict pre-computation
+  const buildAllSlotKeys = (
+    viewModeArg: string,
+    classes: string[],
+    teachers: string[],
+    rooms: string[],
+    slots: number[]
+  ) => {
+    const result: Array<{ slotKey: string; day: string; timeSlot: number; rowClass?: string }> = [];
+    const entities = viewModeArg === 'classes' || viewModeArg === 'compact' ? classes
+      : viewModeArg === 'teachers' ? teachers
+      : viewModeArg === 'rooms' ? rooms
+      : classes;
+
+    for (const day of DAYS) {
+      for (const ts of slots) {
+        for (const entity of entities) {
+          result.push({
+            slotKey: `${entity}::${day}::${ts}`,
+            day,
+            timeSlot: ts,
+            rowClass: (viewModeArg === 'classes' || viewModeArg === 'compact') ? entity : undefined,
+          });
+        }
+      }
+    }
+    return result;
+  };
+
+  // Compute conflict map once when drag starts (one-time ~O(slots × lessons) work)
+  useEffect(() => {
+    if (!isDragging || !activePayload?.lessonId) {
+      return;
+    }
+
+    const draggedLesson = scheduledLessons.find(l => l.id === activePayload.lessonId)
+      ?? unplacedLessons.find(l => l.id === activePayload.lessonId) ?? null;
+
+    if (!draggedLesson) return;
+
+    const allSlotKeys = buildAllSlotKeys(viewMode, allClasses, allTeachers, allRooms, timeSlots);
+    const map = computeSlotConflictMap(draggedLesson, scheduledLessons, allSlotKeys);
+    setSlotConflictMap(map);
+  }, [isDragging, activePayload?.lessonId, viewMode, allClasses, allTeachers, allRooms, timeSlots, scheduledLessons, unplacedLessons, setSlotConflictMap]);
+
   // Initialize mock lessons when scheduled lessons change
   useEffect(() => {
     if (scheduledLessons.length > 0) {
@@ -640,6 +688,7 @@ const TimetableContent = ({
       });
     } finally {
       setIsProcessingAction(false);
+      endDrag();
     }
   };
 
@@ -820,7 +869,7 @@ const TimetableContent = ({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="container mx-auto p-6 max-w-[1800px]">
+        <div className="w-full p-6">
           <div className="flex items-center gap-3 mb-6 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
             <span className="text-sm">Loading timetable data...</span>
@@ -842,7 +891,7 @@ const TimetableContent = ({
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="container mx-auto p-6 max-w-[1800px]">
+        <div className="w-full p-6">
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -878,7 +927,7 @@ const TimetableContent = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      <div className="container mx-auto p-6 max-w-[1800px]">
+      <div className="w-full p-6">
         {/* Processing Action Indicator */}
         {isProcessingAction && (
           <Alert className="mb-6 bg-blue-50 border-blue-300">
@@ -1206,7 +1255,8 @@ const TimetableContent = ({
         {/* Main Content Area */}
         <div className="flex gap-6">
           {/* Main Timetable Area */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
+            <DragLegend />
             {viewMode === "classes" ? (
               /* View by Classes - Vertical */
               <div className="space-y-6">
@@ -1222,7 +1272,6 @@ const TimetableContent = ({
                       onToggleLock={handleToggleLock}
                       displayOptions={displayOptions}
                       timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
                       selectedLesson={selectedLesson}
                       onManualPlace={handleManualPlace}
@@ -1252,7 +1301,6 @@ const TimetableContent = ({
                       onToggleLock={handleToggleLock}
                       displayOptions={displayOptions}
                       timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
                       selectedLesson={selectedLesson}
                       onManualPlace={handleManualPlace}
@@ -1282,7 +1330,6 @@ const TimetableContent = ({
                       onToggleLock={handleToggleLock}
                       displayOptions={displayOptions}
                       timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
                       allLessons={scheduledLessons}
                       selectedLesson={selectedLesson}
                       onManualPlace={handleManualPlace}
@@ -1308,7 +1355,6 @@ const TimetableContent = ({
                 onToggleLock={handleToggleLock}
                 displayOptions={displayOptions}
                 timeSlots={timeSlots}
-                draggedLesson={isDragging ? draggedLesson : null}
                 allLessons={scheduledLessons}
                 selectedLesson={selectedLesson}
                 onManualPlace={handleManualPlace}
