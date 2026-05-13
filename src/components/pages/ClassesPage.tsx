@@ -808,24 +808,13 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
     const newClasses = [];
 
     Object.entries(gradeQuantities).forEach(([grade, quantity]) => {
-      const numQuantity = parseInt(quantity) || 0;
+      const numQuantity = parseInt(quantity as string) || 0;
       for (let i = 0; i < numQuantity; i++) {
         const letter = getLetterSequence(i, batchCharacterSet);
         const className = `${grade}-${letter}`;
         newClasses.push({
           name: `Grade ${grade} ${letter}`,
           shortName: className,
-          availabilities: convertToTimeSlots({
-            monday: periods,
-            tuesday: periods,
-            wednesday: periods,
-            thursday: periods,
-            friday: periods,
-            saturday: [],
-            sunday: [],
-          }),
-          teacherId: null,
-          rooms: []
         });
       }
     });
@@ -837,21 +826,15 @@ export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string
 
     setLoading(true);
     try {
-      // Create all classes via API
-      const promises = newClasses.map(classData =>
-        apiCall(getApiUrl('CLASSES'), {
-          method: 'POST',
-          body: JSON.stringify(classData),
-        })
-      );
+      const response = await apiCall(`${getApiUrl('CLASSES')}/bulk`, {
+        method: 'POST',
+        body: JSON.stringify(newClasses),
+      });
 
-      const responses = await Promise.all(promises);
-      const failedCount = responses.filter(r => r.error).length;
-
-      if (failedCount > 0) {
-        toast.error(t('classes.apply_to_others.error_failed'));
+      if (response.error) {
+        toast.error(response.error.message || 'Xatolik yuz berdi');
       } else {
-        toast.success(t('classes.apply_to_others.success_message', { count: selectedClassesForApply.length, class: selectedClassesForApply.length === 1 ? 'class' : 'classes' }));
+        toast.success(`${newClasses.length} ta sinf muvaffaqiyatli yaratildi`);
       }
 
       setIsBatchCreateOpen(false);

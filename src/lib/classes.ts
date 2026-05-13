@@ -65,6 +65,17 @@ export const ClassService = {
     if (response.error) throw response.error;
   },
 
+  createBulk: async (data: ClassRequest[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('CLASSES')}/bulk`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
   update: async (id: number, data: ClassRequest): Promise<void> => {
     const response = await API.call(
       `${API.url('CLASSES')}/${id}`,

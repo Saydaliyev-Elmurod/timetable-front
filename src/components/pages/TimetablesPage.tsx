@@ -6,9 +6,7 @@ import { Input } from '../ui/input';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from '../ui/card';
 import {
   Dialog,
@@ -25,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
-import { Badge } from '../ui/badge';
 import {
   Plus,
   Eye,
@@ -35,15 +32,14 @@ import {
   Loader2,
   AlertCircle,
   Zap,
-  Trophy,
-  CheckCircle2,
-  XCircle,
-  Clock,
+  Search,
+  Download,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
 
-// API Types — TimetableResponse.java dan olingan
+// API Types
 interface TimetableEntity {
   id: string;
   taskId: string;
@@ -58,32 +54,19 @@ interface TimetableEntity {
   updatedDate: string;
 }
 
-// Score rangini aniqlash
-const getScoreColor = (score: number | null): string => {
-  if (score === null || score === undefined) return 'text-gray-400';
-  if (score >= 90) return 'text-emerald-600';
-  if (score >= 70) return 'text-green-600';
-  if (score >= 50) return 'text-yellow-600';
-  if (score >= 30) return 'text-orange-500';
-  return 'text-red-500';
-};
-
-const getScoreBg = (score: number | null): string => {
-  if (score === null || score === undefined) return 'bg-gray-100 text-gray-500';
-  if (score >= 90) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (score >= 70) return 'bg-green-50 text-green-700 border-green-200';
-  if (score >= 50) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
-  if (score >= 30) return 'bg-orange-50 text-orange-700 border-orange-200';
-  return 'bg-red-50 text-red-700 border-red-200';
-};
-
-const getScoreLabel = (score: number | null): string => {
-  if (score === null || score === undefined) return '—';
-  if (score >= 90) return "A'lo";
-  if (score >= 70) return 'Yaxshi';
-  if (score >= 50) return "O'rta";
-  if (score >= 30) return 'Past';
-  return 'Yomon';
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('uz-UZ', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateString;
+  }
 };
 
 export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
@@ -212,40 +195,24 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
     }
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString('uz-UZ', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-start">
+      {/* Page Header — clean, no gradients */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
             Dars Jadvallari
           </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             Barcha yaratilgan dars jadvallarini boshqaring
           </p>
         </div>
         <Button
           onClick={() => setIsGenerateOpen(true)}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-200 transition-all hover:shadow-xl hover:shadow-indigo-300"
-          size="lg"
+          className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm transition-colors"
         >
-          <Plus className="mr-2 h-5 w-5" />
-          Yangi Jadval Yaratish
+          <Plus className="mr-2 h-4 w-4" />
+          Yangi Jadval
         </Button>
       </div>
 
@@ -258,234 +225,179 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       )}
 
       {/* Main Table Card */}
-      <Card className="border border-gray-200 shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex justify-between items-center">
+      <Card className="border border-gray-200 shadow-sm rounded-xl overflow-hidden">
+        <CardHeader className="border-b border-gray-100 bg-white px-6 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <CardTitle>Jadvallar ro'yxati</CardTitle>
-              <CardDescription>
-                Jami {filteredTimetables.length} ta jadval
-              </CardDescription>
+              <h3 className="text-sm font-medium text-gray-900">
+                Jadvallar
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Jami {filteredTimetables.length} ta jadval topildi
+              </p>
             </div>
-            <Input
-              placeholder="Jadval nomini qidirish..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-xs h-10 rounded-lg"
-            />
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Qidirish..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="pl-9 h-9 text-sm border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors"
+              />
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mr-3" />
-              <span className="text-muted-foreground">Jadvallar yuklanmoqda...</span>
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400 mr-3" />
+              <span className="text-sm text-gray-500">Yuklanmoqda...</span>
             </div>
           ) : paginatedTimetables.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
-                <AlertCircle className="h-8 w-8 text-indigo-400" />
+            <div className="text-center py-20">
+              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                <Calendar className="h-5 w-5 text-gray-400" />
               </div>
-              <p className="font-medium text-gray-700 mb-1">Hali jadval yaratilmagan</p>
-              <p className="text-sm">Birinchi dars jadvalingizni yaratish uchun yuqoridagi tugmani bosing.</p>
+              <p className="text-sm font-medium text-gray-900">Jadvallar topilmadi</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {searchQuery
+                  ? "Qidiruv natijasi topilmadi. Boshqa so'z bilan urinib ko'ring."
+                  : "Birinchi jadvalni yaratish uchun yuqoridagi tugmani bosing."
+                }
+              </p>
             </div>
           ) : (
             <>
-              <div className="rounded-lg border border-gray-200 overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/80">
-                      <TableHead className="font-semibold text-gray-700">Nomi</TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-[100px]">
-                        <div className="flex items-center justify-center gap-1">
-                          <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                          Ball
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
+                    <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider pl-6">
+                      Nomi
+                    </TableHead>
+                    <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider text-center w-[120px]">
+                      Joylashgan
+                    </TableHead>
+                    <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider text-center w-[130px]">
+                      Joylashmagan
+                    </TableHead>
+                    <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                      Yaratilgan
+                    </TableHead>
+                    <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider text-right pr-6 w-[160px]">
+                      Amallar
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTimetables.map((timetable, index) => (
+                    <TableRow
+                      key={timetable.id}
+                      className={`group cursor-pointer transition-colors hover:bg-gray-50 ${index !== paginatedTimetables.length - 1 ? 'border-b border-gray-100' : ''
+                        }`}
+                      onClick={() => handleView(timetable)}
+                    >
+                      {/* Name */}
+                      <TableCell className="pl-6 py-4">
+                        <p className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors">
+                          {timetable.name}
+                        </p>
+                      </TableCell>
+
+                      {/* Scheduled — green badge */}
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                          {timetable.scheduled ?? 0}
+                        </span>
+                      </TableCell>
+
+                      {/* Unscheduled — conditional badge */}
+                      <TableCell className="text-center">
+                        {(timetable.unscheduled ?? 0) > 0 ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                            {timetable.unscheduled}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
+                            0
+                          </span>
+                        )}
+                      </TableCell>
+
+                      {/* Created Date */}
+                      <TableCell>
+                        <span className="text-sm text-gray-500">
+                          {formatDate(timetable.createdDate)}
+                        </span>
+                      </TableCell>
+
+                      {/* Actions — icon buttons */}
+                      <TableCell className="text-right pr-6">
+                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* View */}
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleView(timetable); }}
+                            title="Ko'rish"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+
+                          {/* Export Excel */}
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleExportExcel(timetable); }}
+                            title="Excel eksport"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+
+                          {/* Export PDF */}
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleExportPDF(timetable); }}
+                            title="PDF eksport"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(timetable.id); }}
+                            title="O'chirish"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-[110px]">
-                        <div className="flex items-center justify-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                          Joylashgan
-                        </div>
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-[120px]">
-                        <div className="flex items-center justify-center gap-1">
-                          <XCircle className="h-3.5 w-3.5 text-red-400" />
-                          Joylashmagan
-                        </div>
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-[110px]">
-                        O'qit. Oynalari
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-center w-[100px]">
-                        Sinf Oynalari
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 w-[160px]">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5 text-gray-400" />
-                          Yaratilgan
-                        </div>
-                      </TableHead>
-                      <TableHead className="font-semibold text-gray-700 text-right w-[180px]">Amallar</TableHead>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedTimetables.map((timetable) => {
-                      const totalLessons = (timetable.scheduled || 0) + (timetable.unscheduled || 0);
-                      const integrity = totalLessons > 0
-                        ? Math.round(((timetable.scheduled || 0) / totalLessons) * 100)
-                        : 0;
+                  ))}
+                </TableBody>
+              </Table>
 
-                      return (
-                        <TableRow
-                          key={timetable.id}
-                          className="group hover:bg-indigo-50/40 transition-colors cursor-pointer"
-                          onClick={() => handleView(timetable)}
-                        >
-                          {/* Nomi */}
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="min-w-0">
-                                <p className="font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors truncate">
-                                  {timetable.name}
-                                </p>
-                                {/* Mini progress bar */}
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                      className={`h-full rounded-full ${integrity >= 90
-                                          ? 'bg-emerald-400'
-                                          : integrity >= 50
-                                            ? 'bg-yellow-400'
-                                            : 'bg-red-400'
-                                        }`}
-                                      style={{ width: `${integrity}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[11px] text-gray-400">{integrity}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          {/* Score */}
-                          <TableCell className="text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${getScoreBg(timetable.score)}`}>
-                              {timetable.score !== null && timetable.score !== undefined ? (
-                                <>
-                                  {timetable.score}
-                                  <span className="text-[10px] font-medium opacity-75">
-                                    {getScoreLabel(timetable.score)}
-                                  </span>
-                                </>
-                              ) : '—'}
-                            </span>
-                          </TableCell>
-
-                          {/* Scheduled */}
-                          <TableCell className="text-center">
-                            <span className="text-sm font-semibold text-green-700">
-                              {timetable.scheduled ?? 0}
-                            </span>
-                          </TableCell>
-
-                          {/* Unscheduled */}
-                          <TableCell className="text-center">
-                            <span className={`text-sm font-semibold ${(timetable.unscheduled ?? 0) > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                              {timetable.unscheduled ?? 0}
-                            </span>
-                          </TableCell>
-
-                          {/* Teacher Gaps */}
-                          <TableCell className="text-center">
-                            <span className={`text-sm font-medium ${(timetable.teacherGaps ?? 0) > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                              {timetable.teacherGaps ?? 0}
-                            </span>
-                          </TableCell>
-
-                          {/* Class Gaps */}
-                          <TableCell className="text-center">
-                            <span className={`text-sm font-medium ${(timetable.classGaps ?? 0) > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
-                              {timetable.classGaps ?? 0}
-                            </span>
-                          </TableCell>
-
-                          {/* Date */}
-                          <TableCell className="text-muted-foreground text-sm">
-                            {formatDate(timetable.createdDate)}
-                          </TableCell>
-
-                          {/* Actions */}
-                          <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 gap-1.5"
-                                onClick={(e) => { e.stopPropagation(); handleView(timetable); }}
-                              >
-                                <Eye className="h-4 w-4" />
-                                Ko'rish
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                onClick={(e) => { e.stopPropagation(); handleExportExcel(timetable); }}
-                                title="Excel eksport"
-                              >
-                                <FileSpreadsheet className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={(e) => { e.stopPropagation(); handleExportPDF(timetable); }}
-                                title="PDF eksport"
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(timetable.id); }}
-                                title="O'chirish"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination */}
+              {/* Pagination — clean bottom bar */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredTimetables.length)} / {filteredTimetables.length} jadval
+                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-white">
+                  <p className="text-xs text-gray-500">
+                    {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredTimetables.length)}{' '}
+                    / {filteredTimetables.length}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  <div className="flex gap-1.5">
+                    <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       Oldingi
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                    </button>
+                    <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       Keyingi
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}
@@ -494,34 +406,36 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
         </CardContent>
       </Card>
 
-      {/* Generate Timetable Dialog */}
+      {/* Generate Timetable Dialog — minimal */}
       <Dialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                <Zap className="h-5 w-5 text-white" />
-              </div>
-              Yangi Jadval Yaratish
+            <DialogTitle className="text-lg font-semibold text-gray-900">
+              Yangi jadval yaratish
             </DialogTitle>
-            <DialogDescription>
-              Tashkilot ma'lumotlari asosida avtomatik dars jadvali yaratiladi.
+            <DialogDescription className="text-sm text-gray-500">
+              Jadval nomi kiriting va yaratish tugmasini bosing.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Jadval nomi</label>
+          <div className="py-3 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Jadval nomi</label>
               <Input
                 placeholder="Masalan: 2024-yil 1-semester"
                 value={generateName}
                 onChange={(e) => setGenerateName(e.target.value)}
-                className="h-11"
+                className="h-10 border-gray-200"
+                autoFocus
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setIsGenerateOpen(false)}>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => { setIsGenerateOpen(false); setGenerateName(''); }}
+                className="text-sm"
+              >
                 Bekor qilish
               </Button>
               <Button
@@ -536,7 +450,6 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       method: 'POST',
                       body: JSON.stringify({ name: generateName.trim() }),
                     });
-
                     if (res.error) {
                       toast.error(res.error.message || "Jadval yaratib bo'lmadi");
                     } else {
@@ -552,8 +465,8 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                     setIsGenerating(false);
                   }
                 }}
-                disabled={isGenerating}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 min-w-[140px]"
+                disabled={isGenerating || !generateName.trim()}
+                className="bg-gray-900 hover:bg-gray-800 text-white text-sm min-w-[120px]"
               >
                 {isGenerating ? (
                   <>
@@ -561,10 +474,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                     Yaratilmoqda...
                   </>
                 ) : (
-                  <>
-                    <Zap className="mr-2 h-4 w-4" />
-                    Yaratish
-                  </>
+                  'Yaratish'
                 )}
               </Button>
             </div>

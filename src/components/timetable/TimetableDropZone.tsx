@@ -2,13 +2,12 @@ import React from 'react';
 import { useDrop } from 'react-dnd';
 import { ScheduledLessonDto } from '@/types/advancedTimetable';
 import { cn } from '../ui/utils';
-import { validateMove } from '@/utils/timetableValidation';
+import { validateMove, FastScheduleMap } from '@/utils/timetableValidation';
 
 interface TimetableDropZoneProps {
     dayIndex: number;
-    hourIndex: number; // 1-based usually, or 0-based. Let's stick to 0-based internally if easier, but DTO says 1, 2, 3...
-    // DTO: hourIndex: number; // 1, 2, 3...
-    currentSchedule: ScheduledLessonDto[];
+    hourIndex: number; // 0-based or 1-based internally
+    currentSchedule: ScheduledLessonDto[] | FastScheduleMap;
     onDrop: (lesson: ScheduledLessonDto, day: number, hour: number) => void;
 }
 

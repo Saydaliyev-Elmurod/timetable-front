@@ -5,11 +5,13 @@ export interface ValidationResult {
     reason?: string;
 }
 
+export type FastScheduleMap = Map<string, ScheduledLessonDto[]>;
+
 export const validateMove = (
     lesson: ScheduledLessonDto,
     targetDay: number,
     targetHour: number,
-    schedule: ScheduledLessonDto[],
+    schedule: ScheduledLessonDto[] | FastScheduleMap,
     maxDailyHours: number = 6
 ): ValidationResult => {
     // 1. Boundary Check
@@ -17,24 +19,27 @@ export const validateMove = (
         return { valid: false, reason: "Lesson exceeds daily hours" };
     }
 
-    // Generate the time slots this lesson will occupy
-    const requiredSlots: number[] = [];
-    for (let i = 0; i < lesson.period; i++) {
-        requiredSlots.push(targetHour + i);
-    }
-
     // Iterate over each required slot to check for conflicts
-    for (const slot of requiredSlots) {
-        // Find lessons already in this slot
-        const existingLessons = schedule.filter(
-            (l) => l.dayIndex === targetDay &&
-                l.hourIndex === slot &&
-                l.id !== lesson.id // Exclude self if we are essentially moving an existing lesson within the array
-        );
+    for (let i = 0; i < lesson.period; i++) {
+        const slot = targetHour + i;
+        const key = `${targetDay}-${slot}`;
+        
+        let existingLessons: ScheduledLessonDto[] = [];
+        
+        if (schedule instanceof Map) {
+            existingLessons = schedule.get(key) || [];
+            existingLessons = existingLessons.filter(l => l.id !== lesson.id);
+        } else {
+            existingLessons = schedule.filter(
+                (l) => l.dayIndex === targetDay &&
+                    l.hourIndex === slot &&
+                    l.id !== lesson.id
+            );
+        }
 
         for (const existing of existingLessons) {
             // 2. Hard Conflict Check: Target occupied by Weekly lesson
-            if (existing.weekIndex === null) {
+            if (existing.weekIndex === null || existing.weekIndex === undefined) {
                 return { valid: false, reason: `Conflict with Weekly lesson '${existing.subjectName}' at hour ${slot}` };
             }
 

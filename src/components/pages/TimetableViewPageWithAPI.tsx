@@ -62,6 +62,8 @@ import {
 } from "../api/timetableActionApi";
 import { apiCall } from '@/lib/api';
 import { organizationApi } from '../../api/organizationApi';
+import { DragContextProvider } from '../timetable/context/DragContext';
+import { DragStatusLegend } from '../timetable/DragStatusLegend';
 
 // API Types based on backend entities
 interface TimeSlot {
@@ -1263,6 +1265,11 @@ const TimetableContent = ({
   // Timetable Metadata (score, gaps)
   const [timetableMeta, setTimetableMeta] = useState<TimetableMeta | null>(null);
 
+  // Raw API entity data (for DragContext availability maps)
+  const [apiTeachers, setApiTeachers] = useState<TeacherResponse[]>([]);
+  const [apiClasses, setApiClasses] = useState<ClassResponse[]>([]);
+  const [apiSubjects, setApiSubjects] = useState<SubjectResponse[]>([]);
+
   // Processed data
   const [scheduledLessons, setScheduledLessons] = useState<Lesson[]>([]);
   const [unplacedLessons, setUnplacedLessons] = useState<UnplacedLesson[]>([]);
@@ -1366,6 +1373,11 @@ const TimetableContent = ({
       const groups = apiResponse.groups || [];
 
       setTimetableData(timetableData);
+
+      // Save raw entity data for DragContext availability maps
+      setApiTeachers(teachers);
+      setApiClasses(classes);
+      setApiSubjects(subjects);
 
       // Debug: Log the full response structure
       console.log("API Response:", {
@@ -1901,6 +1913,20 @@ const TimetableContent = ({
   const teachersToDisplay = getTeachersToDisplay();
   const roomsToDisplay = getRoomsToDisplay();
 
+  // Prepare DragContext data
+  const dragContextLessons = useMemo(
+    () => scheduledLessons.map(l => ({
+      id: l.id,
+      teacherId: l.teacherId,
+      roomId: l.roomId,
+      classId: l.classId,
+      className: l.class,
+      day: l.day,
+      timeSlot: l.timeSlot,
+    })),
+    [scheduledLessons]
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -1912,500 +1938,508 @@ const TimetableContent = ({
     );
   }
 
-
-
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      <div className="container mx-auto p-6 max-w-[1800px]">
-        {/* Error Alert */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+    <DragContextProvider
+      teachers={apiTeachers}
+      classes={apiClasses}
+      subjects={apiSubjects}
+      scheduledLessons={dragContextLessons}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+        <div className="container mx-auto p-6 max-w-[1800px]">
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {/* Processing Action Indicator */}
-        {isProcessingAction && (
-          <Alert className="mb-6 bg-blue-50 border-blue-300">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-            <AlertDescription className="text-blue-800">
-              Amal bajarilmoqda... Iltimos kuting.
-            </AlertDescription>
-          </Alert>
-        )}
+          {/* Processing Action Indicator */}
+          {isProcessingAction && (
+            <Alert className="mb-6 bg-blue-50 border-blue-300">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Amal bajarilmoqda... Iltimos kuting.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Redesigned Header - Single Line, Persistent */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/80 px-6 py-4 mb-6 sticky top-0 z-10">
-          <div className="flex items-center justify-between gap-6">
-            {/* Left: Page Title + Score Badges */}
-            <div className="flex items-center gap-4">
-              {onNavigate && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onNavigate("timetables")}
-                  className="rounded-xl hover:bg-indigo-50"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              )}
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 bg-clip-text text-transparent">
-                  {timetableMeta?.name || 'Dars Jadvali'}
-                </h1>
-              </div>
-
-              {/* Compact score/gaps badges */}
-              {timetableMeta && (
-                <div className="flex items-center gap-2 ml-2">
-                  {/* Score */}
-                  <Badge variant="outline" className={`gap-1 px-2.5 py-1 font-bold border ${timetableMeta.score !== null && timetableMeta.score !== undefined
-                    ? timetableMeta.score >= 70
-                      ? 'border-green-300 bg-green-50 text-green-700'
-                      : timetableMeta.score >= 50
-                        ? 'border-yellow-300 bg-yellow-50 text-yellow-700'
-                        : 'border-red-300 bg-red-50 text-red-700'
-                    : 'border-gray-200 text-gray-400'
-                    }`}>
-                    <Info className="h-3 w-3" />
-                    {timetableMeta.score ?? '—'} ball
-                  </Badge>
-
-                  <Separator orientation="vertical" className="h-5" />
-
-                  {/* Scheduled / Unscheduled */}
-                  <Badge variant="outline" className="gap-1 px-2 py-1 border-green-200 bg-green-50/80 text-green-700">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {timetableMeta.scheduled ?? scheduledLessons.length}
-                  </Badge>
-                  {(timetableMeta.unscheduled ?? 0) > 0 && (
-                    <Badge variant="outline" className="gap-1 px-2 py-1 border-red-200 bg-red-50/80 text-red-600">
-                      <AlertCircle className="h-3 w-3" />
-                      {timetableMeta.unscheduled}
-                    </Badge>
-                  )}
-
-                  <Separator orientation="vertical" className="h-5" />
-
-                  {/* Gaps */}
-                  <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.teacherGaps ?? 0) > 0 ? 'border-amber-200 bg-amber-50/80 text-amber-700' : 'text-gray-400'}`}>
-                    <User className="h-3 w-3" />
-                    {timetableMeta.teacherGaps ?? 0}
-                  </Badge>
-                  <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.classGaps ?? 0) > 0 ? 'border-purple-200 bg-purple-50/80 text-purple-700' : 'text-gray-400'}`}>
-                    <Users className="h-3 w-3" />
-                    {timetableMeta.classGaps ?? 0}
-                  </Badge>
+          {/* Redesigned Header - Single Line, Persistent */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-200/80 px-6 py-4 mb-6 sticky top-0 z-10">
+            <div className="flex items-center justify-between gap-6">
+              {/* Left: Page Title + Score Badges */}
+              <div className="flex items-center gap-4">
+                {onNavigate && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onNavigate("timetables")}
+                    className="rounded-xl hover:bg-indigo-50"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 bg-clip-text text-transparent">
+                    {timetableMeta?.name || 'Dars Jadvali'}
+                  </h1>
                 </div>
-              )}
-            </div>
 
-            {/* Center: View Mode Switcher (Segmented Control) */}
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(value) =>
-                value &&
-                setViewMode(
-                  value as "classes" | "teachers" | "rooms" | "compact",
-                )
-              }
-              className="border rounded-lg bg-gray-50"
-            >
-              <ToggleGroupItem
-                value="classes"
-                aria-label="Classes View"
-                className="gap-2 px-4"
-              >
-                <Users className="h-4 w-4" />
-                Classes
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="teachers"
-                aria-label="Teachers View"
-                className="gap-2 px-4"
-              >
-                <User className="h-4 w-4" />
-                Teachers
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="rooms"
-                aria-label="Rooms View"
-                className="gap-2 px-4"
-              >
-                <Building2 className="h-4 w-4" />
-                Rooms
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="compact"
-                aria-label="Compact View"
-                className="gap-2 px-4"
-              >
-                <Grid3x3 className="h-4 w-4" />
-                Compact
-              </ToggleGroupItem>
-            </ToggleGroup>
+                {/* Compact score/gaps badges */}
+                {timetableMeta && (
+                  <div className="flex items-center gap-2 ml-2">
+                    {/* Score */}
+                    <Badge variant="outline" className={`gap-1 px-2.5 py-1 font-bold border ${timetableMeta.score !== null && timetableMeta.score !== undefined
+                      ? timetableMeta.score >= 70
+                        ? 'border-green-300 bg-green-50 text-green-700'
+                        : timetableMeta.score >= 50
+                          ? 'border-yellow-300 bg-yellow-50 text-yellow-700'
+                          : 'border-red-300 bg-red-50 text-red-700'
+                      : 'border-gray-200 text-gray-400'
+                      }`}>
+                      <Info className="h-3 w-3" />
+                      {timetableMeta.score ?? '—'} ball
+                    </Badge>
 
-            {/* Right: Display Options + Filter + Actions */}
-            <div className="flex items-center gap-2">
-              {/* Display Options - Round Icon Toggles */}
-              <div className="flex items-center gap-1 mr-2">
-                <Toggle
-                  pressed={displayOptions.showSubject}
-                  onPressedChange={(pressed) =>
-                    setDisplayOptions((prev) => ({
-                      ...prev,
-                      showSubject: pressed,
-                    }))
-                  }
-                  aria-label="Toggle Subject"
-                  size="sm"
-                  className="h-9 w-9 rounded-full p-0"
-                >
-                  <BookOpen className="h-4 w-4" />
-                </Toggle>
-                <Toggle
-                  pressed={displayOptions.showTeacher}
-                  onPressedChange={(pressed) =>
-                    setDisplayOptions((prev) => ({
-                      ...prev,
-                      showTeacher: pressed,
-                    }))
-                  }
-                  aria-label="Toggle Teacher"
-                  size="sm"
-                  className="h-9 w-9 rounded-full p-0"
-                >
-                  <User className="h-4 w-4" />
-                </Toggle>
-                <Toggle
-                  pressed={displayOptions.showRoom}
-                  onPressedChange={(pressed) =>
-                    setDisplayOptions((prev) => ({
-                      ...prev,
-                      showRoom: pressed,
-                    }))
-                  }
-                  aria-label="Toggle Room"
-                  size="sm"
-                  className="h-9 w-9 rounded-full p-0"
-                >
-                  <DoorOpen className="h-4 w-4" />
-                </Toggle>
-              </div>
+                    <Separator orientation="vertical" className="h-5" />
 
-              <Separator orientation="vertical" className="h-8" />
-
-              {/* Filter Button with Popover */}
-              <Popover
-                open={filterPopoverOpen}
-                onOpenChange={setFilterPopoverOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filter
-                    {filterBy !== "all" && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-                        1
+                    {/* Scheduled / Unscheduled */}
+                    <Badge variant="outline" className="gap-1 px-2 py-1 border-green-200 bg-green-50/80 text-green-700">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {timetableMeta.scheduled ?? scheduledLessons.length}
+                    </Badge>
+                    {(timetableMeta.unscheduled ?? 0) > 0 && (
+                      <Badge variant="outline" className="gap-1 px-2 py-1 border-red-200 bg-red-50/80 text-red-600">
+                        <AlertCircle className="h-3 w-3" />
+                        {timetableMeta.unscheduled}
                       </Badge>
                     )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-4" align="end">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-3">Filters</h4>
-                    </div>
 
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Filter By</Label>
-                        <Select
-                          value={filterBy}
-                          onValueChange={(value: any) => {
-                            setFilterBy(value);
-                            if (value === "all") {
-                              setSelectedEntity("");
-                            } else {
-                              const options =
-                                value === "class"
-                                  ? allClasses
-                                  : value === "teacher"
-                                    ? allTeachers
-                                    : allRooms;
-                              setSelectedEntity(options[0] || "");
-                            }
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="class">By Class</SelectItem>
-                            <SelectItem value="teacher">
-                              By Teacher
-                            </SelectItem>
-                            <SelectItem value="room">By Room</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <Separator orientation="vertical" className="h-5" />
+
+                    {/* Gaps */}
+                    <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.teacherGaps ?? 0) > 0 ? 'border-amber-200 bg-amber-50/80 text-amber-700' : 'text-gray-400'}`}>
+                      <User className="h-3 w-3" />
+                      {timetableMeta.teacherGaps ?? 0}
+                    </Badge>
+                    <Badge variant="outline" className={`gap-1 px-2 py-1 ${(timetableMeta.classGaps ?? 0) > 0 ? 'border-purple-200 bg-purple-50/80 text-purple-700' : 'text-gray-400'}`}>
+                      <Users className="h-3 w-3" />
+                      {timetableMeta.classGaps ?? 0}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Center: View Mode Switcher (Segmented Control) */}
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(value) =>
+                  value &&
+                  setViewMode(
+                    value as "classes" | "teachers" | "rooms" | "compact",
+                  )
+                }
+                className="border rounded-lg bg-gray-50"
+              >
+                <ToggleGroupItem
+                  value="classes"
+                  aria-label="Classes View"
+                  className="gap-2 px-4"
+                >
+                  <Users className="h-4 w-4" />
+                  Classes
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="teachers"
+                  aria-label="Teachers View"
+                  className="gap-2 px-4"
+                >
+                  <User className="h-4 w-4" />
+                  Teachers
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="rooms"
+                  aria-label="Rooms View"
+                  className="gap-2 px-4"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Rooms
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="compact"
+                  aria-label="Compact View"
+                  className="gap-2 px-4"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                  Compact
+                </ToggleGroupItem>
+              </ToggleGroup>
+
+              {/* Right: Display Options + Filter + Actions */}
+              <div className="flex items-center gap-2">
+                {/* Display Options - Round Icon Toggles */}
+                <div className="flex items-center gap-1 mr-2">
+                  <Toggle
+                    pressed={displayOptions.showSubject}
+                    onPressedChange={(pressed) =>
+                      setDisplayOptions((prev) => ({
+                        ...prev,
+                        showSubject: pressed,
+                      }))
+                    }
+                    aria-label="Toggle Subject"
+                    size="sm"
+                    className="h-9 w-9 rounded-full p-0"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </Toggle>
+                  <Toggle
+                    pressed={displayOptions.showTeacher}
+                    onPressedChange={(pressed) =>
+                      setDisplayOptions((prev) => ({
+                        ...prev,
+                        showTeacher: pressed,
+                      }))
+                    }
+                    aria-label="Toggle Teacher"
+                    size="sm"
+                    className="h-9 w-9 rounded-full p-0"
+                  >
+                    <User className="h-4 w-4" />
+                  </Toggle>
+                  <Toggle
+                    pressed={displayOptions.showRoom}
+                    onPressedChange={(pressed) =>
+                      setDisplayOptions((prev) => ({
+                        ...prev,
+                        showRoom: pressed,
+                      }))
+                    }
+                    aria-label="Toggle Room"
+                    size="sm"
+                    className="h-9 w-9 rounded-full p-0"
+                  >
+                    <DoorOpen className="h-4 w-4" />
+                  </Toggle>
+                </div>
+
+                <Separator orientation="vertical" className="h-8" />
+
+                {/* Filter Button with Popover */}
+                <Popover
+                  open={filterPopoverOpen}
+                  onOpenChange={setFilterPopoverOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Filter className="h-4 w-4" />
+                      Filter
+                      {filterBy !== "all" && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                          1
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-medium mb-3">Filters</h4>
                       </div>
 
-                      {filterBy !== "all" && (
+                      <div className="space-y-3">
                         <div className="space-y-2">
-                          <Label className="text-xs">
-                            Select{" "}
-                            {filterBy === "class"
-                              ? "Class"
-                              : filterBy === "teacher"
-                                ? "Teacher"
-                                : "Room"}
-                          </Label>
+                          <Label className="text-xs">Filter By</Label>
                           <Select
-                            value={selectedEntity}
-                            onValueChange={setSelectedEntity}
+                            value={filterBy}
+                            onValueChange={(value: any) => {
+                              setFilterBy(value);
+                              if (value === "all") {
+                                setSelectedEntity("");
+                              } else {
+                                const options =
+                                  value === "class"
+                                    ? allClasses
+                                    : value === "teacher"
+                                      ? allTeachers
+                                      : allRooms;
+                                setSelectedEntity(options[0] || "");
+                              }
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {(filterBy === "class"
-                                ? allClasses
-                                : filterBy === "teacher"
-                                  ? allTeachers
-                                  : allRooms
-                              ).map((option) => (
-                                <SelectItem key={option} value={option}>
-                                  {option}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="all">All</SelectItem>
+                              <SelectItem value="class">By Class</SelectItem>
+                              <SelectItem value="teacher">
+                                By Teacher
+                              </SelectItem>
+                              <SelectItem value="room">By Room</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                      )}
-                    </div>
 
-                    <Separator />
+                        {filterBy !== "all" && (
+                          <div className="space-y-2">
+                            <Label className="text-xs">
+                              Select{" "}
+                              {filterBy === "class"
+                                ? "Class"
+                                : filterBy === "teacher"
+                                  ? "Teacher"
+                                  : "Room"}
+                            </Label>
+                            <Select
+                              value={selectedEntity}
+                              onValueChange={setSelectedEntity}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(filterBy === "class"
+                                  ? allClasses
+                                  : filterBy === "teacher"
+                                    ? allTeachers
+                                    : allRooms
+                                ).map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Statistics in Filter Panel */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-medium text-muted-foreground">
-                        Statistics
-                      </h4>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs">Version</span>
-                          <Badge variant="outline" className="text-xs">
-                            v{timetableVersion}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs">Schedule Integrity</span>
-                          <span className="text-xs font-semibold text-green-600">
-                            {scheduleIntegrity}%
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs">Conflicts</span>
-                          <Badge
-                            variant={
-                              conflicts > 0 ? "destructive" : "secondary"
-                            }
-                            className="h-5 text-xs"
-                          >
-                            {conflicts}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs">Unplaced</span>
-                          <Badge variant="secondary" className="h-5 text-xs">
-                            {unplacedLessons.length}
-                          </Badge>
+                      <Separator />
+
+                      {/* Statistics in Filter Panel */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-medium text-muted-foreground">
+                          Statistics
+                        </h4>
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">Version</span>
+                            <Badge variant="outline" className="text-xs">
+                              v{timetableVersion}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">Schedule Integrity</span>
+                            <span className="text-xs font-semibold text-green-600">
+                              {scheduleIntegrity}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">Conflicts</span>
+                            <Badge
+                              variant={
+                                conflicts > 0 ? "destructive" : "secondary"
+                              }
+                              className="h-5 text-xs"
+                            >
+                              {conflicts}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">Unplaced</span>
+                            <Badge variant="secondary" className="h-5 text-xs">
+                              {unplacedLessons.length}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
 
-              <Separator orientation="vertical" className="h-8" />
+                <Separator orientation="vertical" className="h-8" />
 
-              {/* Main Action Buttons */}
-              <Button
-                onClick={handleOptimize}
-                size="sm"
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-              >
-                <Zap className="mr-2 h-4 w-4" />
-                Optimize
-              </Button>
-              <Button variant="outline" onClick={handleExport} size="sm">
-                <FileDown className="mr-2 h-4 w-4" />
-                Print / PDF
-              </Button>
+                {/* Main Action Buttons */}
+                <Button
+                  onClick={handleOptimize}
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  Optimize
+                </Button>
+                <Button variant="outline" onClick={handleExport} size="sm">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Print / PDF
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Content Area */}
-        <div className="flex gap-6">
-          {/* Main Timetable Area */}
-          <div className="flex-1">
-            {viewMode === "classes" ? (
-              /* View by Classes - Vertical */
-              <div className="space-y-6">
-                {classesToDisplay.length > 0 ? (
-                  classesToDisplay.map((className) => (
-                    <ClassViewGrid
-                      key={className}
-                      className={className}
-                      lessons={filteredLessons}
-                      onDrop={handleDrop}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onToggleLock={handleToggleLock}
-                      displayOptions={displayOptions}
-                      timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
-                      allLessons={scheduledLessons}
-                      selectedLesson={selectedLesson}
-                      onManualPlace={handleManualPlace}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      No scheduled lessons found.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : viewMode === "teachers" ? (
-              /* View by Teachers - Vertical (NEW) */
-              <div className="space-y-6">
-                {teachersToDisplay.length > 0 ? (
-                  teachersToDisplay.map((teacherName) => (
-                    <TeacherViewGrid
-                      key={teacherName}
-                      teacherName={teacherName}
-                      lessons={filteredLessons}
-                      onDrop={handleDrop}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onToggleLock={handleToggleLock}
-                      displayOptions={displayOptions}
-                      timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
-                      allLessons={scheduledLessons}
-                      selectedLesson={selectedLesson}
-                      onManualPlace={handleManualPlace}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      No scheduled lessons found for this teacher.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : viewMode === "rooms" ? (
-              /* View by Rooms - Vertical (NEW) */
-              <div className="space-y-6">
-                {roomsToDisplay.length > 0 ? (
-                  roomsToDisplay.map((roomName) => (
-                    <RoomViewGrid
-                      key={roomName}
-                      roomName={roomName}
-                      lessons={filteredLessons}
-                      onDrop={handleDrop}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onToggleLock={handleToggleLock}
-                      displayOptions={displayOptions}
-                      timeSlots={timeSlots}
-                      draggedLesson={isDragging ? draggedLesson : null}
-                      allLessons={scheduledLessons}
-                      selectedLesson={selectedLesson}
-                      onManualPlace={handleManualPlace}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      No scheduled lessons found for this room.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Compact View - Horizontal */
-              <CompactViewGrid
-                lessons={filteredLessons}
-                classes={allClasses}
-                onDrop={handleDrop}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onToggleLock={handleToggleLock}
-                displayOptions={displayOptions}
-                timeSlots={timeSlots}
-                draggedLesson={isDragging ? draggedLesson : null}
-                allLessons={scheduledLessons}
-                selectedLesson={selectedLesson}
-                onManualPlace={handleManualPlace}
-              />
-            )}
-          </div>
-
-          {/* Unplaced Lessons Sidebar */}
-          <Card className="w-80 flex-shrink-0 shadow-sm h-fit sticky top-32">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b p-4">
-              <CardTitle className="flex items-center gap-2 text-orange-900 text-base">
-                <AlertCircle className="h-5 w-5" />
-                Unplaced Lessons
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Drag to place manually
-              </p>
-            </CardHeader>
-            <CardContent className="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-              {unplacedLessons.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                  <p className="text-sm">All lessons placed!</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {unplacedLessons.map((lesson) => (
-                    <div key={lesson.id}>
-                      <DraggableLessonCard
-                        lesson={lesson}
+          {/* Main Content Area */}
+          <div className="flex gap-6">
+            {/* Main Timetable Area */}
+            <div className="flex-1">
+              {viewMode === "classes" ? (
+                /* View by Classes - Vertical */
+                <div className="space-y-6">
+                  {classesToDisplay.length > 0 ? (
+                    classesToDisplay.map((className) => (
+                      <ClassViewGrid
+                        key={className}
+                        className={className}
+                        lessons={filteredLessons}
+                        onDrop={handleDrop}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onToggleLock={handleToggleLock}
                         displayOptions={displayOptions}
-                        isUnplaced={true}
-                        isSelected={selectedLesson?.id === lesson.id}
-                        onSelect={handleSelectLesson}
+                        timeSlots={timeSlots}
+                        draggedLesson={isDragging ? draggedLesson : null}
+                        allLessons={scheduledLessons}
+                        selectedLesson={selectedLesson}
+                        onManualPlace={handleManualPlace}
                       />
-                      <div className="mt-1 mb-3 px-3 py-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
-                        <span className="opacity-75">Reason:</span> {lesson.reason}
-                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        No scheduled lessons found.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
+              ) : viewMode === "teachers" ? (
+                /* View by Teachers - Vertical (NEW) */
+                <div className="space-y-6">
+                  {teachersToDisplay.length > 0 ? (
+                    teachersToDisplay.map((teacherName) => (
+                      <TeacherViewGrid
+                        key={teacherName}
+                        teacherName={teacherName}
+                        lessons={filteredLessons}
+                        onDrop={handleDrop}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onToggleLock={handleToggleLock}
+                        displayOptions={displayOptions}
+                        timeSlots={timeSlots}
+                        draggedLesson={isDragging ? draggedLesson : null}
+                        allLessons={scheduledLessons}
+                        selectedLesson={selectedLesson}
+                        onManualPlace={handleManualPlace}
+                      />
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        No scheduled lessons found for this teacher.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : viewMode === "rooms" ? (
+                /* View by Rooms - Vertical (NEW) */
+                <div className="space-y-6">
+                  {roomsToDisplay.length > 0 ? (
+                    roomsToDisplay.map((roomName) => (
+                      <RoomViewGrid
+                        key={roomName}
+                        roomName={roomName}
+                        lessons={filteredLessons}
+                        onDrop={handleDrop}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onToggleLock={handleToggleLock}
+                        displayOptions={displayOptions}
+                        timeSlots={timeSlots}
+                        draggedLesson={isDragging ? draggedLesson : null}
+                        allLessons={scheduledLessons}
+                        selectedLesson={selectedLesson}
+                        onManualPlace={handleManualPlace}
+                      />
+                    ))
+                  ) : (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        No scheduled lessons found for this room.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Compact View - Horizontal */
+                <CompactViewGrid
+                  lessons={filteredLessons}
+                  classes={allClasses}
+                  onDrop={handleDrop}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onToggleLock={handleToggleLock}
+                  displayOptions={displayOptions}
+                  timeSlots={timeSlots}
+                  draggedLesson={isDragging ? draggedLesson : null}
+                  allLessons={scheduledLessons}
+                  selectedLesson={selectedLesson}
+                  onManualPlace={handleManualPlace}
+                />
               )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Unplaced Lessons Sidebar */}
+            <Card className="w-80 flex-shrink-0 shadow-sm h-fit sticky top-32">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b p-4">
+                <CardTitle className="flex items-center gap-2 text-orange-900 text-base">
+                  <AlertCircle className="h-5 w-5" />
+                  Unplaced Lessons
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Drag to place manually
+                </p>
+              </CardHeader>
+              <CardContent className="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+                {unplacedLessons.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                    <p className="text-sm">All lessons placed!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {unplacedLessons.map((lesson) => (
+                      <div key={lesson.id}>
+                        <DraggableLessonCard
+                          lesson={lesson}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                          onToggleLock={handleToggleLock}
+                          displayOptions={displayOptions}
+                          isUnplaced={true}
+                          isSelected={selectedLesson?.id === lesson.id}
+                          onSelect={handleSelectLesson}
+                        />
+                        <div className="mt-1 mb-3 px-3 py-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+                          <span className="opacity-75">Reason:</span> {lesson.reason}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Floating drag legend */}
+      <DragStatusLegend />
+
+    </DragContextProvider>
   );
 }
 

@@ -448,8 +448,8 @@ const applyPlaceUnplacedLesson = async (payload: PlaceUnplacedLessonPayload, ver
 };
 
 // Main API functions
-const API_BASE_URL = 'http://localhost:8080/api/timetables';
-const USE_MOCK_API = true; // Set to false when backend is available
+const API_BASE_URL = 'http://localhost:8080/api/timetable/v1/timetable';
+const USE_MOCK_API = false; // Using real API now
 
 export const timetableActionApi = {
   // Validate action before applying

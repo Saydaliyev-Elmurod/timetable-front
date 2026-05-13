@@ -1,12 +1,16 @@
 /**
- * DraggableLessonCard Component
- * 
- * Draggable lesson card for timetable with popover actions
- * 
+ * DraggableLessonCard Component — ENHANCED
+ *
+ * Draggable lesson card that:
+ * - Triggers auto-switch context on dragStart
+ * - Notifies DragContext of drag lifecycle
+ * - Shows popover actions (edit, lock, delete)
+ * - Displays group/bi-weekly badges
+ *
  * @module components/timetable/DraggableLessonCard
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +28,7 @@ import {
 import { cn } from '@/components/ui/utils';
 import { DraggableLessonCardProps, Lesson, UnplacedLesson } from './types';
 import { SUBJECT_COLORS } from './constants';
+import { useDragContext } from './context/DragContext';
 
 export function DraggableLessonCard({
     lesson,
@@ -38,15 +43,35 @@ export function DraggableLessonCard({
     isSelected = false,
     onSelect,
 }: DraggableLessonCardProps) {
-    const [{ opacity }, drag] = useDrag(
+    const dragCtx = useDragContext();
+
+    const [{ opacity, isDragging: isThisDragging }, drag] = useDrag(
         () => ({
             type: 'lesson',
-            item: lesson,
+            item: () => {
+                // On drag start → notify context for auto-switch + availability computation
+                dragCtx.onDragStart({
+                    id: lesson.id,
+                    classId: lesson.classId,
+                    className: lesson.class,
+                    teacherId: lesson.teacherId,
+                    roomId: lesson.roomId,
+                    subjectId: lesson.subjectId,
+                    day: (lesson as Lesson).day,
+                    timeSlot: (lesson as Lesson).timeSlot,
+                });
+                return lesson;
+            },
+            end: () => {
+                // On drag end → clear context
+                dragCtx.onDragEnd();
+            },
             collect: (monitor) => ({
                 opacity: monitor.isDragging() ? 0.4 : 1,
+                isDragging: monitor.isDragging(),
             }),
         }),
-        [lesson]
+        [lesson, dragCtx.onDragStart, dragCtx.onDragEnd]
     );
 
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -61,11 +86,13 @@ export function DraggableLessonCard({
     if (isUnplaced) {
         return (
             <div
-                ref={drag}
+                ref={drag as any}
                 style={{ opacity }}
                 className={cn(
-                    'p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden',
-                    isSelected ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg' : subjectColor,
+                    'p-3 rounded-xl border border-gray-200/50 cursor-grab active:cursor-grabbing backdrop-blur-md transition-all duration-300 relative overflow-hidden',
+                    'hover:shadow-lg hover:-translate-y-0.5 hover:shadow-gray-200',
+                    isSelected ? 'ring-2 ring-blue-500 border-blue-500 shadow-blue-500/20' : subjectColor.replace('bg-', 'bg-opacity-80 bg-'),
+                    isThisDragging && 'shadow-2xl scale-95 z-50',
                     'mb-3'
                 )}
                 onClick={(e) => {
@@ -78,18 +105,19 @@ export function DraggableLessonCard({
                     <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white border-r border-gray-200" />
                 )}
 
+                {/* Drag handle indicator */}
                 <div className={cn('flex items-start gap-2', hasNoRoom && 'pl-2')}>
-                    <GripVertical className="h-4 w-4 mt-0.5 opacity-50" />
-                    <div className="flex-1">
+                    <GripVertical className="h-4 w-4 mt-0.5 opacity-40 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
                         {displayOptions.showSubject && (
-                            <div className="font-medium">{lesson.subject}</div>
+                            <div className="font-medium truncate">{lesson.subject}</div>
                         )}
-                        <div className="text-sm opacity-75">{lesson.class}</div>
+                        <div className="text-sm opacity-75 truncate">{lesson.class}</div>
                         {displayOptions.showTeacher && (
-                            <div className="text-sm opacity-75">{lesson.teacher}</div>
+                            <div className="text-sm opacity-75 truncate">{lesson.teacher}</div>
                         )}
                         {displayOptions.showRoom && (
-                            <div className="text-sm opacity-75">{lesson.room}</div>
+                            <div className="text-sm opacity-75 truncate">{lesson.room}</div>
                         )}
                     </div>
                 </div>
@@ -101,13 +129,15 @@ export function DraggableLessonCard({
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
             <PopoverTrigger asChild>
                 <div
-                    ref={drag}
+                    ref={drag as any}
                     style={{ opacity }}
                     className={cn(
-                        'p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden',
-                        subjectColor,
-                        lesson.isLocked && 'ring-2 ring-yellow-500',
-                        isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-lg',
+                        'p-2 rounded-xl border border-gray-200/50 cursor-grab active:cursor-grabbing backdrop-blur-md transition-all duration-300 h-full relative overflow-hidden',
+                        'hover:shadow-lg hover:-translate-y-0.5 group',
+                        subjectColor.replace('bg-', 'bg-opacity-80 bg-').concat(' shadow-[0_4px_12px_rgba(0,0,0,0.05)]'), // pseudo glassmorphism based on subject color
+                        lesson.isLocked && 'ring-2 ring-yellow-400 outline-none',
+                        isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-blue-500/20',
+                        isThisDragging && 'shadow-2xl scale-95 ring-2 ring-indigo-400 z-50',
                         compact && 'p-1.5'
                     )}
                     onClick={(e) => {
@@ -185,7 +215,7 @@ export function DraggableLessonCard({
                         }}
                     >
                         <Edit className="mr-2 h-4 w-4" />
-                        Edit
+                        Tahrirlash
                     </Button>
                     <Button
                         variant="ghost"
@@ -199,12 +229,12 @@ export function DraggableLessonCard({
                         {lesson.isLocked ? (
                             <>
                                 <Unlock className="mr-2 h-4 w-4" />
-                                Unlock
+                                Qulfni ochish
                             </>
                         ) : (
                             <>
                                 <Lock className="mr-2 h-4 w-4" />
-                                Lock
+                                Qulflash
                             </>
                         )}
                     </Button>
@@ -218,7 +248,7 @@ export function DraggableLessonCard({
                         }}
                     >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        O'chirish
                     </Button>
                 </div>
             </PopoverContent>

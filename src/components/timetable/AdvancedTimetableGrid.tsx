@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScheduledLessonDto } from '@/types/advancedTimetable';
+import { FastScheduleMap } from '@/utils/timetableValidation';
 import { LessonCard } from './LessonCard';
 import { TimetableDropZone } from './TimetableDropZone';
 import { DndProvider } from 'react-dnd';
@@ -22,26 +23,29 @@ export const AdvancedTimetableGrid: React.FC<AdvancedTimetableGridProps> = ({
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 }) => {
 
-    // 1. Process Lessons to identify Week A/B overlaps
-    const processedLessons = useMemo(() => {
-        // Map of "day-hour" -> lessons[]
-        const slotMap = new Map<string, ScheduledLessonDto[]>();
-
+    // 1. O(1) Fast lookup for validation
+    const fastScheduleMap = useMemo(() => {
+        const map = new Map<string, ScheduledLessonDto[]>();
         schedule.forEach(l => {
-            // Use the starting slot key
-            const key = `${l.dayIndex}-${l.hourIndex}`;
-            if (!slotMap.has(key)) slotMap.set(key, []);
-            slotMap.get(key)?.push(l);
+            for (let i = 0; i < l.period; i++) {
+                const key = `${l.dayIndex}-${l.hourIndex + i}`;
+                if (!map.has(key)) map.set(key, []);
+                map.get(key)?.push(l);
+            }
         });
+        return map;
+    }, [schedule]);
 
+    // 2. Process Lessons to identify Week A/B overlaps
+    const processedLessons = useMemo(() => {
         return schedule.map(lesson => {
             const key = `${lesson.dayIndex}-${lesson.hourIndex}`;
-            const neighbors = slotMap.get(key) || [];
+            const neighbors = fastScheduleMap.get(key) || [];
 
             // Check for A/B Split Condition
             // Condition: Same start slot, one is Week A (0), one is Week B (1)
-            const hasWeekAPartner = neighbors.some(n => n.id !== lesson.id && n.weekIndex === 0);
-            const hasWeekBPartner = neighbors.some(n => n.id !== lesson.id && n.weekIndex === 1);
+            const hasWeekAPartner = neighbors.some(n => n.id !== lesson.id && n.weekIndex === 0 && n.hourIndex === lesson.hourIndex);
+            const hasWeekBPartner = neighbors.some(n => n.id !== lesson.id && n.weekIndex === 1 && n.hourIndex === lesson.hourIndex);
 
             let shape: 'full' | 'triangle-top-left' | 'triangle-bottom-right' = 'full';
 
@@ -114,7 +118,7 @@ export const AdvancedTimetableGrid: React.FC<AdvancedTimetableGridProps> = ({
                                     key={`zone-${dIdx}-${hour}`}
                                     dayIndex={dIdx}
                                     hourIndex={hour}
-                                    currentSchedule={schedule}
+                                    currentSchedule={fastScheduleMap}
                                     onDrop={handleDrop}
                                 />
                             ))}
