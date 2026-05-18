@@ -1,913 +1,500 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Download, Upload, Building2, School, Clock, LayoutGrid, 
+  Search, Plus, Edit, Trash2, X, Loader2, ChevronRight, 
+  ArrowRight, Check, Calendar, Filter
+} from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '../ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import { Plus, Trash2, Upload, Download, Copy, Check, X, HelpCircle, Building2, Users, Settings2, Edit, Calendar, ChevronDown, Loader2 } from 'lucide-react';
-import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../ui/alert-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../ui/tooltip';
-import { Switch } from '../ui/switch';
-
-// Import services and types
-import {
-  RoomService,
-  RoomRequest,
-  RoomResponse,
-  RoomType,
-  ROOM_TYPE_DEFINITIONS
-} from '@/lib/rooms';
+import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
+import { organizationApi } from '@/api/organizationApi';
 import { TimeSlot } from '@/lib/teachers';
-import { SubjectService } from '@/lib/subjects';
-import type { PaginatedResponse } from '@/lib/api';
-import { organizationApi } from '../../api/organizationApi';
+import ImportModal from '@/components/shared/ImportModal';
 
-// Using RoomService imported from @/lib/rooms
+// ─── Constants & Styles ────────────────────────────────────────────────
 
-// Helper function to convert old format to new API format
-const convertToTimeSlots = (availability: any): TimeSlot[] => {
-  const dayMap: Record<string, string> = {
-    monday: 'MONDAY',
-    tuesday: 'TUESDAY',
-    wednesday: 'WEDNESDAY',
-    thursday: 'THURSDAY',
-    friday: 'FRIDAY',
-    saturday: 'SATURDAY',
-    sunday: 'SUNDAY',
-  };
+const CL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const CL_DAYS_SHORT = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Yak'];
 
-  return Object.entries(availability).map(([day, lessons]) => ({
-    dayOfWeek: dayMap[day] || day.toUpperCase(),
-    lessons: lessons as number[],
+const btnPrimary = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  background: '#4F46E5', color: '#fff', border: 0,
+  padding: '10px 18px', borderRadius: 10,
+  font: '700 13px Manrope', cursor: 'pointer',
+  boxShadow: '0 4px 12px -4px rgba(79, 70, 229, 0.4)',
+  transition: 'all 150ms'
+};
+
+const btnSecondary = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  background: '#fff', color: '#475569', border: '1px solid #E2E8F0',
+  padding: '10px 18px', borderRadius: 10,
+  font: '700 13px Manrope', cursor: 'pointer',
+  transition: 'all 150ms'
+};
+
+const inp = {
+  width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
+  padding: '10px 14px', font: '500 14px Manrope', color: '#0F172A',
+  outline: 0, transition: 'border-color 150ms'
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+
+type AvailState = Record<string, Record<number, boolean>>;
+
+const getFullAvail = (periods: number[]): AvailState => {
+  const res: AvailState = {};
+  CL_DAYS.forEach(d => {
+    res[d] = {};
+    periods.forEach(p => res[d][p] = true);
+  });
+  return res;
+};
+
+const convertToApiFormat = (state: AvailState): TimeSlot[] => {
+  return Object.entries(state).map(([day, pMap]) => ({
+    dayOfWeek: day,
+    lessons: Object.entries(pMap).filter(([_, v]) => v).map(([p]) => Number(p)).sort((a, b) => a - b)
   }));
 };
 
-// Helper function to convert API format to old format
-const convertFromTimeSlots = (timeSlots: TimeSlot[]): any => {
-  const availability: any = {
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: [],
-  };
-
-  (timeSlots || []).forEach((slot) => {
-    const dayKey = slot.dayOfWeek.toLowerCase();
-    availability[dayKey] = slot.lessons;
-  });
-
-  return availability;
+const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]): AvailState => {
+  const res = getFullAvail(periods);
+  CL_DAYS.forEach(d => periods.forEach(p => res[d][p] = false));
+  if (slots) {
+    slots.forEach(s => {
+      if (res[s.dayOfWeek]) {
+        s.lessons.forEach(l => res[s.dayOfWeek][l] = true);
+      }
+    });
+  }
+  return res;
 };
 
-export default function RoomsPage() {
-  const { t } = useTranslation();
-  const [rooms, setRooms] = useState<RoomResponse[]>([]);
-  const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+// ─── Components ────────────────────────────────────────────────────────
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(0); // API uses 0-based indexing
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+function Badge({ children, color, tint, ink }: any) {
+  return (
+    <span style={{ 
+      padding: '4px 10px', borderRadius: 8, font: '700 11px Inter', 
+      background: tint || '#F1F5F9', color: ink || '#475569', 
+      display: 'inline-flex', alignItems: 'center', gap: 4 
+    }}>
+      {children}
+    </span>
+  );
+}
+
+// ─── Main Page Component ───────────────────────────────────────────────
+
+export default function RoomsPage() {
+  const { t, locale } = useTranslation();
+  const [isLoading, setIsLoading] = useState(true);
+  const [library, setLibrary] = useState<RoomResponse[]>([]);
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [editing, setEditing] = useState<RoomResponse | { new: true } | { bulkTimeoff: true } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [deleteDialogRoom, setDeleteDialogRoom] = useState<RoomResponse | null>(null);
-
-  // Inline form state
-  const [showInlineForm, setShowInlineForm] = useState(false);
-  const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
-  const [inlineFormData, setInlineFormData] = useState({
-    name: '',
-    shortName: '',
-    type: RoomType.SHARED,
-    allowedSubjectIds: [] as number[],
-    availability: {
-      monday: [1, 2, 3, 4, 5, 6, 7],
-      tuesday: [1, 2, 3, 4, 5, 6, 7],
-      wednesday: [1, 2, 3, 4, 5, 6, 7],
-      thursday: [1, 2, 3, 4, 5, 6, 7],
-      friday: [1, 2, 3, 4, 5, 6, 7],
-      saturday: [1, 2, 3, 4, 5, 6, 7],
-      sunday: [1, 2, 3, 4, 5, 6, 7],
-    },
-  });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
-
-  // Availability view for existing rooms
-  const [expandedAvailability, setExpandedAvailability] = useState<number | null>(null);
-
-  type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-  const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  useEffect(() => {
+    fetchData();
+  }, [page, size]);
 
   useEffect(() => {
-    const fetchOrganizationSettings = async () => {
-      try {
-        const org = await organizationApi.get();
-        if (org && org.periods) {
-          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
-          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
-          if (newPeriods.length > 0) {
-            setPeriods(newPeriods);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch organization settings:', error);
-      }
-    };
-    fetchOrganizationSettings();
-  }, []);
+    const timer = setTimeout(() => {
+      if (page === 0) fetchData(); else setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-  // Fetch rooms on mount and when pagination changes
-  useEffect(() => {
-    fetchRooms();
-    fetchSubjects();
-  }, [currentPage, itemsPerPage]);
-
-  const fetchSubjects = async () => {
-    try {
-      const data = await SubjectService.getPaginated(0, 1000);
-      setAvailableSubjects(data.content);
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error);
-    }
-  };
-
-  const fetchRooms = async () => {
+  const fetchData = async () => {
     try {
       setIsLoading(true);
-      const data = await RoomService.getPaginated(currentPage, itemsPerPage);
-      setRooms(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
+      const [roomsPage, org] = await Promise.all([
+        RoomService.getPaginated(page, size, query),
+        organizationApi.get()
+      ]);
+      setLibrary(roomsPage.content);
+      setTotalPages(roomsPage.totalPages);
+      setTotalElements(roomsPage.totalElements);
+      if (org?.periods) {
+        const nonBreak = org.periods.filter(p => !p.isBreak).length;
+        setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
+      }
     } catch (error) {
-      toast.error('Failed to fetch rooms');
-      console.error(error);
+      toast.error(t('rooms.fetch_error', 'Ma\'lumotlarni yuklashda xatolik'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredRooms = React.useMemo(() =>
-    rooms.filter(
-      (room) =>
-        room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        room.shortName.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-    [rooms, searchQuery]
-  );
-
-  const generateShortName = useCallback((fullName: string) => {
-    if (!fullName) return '';
-    // Take first 4 uppercase letters from the name
-    const cleaned = fullName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    return cleaned.substring(0, 4);
-  }, []);
-
-  const handleAddRoom = () => {
-    setShowInlineForm(true);
-    setEditingRoomId(null);
-    setInlineFormData({
-      name: '',
-      shortName: '',
-      type: RoomType.SHARED,
-      allowedSubjectIds: [],
-      availability: {
-        monday: periods,
-        tuesday: periods,
-        wednesday: periods,
-        thursday: periods,
-        friday: periods,
-        saturday: periods,
-        sunday: periods,
-      },
-    });
-    setShowAvailabilityInForm(true);
-  };
-
-  const handleEdit = (room: RoomResponse) => {
-    setEditingRoomId(room.id);
-    setInlineFormData({
-      name: room.name,
-      shortName: room.shortName,
-      type: room.type || RoomType.SHARED,
-      allowedSubjectIds: room.allowedSubjectIds || [],
-      availability: convertFromTimeSlots(room.availabilities),
-    });
-    setShowInlineForm(true);
-    setShowAvailabilityInForm(true);
-  };
-
-  const handleClone = (room: RoomResponse) => {
-    setShowInlineForm(true);
-    setEditingRoomId(null);
-    setInlineFormData({
-      name: `${room.name} (Copy)`,
-      shortName: `${room.shortName}-C`,
-      type: room.type || RoomType.SHARED,
-      allowedSubjectIds: room.allowedSubjectIds || [],
-      availability: convertFromTimeSlots(room.availabilities),
-    });
-    setShowAvailabilityInForm(true);
-  };
-
-  const handleSaveInlineForm = async () => {
-    if (!inlineFormData.name.trim()) {
-      toast.error('Iltimos, xona nomini kiriting');
-      return;
-    }
-
-    const requestData: RoomRequest = {
-      name: inlineFormData.name.trim(),
-      shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
-      type: inlineFormData.type,
-      availabilities: convertToTimeSlots(inlineFormData.availability),
-      allowedSubjectIds: inlineFormData.type === RoomType.SPECIAL ? inlineFormData.allowedSubjectIds : undefined,
-    };
-
+  const handleSave = async (data: any) => {
     try {
-      setIsSaving(true);
-      if (editingRoomId) {
-        await RoomService.update(editingRoomId, requestData);
-        toast.success('Xona muvaffaqiyatli yangilandi');
+      if (Array.isArray(data)) {
+        await RoomService.bulkCreate(data);
+        toast.success(t('rooms.bulk_add_success', `${data.length} ta xona qo'shildi`));
+      } else if (editing && 'bulkTimeoff' in editing) {
+        await RoomService.bulkUpdate({ ids: Array.from(selected), ...data });
+        toast.success(t('rooms.bulk_update_success', "Mavjudlik vaqtlari yangilandi"));
+      } else if (editing && 'id' in editing) {
+        await RoomService.update(editing.id, data);
+        toast.success(t('rooms.update_success', "Xona yangilandi"));
       } else {
-        await RoomService.create(requestData);
-        toast.success('Xona muvaffaqiyatli qo\'shildi');
+        await RoomService.create(data);
+        toast.success(t('rooms.add_success', "Xona qo'shildi"));
       }
-      setShowInlineForm(false);
-      setShowAvailabilityInForm(false);
-      setEditingRoomId(null);
-      await fetchRooms();
+      setEditing(null);
+      setSelected(new Set());
+      fetchData();
     } catch (error) {
-      toast.error(editingRoomId ? 'Xonani yangilashda xatolik' : 'Xona qo\'shishda xatolik');
-      console.error(error);
-    } finally {
-      setIsSaving(false);
+      toast.error(t('common.save_error', "Saqlashda xatolik"));
     }
   };
 
-  const handleCancelInlineForm = () => {
-    setShowInlineForm(false);
-    setShowAvailabilityInForm(false);
-    setEditingRoomId(null);
-  };
-
-  const updateInlineFormField = (field: string, value: any) => {
-    setInlineFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      if (field === 'name' && value) {
-        updated.shortName = generateShortName(value);
-      }
-      return updated;
-    });
-  };
-
-  const toggleInlineAvailability = (day: DayOfWeek, period: number) => {
-    setInlineFormData(prev => {
-      const dayPeriods = prev.availability[day];
-      const newPeriods = dayPeriods.includes(period)
-        ? dayPeriods.filter((p: number) => p !== period)
-        : [...dayPeriods, period].sort((a, b) => a - b);
-
-      return {
-        ...prev,
-        availability: {
-          ...prev.availability,
-          [day]: newPeriods
-        }
-      };
-    });
-  };
-
-  const toggleInlineDay = (day: DayOfWeek) => {
-    const currentPeriods = inlineFormData.availability[day];
-    const allSelected = periods.every(p => currentPeriods.includes(p));
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: {
-        ...prev.availability,
-        [day]: allSelected ? [] : [...periods]
-      }
-    }));
-  };
-
-  const toggleInlinePeriodAcrossDays = (period: number) => {
-    const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
-    const newAvailability = { ...inlineFormData.availability };
-
-    days.forEach(day => {
-      if (isSelected) {
-        newAvailability[day] = newAvailability[day].filter(p => p !== period);
-      } else {
-        if (!newAvailability[day].includes(period)) {
-          newAvailability[day] = [...newAvailability[day], period].sort((a, b) => a - b);
-        }
-      }
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const selectAllInlineAvailability = () => {
-    const newAvailability: any = {};
-    days.forEach(day => {
-      newAvailability[day] = [...periods];
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const clearAllInlineAvailability = () => {
-    const newAvailability: any = {};
-    days.forEach(day => {
-      newAvailability[day] = [];
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const handleDelete = (room: RoomResponse) => {
-    setDeleteDialogRoom(room);
-  };
-
-  const confirmDelete = async () => {
-    if (deleteDialogRoom) {
-      try {
-        await RoomService.delete(deleteDialogRoom.id);
-        toast.success('Xona muvaffaqiyatli o\'chirildi');
-        setDeleteDialogRoom(null);
-        await fetchRooms();
-      } catch (error) {
-        toast.error('Failed to delete room');
-        console.error(error);
-      }
+  const handleBulkDelete = async () => {
+    try {
+      await RoomService.deleteBulk(Array.from(selected));
+      toast.success(t('rooms.bulk_delete_success', `${selected.size} ta xona o'chirildi`));
+      setSelected(new Set());
+      setConfirmDel(null);
+      fetchData();
+    } catch (error) {
+      toast.error(t('common.delete_error', "O'chirishda xatolik"));
     }
   };
 
-  const handleImport = () => {
-    setIsImportDialogOpen(true);
-  };
-
-  const handleDownloadTemplate = () => {
-    toast.success('Shablon muvaffaqiyatli yuklandi');
-  };
-
-  const getTotalAvailablePeriods = (availabilities: TimeSlot[]) => {
-    return (availabilities || []).reduce((total, slot) => total + slot.lessons.length, 0);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(parseInt(value));
-    setCurrentPage(0);
+  const toggleSelect = (id: number) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
   };
 
   return (
-    <div className="space-y-4 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2>{t('rooms.title')}</h2>
-          <p className="text-muted-foreground">{t('rooms.description')}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 20 }}>
+      {/* Header & Toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+            <input 
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={t('rooms.search_placeholder', 'Xonani qidiring...')}
+              style={{ ...inp, width: 300, paddingLeft: 38, background: '#fff' }} 
+            />
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleImport} size="sm">
-            <Upload className="mr-2 h-4 w-4" />
-            {t('rooms.import')}
-          </Button>
-          <Button onClick={handleAddRoom} size="sm" className="bg-green-600 hover:bg-green-700">
-            <Plus className="mr-2 h-4 w-4" />
-            {t('rooms.add_room')}
-          </Button>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowImport(true)} style={btnSecondary}>
+            <Upload size={16} /> {t('common.import', 'Import')}
+          </button>
+          <button onClick={() => setEditing({ new: true })} style={btnPrimary}>
+            <Plus size={16} /> {t('rooms.add_room', 'Xona qo\'shish')}
+          </button>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Search rooms..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
-
-      {/* Add / Edit Form (moved to Dialog) */}
-      <Dialog open={showInlineForm} onOpenChange={(open) => {
-        setShowInlineForm(open);
-        if (!open) {
-          setEditingRoomId(null);
-          setShowAvailabilityInForm(false);
-        }
-      }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
-            <div className="flex items-start justify-between">
-              <div>
-                <DialogTitle>{editingRoomId ? 'Edit Room' : 'Add New Room'}</DialogTitle>
-                <DialogDescription />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={() => setShowInlineForm(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Xona nomi</Label>
-                  <Input
-                    placeholder="Masalan: 101-xona"
-                    value={inlineFormData.name}
-                    onChange={(e) => updateInlineFormField('name', e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Qisqa nomi</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Avtomatik yaratiladi"
-                      value={inlineFormData.shortName}
-                      onChange={(e) => updateInlineFormField('shortName', e.target.value)}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowAvailabilityInForm(!showAvailabilityInForm)}
-                      className={`flex-shrink-0 ${showAvailabilityInForm ? 'bg-green-100 border-green-500 text-green-700' : 'border-green-300 text-green-600'}`}
-                      title="Mavjudlikni ko'rsatish/yashirish"
-                    >
-                      <Calendar className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Room Type Selection */}
-              <div className="space-y-2">
-                <Label>Xona turi</Label>
-                <Select
-                  value={inlineFormData.type}
-                  onValueChange={(value) => updateInlineFormField('type', value as RoomType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={RoomType.SHARED}>
-                      {t(ROOM_TYPE_DEFINITIONS[RoomType.SHARED].labelKey)}
-                    </SelectItem>
-                    <SelectItem value={RoomType.SPECIAL}>
-                      {t(ROOM_TYPE_DEFINITIONS[RoomType.SPECIAL].labelKey)}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t(ROOM_TYPE_DEFINITIONS[inlineFormData.type].descriptionKey)}
-                </p>
-              </div>
-
-              {showAvailabilityInForm && (
-                <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Room Availability</p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={selectAllInlineAvailability}
-                        className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearAllInlineAvailability}
-                        className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Clear All
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    {/* Period headers */}
-                    <div className="grid grid-cols-8 gap-1">
-                      <div className="p-1"></div>
-                      {periods.map((period) => (
-                        <button
-                          key={period}
-                          onClick={() => toggleInlinePeriodAcrossDays(period)}
-                          className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          {t('availability.period_prefix')}{period}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Days and periods */}
-                    {days.map((day, dayIndex) => (
-                      <div key={day} className="grid grid-cols-8 gap-1">
-                        <button
-                          onClick={() => toggleInlineDay(day)}
-                          className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          {dayLabels[dayIndex]}
-                        </button>
-                        {periods.map((period) => {
-                          const isAvailable = inlineFormData.availability[day].includes(period);
-                          return (
-                            <button
-                              key={period}
-                              onClick={() => toggleInlineAvailability(day, period)}
-                              className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
-                                ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
-                                : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                                }`}
-                            >
-                              {isAvailable ? '✓' : '—'}
-                            </button>
-                          );
-                        })}
+      {/* Table Card */}
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ overflow: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                <th style={{ padding: '14px 20px', width: 40 }}>
+                  <input type="checkbox" checked={selected.size === library.length && library.length > 0} onChange={() => {
+                    if (selected.size === library.length) setSelected(new Set());
+                    else setSelected(new Set(library.map(r => r.id)));
+                  }} />
+                </th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_name', 'Xona nomi')}</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_short', 'Qisqa nomi')}</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_type', 'Turi')}</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_timeoff', 'Mavjudlik')}</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('common.actions', 'Amallar')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {library.map(room => (
+                <tr key={room.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                  <td style={{ padding: '12px 20px' }}>
+                    <input type="checkbox" checked={selected.has(room.id)} onChange={() => toggleSelect(room.id)} />
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Building2 size={18} />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSaveInlineForm}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      {editingRoomId ? 'Update Room' : 'Save Room'}
-                    </>
-                  )}
-                </Button>
-                <Button onClick={handleCancelInlineForm} variant="outline" size="sm" disabled={isSaving}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-              </div>
+                      <span style={{ font: '700 14px Manrope', color: '#0F172A' }}>{room.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <Badge>{room.shortName}</Badge>
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <Badge tint={room.type === RoomType.SPECIAL ? '#F5F3FF' : '#F0F9FF'} ink={room.type === RoomType.SPECIAL ? '#7C3AED' : '#0369A1'}>
+                      {t(ROOM_TYPE_DEFINITIONS[room.type].labelKey)}
+                    </Badge>
+                  </td>
+                  <td style={{ padding: '12px 20px' }}>
+                    <button onClick={() => setEditing(room)} style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, font: '600 13px Inter', color: '#64748B' }}>
+                      <Clock size={14} color="#4F46E5" />
+                      {room.availabilities.reduce((acc, s) => acc + s.lessons.length, 0)} {t('rooms.slots', 'soat')}
+                    </button>
+                  </td>
+                  <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                      <button onClick={() => setEditing(room)} style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: 'transparent', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="hover-bg"><Edit size={14} /></button>
+                      <button onClick={() => setConfirmDel({ id: room.id, name: room.name })} style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: 'transparent', color: '#F43F5E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="hover-bg-rose"><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {library.length === 0 && !isLoading && (
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <School size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+              <div style={{ font: '700 16px Manrope', color: '#475569' }}>{t('rooms.no_data', 'Xonalar topilmadi')}</div>
             </div>
+          )}
+        </div>
+
+        {/* Footer / Pagination */}
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ font: '600 13px Inter', color: '#94A3B8' }}>{totalElements} {t('rooms.count', 'ta xona')}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button disabled={page === 0} onClick={() => setPage(p => p - 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === 0 ? 0.5 : 1 }}>{t('common.prev', 'Oldingi')}</button>
+            <button disabled={page === totalPages - 1} onClick={() => setPage(p => p + 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === totalPages - 1 ? 0.5 : 1 }}>{t('common.next', 'Keyingi')}</button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
 
-      {/* Table */}
-      <Card>
-        {isLoading ? (
-          <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Short Name</TableHead>
-                <TableHead>Xona turi</TableHead>
-                <TableHead className="text-center">Availability</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRooms.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No rooms found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRooms.map((room) => {
-                  const totalPeriods = getTotalAvailablePeriods(room.availabilities);
-                  const isExpanded = expandedAvailability === room.id;
-                  const availability = convertFromTimeSlots(room.availabilities);
-
-                  return (
-                    <React.Fragment key={room.id}>
-                      <TableRow className="hover:bg-muted/50">
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-5 w-5 text-muted-foreground" />
-                            <span>{room.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{room.shortName}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <Badge
-                              className={room.type === RoomType.SHARED ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'}
-                            >
-                              {t(ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].labelKey)}
-                            </Badge>
-                            {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                {room.allowedSubjectIds.length} fan
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setExpandedAvailability(isExpanded ? null : room.id)}
-                              className="h-8 px-2 text-blue-700 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
-                            >
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {totalPeriods} periods
-                              <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(room)}
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                              title={t('actions.edit')}
-                              aria-label={t('actions.edit')}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleClone(room)}
-                              className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                              title={t('actions.clone')}
-                              aria-label={t('actions.clone')}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(room)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title={t('actions.delete')}
-                              aria-label={t('actions.delete')}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-
-                      {/* Expanded Availability Row */}
-                      {isExpanded && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="bg-blue-50/30 dark:bg-blue-950/10 p-4">
-                            <div className="bg-white dark:bg-gray-950 rounded-lg border border-blue-200 dark:border-blue-900 p-4">
-                              {/* Room Type Info */}
-                              <div className="mb-4">
-                                <h4 className="text-sm font-semibold mb-2">{t('rooms.type.label_prefix')}: {t(ROOM_TYPE_DEFINITIONS[room.type || RoomType.SHARED].labelKey)}</h4>
-                                {room.type === RoomType.SPECIAL && room.allowedSubjectIds && room.allowedSubjectIds.length > 0 && (
-                                  <div>
-                                    <p className="text-sm text-muted-foreground mb-1">Ruxsat etilgan fanlar:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {room.allowedSubjectIds.map(subjectId => {
-                                        const subject = availableSubjects.find(s => s.id === subjectId);
-                                        return (
-                                          <Badge key={subjectId} variant="outline">
-                                            {subject?.name || `Fan #${subjectId}`}
-                                          </Badge>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 mb-3">
-                                <Calendar className="h-4 w-4 text-blue-600" />
-                                <h4 className="text-blue-800 dark:text-blue-300">Weekly Availability</h4>
-                              </div>
-
-                              <div className="grid gap-2">
-                                {/* Period headers */}
-                                <div className="grid grid-cols-8 gap-1">
-                                  <div className="p-1"></div>
-                                  {periods.map((period) => (
-                                    <div
-                                      key={period}
-                                      className="p-1 text-center text-xs font-medium text-muted-foreground"
-                                    >
-                                      {t('availability.period_prefix')}{period}
-                                    </div>
-                                  ))}
-                                </div>
-
-                                {/* Days and availability */}
-                                {days.map((day, dayIndex) => (
-                                  <div key={day} className="grid grid-cols-8 gap-1">
-                                    <div className="p-1 text-xs font-medium capitalize text-muted-foreground">
-                                      {dayLabels[dayIndex]}
-                                    </div>
-                                    {periods.map((period) => {
-                                      const isAvailable = availability[day]?.includes(period);
-                                      return (
-                                        <div
-                                          key={period}
-                                          className={`p-1 text-center rounded border text-xs ${isAvailable
-                                            ? 'bg-blue-500 border-blue-600 text-white'
-                                            : 'bg-gray-100 border-gray-300 text-gray-400 dark:bg-gray-800 dark:border-gray-700'
-                                            }`}
-                                        >
-                                          {isAvailable ? '✓' : '—'}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
-
-      {/* Pagination */}
-      {!isLoading && totalElements > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} rooms
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                disabled={currentPage === 0}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-                disabled={currentPage >= totalPages - 1}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+      {/* Bulk actions bar */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
+          background: '#0F172A', padding: '12px 20px', borderRadius: 16,
+          display: 'flex', alignItems: 'center', gap: 16, zIndex: 100,
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
+        }}>
+          <span style={{ font: '700 13px Manrope', color: '#fff' }}>{selected.size} ta tanlandi</span>
+          <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)' }} />
+          <button onClick={() => setEditing({ bulkTimeoff: true })} style={{ background: 'transparent', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Clock size={14} /> Vaqtlarni o'zgartirish
+          </button>
+          <button onClick={() => setConfirmDel({ bulk: true, n: selected.size })} style={{ background: '#F43F5E', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Trash2 size={14} /> O'chirish
+          </button>
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteDialogRoom} onOpenChange={(open: boolean) => !open && setDeleteDialogRoom(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete "{deleteDialogRoom?.name}". This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Modals */}
+      {editing && (
+        <RoomEditor 
+          initial={editing} periods={periods} t={t}
+          onClose={() => setEditing(null)} 
+          onSave={handleSave} 
+        />
+      )}
 
-      {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Import Rooms</DialogTitle>
-            <DialogDescription>
-              Upload an Excel file to import multiple rooms at once.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="border-2 border-dashed rounded-lg p-8 text-center">
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                Drag and drop your Excel file here, or click to browse
-              </p>
-              <Button variant="outline" className="mt-4">
-                Select File
-              </Button>
-            </div>
-            <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
-              <Download className="mr-2 h-4 w-4" />
-              Download Template
-            </Button>
+      {confirmDel && (
+        <ConfirmDialog 
+          title={confirmDel.bulk ? t('rooms.bulk_delete_title', "Xonalarni o'chirish") : t('rooms.delete_title', "Xonani o'chirish")}
+          desc={confirmDel.bulk ? t('rooms.bulk_delete_desc', `Siz haqiqatan ham ${confirmDel.n} ta xonani o'chirmoqchimisiz?`) : t('rooms.delete_desc', `"${confirmDel.name}" xonasini o'chirishni tasdiqlaysizmi?`)}
+          onConfirm={confirmDel.bulk ? handleBulkDelete : () => {
+            RoomService.delete(confirmDel.id!).then(() => {
+              toast.success(t('rooms.delete_success', "Xona o'chirildi"));
+              setConfirmDel(null);
+              fetchData();
+            });
+          }}
+          onClose={() => setConfirmDel(null)}
+        />
+      )}
+
+      {showImport && (
+        <ImportModal 
+          title={t('rooms.import_rooms', 'Xonalarni import qilish')}
+          description={t('rooms.import_description', 'Excel yoki CSV fayli orqali xonalarni ommaviy qo\'shing')}
+          templateColumns={['Xona nomi', 'Qisqa nomi', 'Turi (SHARED/SPECIAL)']}
+          onImport={async (data) => {
+            const requests = data.map((row: any) => ({
+              name: row['Xona nomi'] || row['name'],
+              shortName: row['Qisqa nomi'] || row['shortName'] || (row['Xona nomi'] || row['name']).substring(0, 5),
+              type: row['Turi'] === 'SPECIAL' || row['type'] === 'SPECIAL' ? RoomType.SPECIAL : RoomType.SHARED,
+              availabilities: convertToApiFormat(getFullAvail(periods))
+            }));
+            await RoomService.bulkCreate(requests);
+            toast.success(t('rooms.import_success', 'Xonalar muvaffaqiyatli import qilindi'));
+            setShowImport(false);
+            fetchData();
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Room Editor Modal ───────────────────────────────────────────────
+
+function RoomEditor({ initial, periods, t, onClose, onSave }: any) {
+  const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
+  const isBulk = !!initial && 'bulkTimeoff' in initial;
+  const isNew = !!initial && 'new' in initial;
+
+  const [entries, setEntries] = useState(() => 
+    isEdit ? [{ name: initial.name, shortName: initial.shortName, type: initial.type || RoomType.SHARED }] 
+           : [{ name: '', shortName: '', type: RoomType.SHARED }]
+  );
+  const [avail, setAvail] = useState<AvailState>(() => 
+    isEdit ? convertFromApiFormat(initial.availabilities, periods) : getFullAvail(periods)
+  );
+
+  const handleSave = () => {
+    if (isBulk) {
+      onSave({ availabilities: convertToApiFormat(avail) });
+      return;
+    }
+
+    const filled = entries.filter(e => e.name.trim());
+    if (filled.length === 0) {
+      toast.error(t('rooms.name_required', "Xona nomini kiritish majburiy"));
+      return;
+    }
+
+    if (isEdit) {
+      const e = filled[0];
+      const data: any = {
+        name: e.name.trim(),
+        shortName: e.shortName.trim() || e.name.trim().substring(0, 5),
+        type: e.type,
+        availabilities: convertToApiFormat(avail)
+      };
+      onSave(data);
+    } else {
+      const requests = filled.map(e => ({
+        name: e.name.trim(),
+        shortName: e.shortName.trim() || e.name.trim().substring(0, 5),
+        type: e.type,
+        availabilities: convertToApiFormat(avail)
+      }));
+      onSave(requests);
+    }
+  };
+
+  const addEntry = () => setEntries(prev => [...prev, { name: '', shortName: '', type: RoomType.SHARED }]);
+  const updateEntry = (i: number, patch: any) => setEntries(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e));
+  const removeEntry = (i: number) => setEntries(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div style={{ background: '#fff', width: '100%', maxWidth: 550, borderRadius: 20, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+        <header style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ font: '700 10px Inter', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isBulk ? "Ommaviy" : (isEdit ? "Tahrirlash" : "Yangi")}</div>
+            <div style={{ font: '800 20px Manrope', color: '#0F172A', marginTop: 2 }}>{isBulk ? "Vaqtlarni o'zgartirish" : (isEdit ? entries[0].name : "Xona qo'shish")}</div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsImportDialogOpen(false)}>
-              Import
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 10, border: 0, background: '#F1F5F9', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+        </header>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {!isBulk && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {entries.map((e, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 0.6fr 0.6fr' + (isNew && entries.length > 1 ? ' 40px' : ''), gap: 10, alignItems: 'flex-end' }}>
+                  <div>
+                    {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 6 }}>Nomi *</label>}
+                    <input value={e.name} onChange={ev => updateEntry(i, { name: ev.target.value })} style={inp} placeholder="Xona nomi" autoFocus={i === 0} />
+                  </div>
+                  <div>
+                    {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 6 }}>Qisqa nomi</label>}
+                    <input value={e.shortName} onChange={ev => updateEntry(i, { shortName: ev.target.value })} style={inp} placeholder="Qisqa" />
+                  </div>
+                  <div>
+                    {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 6 }}>Turi</label>}
+                    <select value={e.type} onChange={ev => updateEntry(i, { type: ev.target.value })} style={inp}>
+                      <option value={RoomType.SHARED}>Umumiy</option>
+                      <option value={RoomType.SPECIAL}>Maxsus</option>
+                    </select>
+                  </div>
+                  {isNew && entries.length > 1 && (
+                    <button onClick={() => removeEntry(i)} style={{ width: 38, height: 42, borderRadius: 10, border: '1px solid #E2E8F0', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={14} /></button>
+                  )}
+                </div>
+              ))}
+              {isNew && (
+                <button onClick={addEntry} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, font: '700 12px Manrope', color: '#4F46E5', background: '#EEF2FF', border: '1.5px dashed #C7D2FE', padding: '8px 12px', borderRadius: 10, marginTop: 4, cursor: 'pointer' }}>
+                  <Plus size={14} /> Yangi xona
+                </button>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud vaqtlari</label>
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 12 }}>
+              <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
+            </div>
+          </div>
+        </div>
+
+        <footer style={{ padding: '20px 24px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button onClick={onClose} style={{ ...btnSecondary, paddingLeft: 24, paddingRight: 24 }}>Bekor qilish</button>
+          <button onClick={handleSave} style={{ ...btnPrimary, paddingLeft: 24, paddingRight: 24 }}>Saqlash</button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function AvailGrid({ avail, periods, onChange }: any) {
+  const toggle = (d: string, p: number) => {
+    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d][p] } };
+    onChange(next);
+  };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + periods.length + ', 1fr)', gap: 4 }}>
+      <div />
+      {periods.map(p => <div key={p} style={{ font: '700 10px Inter', color: '#94A3B8', textAlign: 'center' }}>{p}</div>)}
+      {CL_DAYS.map((d, i) => (
+        <React.Fragment key={d}>
+          <div style={{ font: '700 11px Inter', color: '#64748B', display: 'flex', alignItems: 'center' }}>{CL_DAYS_SHORT[i]}</div>
+          {periods.map(p => (
+            <button key={p} onClick={() => toggle(d, p)} style={{
+              height: 24, borderRadius: 6, border: 0, cursor: 'pointer',
+              background: avail[d]?.[p] ? '#4F46E5' : '#E2E8F0',
+              transition: 'all 100ms'
+            }} />
+          ))}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function ConfirmDialog({ title, desc, onConfirm, onClose }: any) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+      <div style={{ background: '#fff', width: '100%', maxWidth: 400, borderRadius: 20, padding: 24, textAlign: 'center' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: '#FFF1F2', color: '#F43F5E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Trash2 size={24} /></div>
+        <div style={{ font: '800 18px Manrope', color: '#0F172A' }}>{title}</div>
+        <p style={{ font: '500 14px Inter', color: '#64748B', marginTop: 8 }}>{desc}</p>
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button onClick={onConfirm} style={{ ...btnPrimary, background: '#F43F5E', flex: 1, justifyContent: 'center', boxShadow: 'none' }}>O'chirish</button>
+          <button onClick={onClose} style={{ ...btnSecondary, flex: 1, justifyContent: 'center' }}>Bekor qilish</button>
+        </div>
+      </div>
     </div>
   );
 }

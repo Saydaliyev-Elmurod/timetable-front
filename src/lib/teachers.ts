@@ -18,6 +18,11 @@ export interface TeacherUpdateRequest extends TeacherRequest {
   deletedSubjects: number[];
 }
 
+export interface TeacherBulkUpdateRequest {
+  ids: number[];
+  availabilities: TimeSlot[];
+}
+
 export interface TeacherResponse {
   id: number;
   fullName: string;
@@ -50,12 +55,11 @@ export const TeacherService = {
     return response.data!;
   },
 
-  getPaginated: async (page: number, size: number): Promise<PaginatedResponse<TeacherResponse>> => {
-
-
-    const response = await API.call<PaginatedResponse<TeacherResponse>>(
-      `${API.url('TEACHERS')}?page=${page}&size=${size}`
-    );
+  getPaginated: async (page: number, size: number, query?: string): Promise<PaginatedResponse<TeacherResponse>> => {
+    let url = `${API.url('TEACHERS')}?page=${page}&size=${size}`;
+    if (query) url += `&query=${encodeURIComponent(query)}`;
+    
+    const response = await API.call<PaginatedResponse<TeacherResponse>>(url);
     if (response.error) throw response.error;
     return response.data!;
   },
@@ -104,5 +108,44 @@ export const TeacherService = {
       { method: 'DELETE' }
     );
     if (response.error) throw response.error;
+  },
+
+  bulkDelete: async (ids: number[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('TEACHERS')}/bulk`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify(ids)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
+  bulkUpdate: async (data: TeacherBulkUpdateRequest): Promise<void> => {
+    const response = await API.call(
+      `${API.url('TEACHERS')}/bulk`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
+  bulkAdd: async (data: TeacherRequest[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('TEACHERS')}/bulk`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
+  getTemplates: async (): Promise<TeacherResponse[]> => {
+    const response = await API.call(`${API.url('TEACHERS')}/templates`);
+    if (response.error) throw response.error;
+    return response.data;
   }
 };

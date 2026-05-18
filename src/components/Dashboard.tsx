@@ -34,7 +34,6 @@ import TeachersPage from './pages/TeachersPage';
 import SubjectsPage from './pages/SubjectsPage';
 import RoomsPage from './pages/RoomsPage';
 import LessonsPage from './pages/LessonsPage';
-import TemplatesPage from './pages/TemplatesPage';
 import TimetablesPage from './pages/TimetablesPage';
 import TimetableViewPage from './pages/TimetableViewPage';
 import TimetableViewPageWithAPI from './pages/TimetableViewPageWithAPI';
@@ -67,7 +66,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     { id: 'subjects', label: t('dashboard.subjects'), icon: GraduationCap },
     { id: 'rooms', label: t('dashboard.rooms'), icon: DoorOpen },
     { id: 'lessons', label: t('dashboard.lessons'), icon: Calendar },
-    { id: 'templates', label: t('dashboard.templates'), icon: FileText },
     { id: 'timetables', label: t('dashboard.timetables'), icon: CalendarDays },
   ];
 
@@ -89,8 +87,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         return <RoomsPage />;
       case 'lessons':
         return <LessonsPage />;
-      case 'templates':
-        return <TemplatesPage />;
       case 'timetables':
         return <TimetablesPage onNavigate={setCurrentPage} />;
       case 'timetable-view':

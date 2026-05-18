@@ -52,6 +52,7 @@ import { SubjectService } from '@/lib/subjects';
 import { TeacherService } from '@/lib/teachers';
 import { ClassService } from '@/lib/classes';
 import { RoomService } from '@/lib/rooms';
+import { LessonService } from '@/lib/lessons';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/index';
 import { GroupLessonDetail } from '@/types/api';
@@ -119,19 +120,31 @@ export default function AddLessonModal({
       try {
         setIsLoading(true);
         const [teachersData, subjectsData, classesData, roomsData] = await Promise.all([
-          TeacherService.getAll(),
-          SubjectService.getAll(),
-          ClassService.getAll(),
-          RoomService.getAll()
+          TeacherService.getAll().catch(e => {
+            console.error('Failed to fetch modal teachers:', e);
+            return [];
+          }),
+          SubjectService.getAll().catch(e => {
+            console.error('Failed to fetch modal subjects:', e);
+            return [];
+          }),
+          ClassService.getAll().catch(e => {
+            console.error('Failed to fetch modal classes:', e);
+            return [];
+          }),
+          RoomService.getAll().catch(e => {
+            console.error('Failed to fetch modal rooms:', e);
+            return [];
+          })
         ]);
 
-        setTeachers(teachersData);
-        setSubjects(subjectsData);
-        setClasses(classesData);
-        setRooms(roomsData);
+        setTeachers(teachersData || []);
+        setSubjects(subjectsData || []);
+        setClasses(classesData || []);
+        setRooms(roomsData || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
-        toast.error('Failed to load teachers, subjects, classes, or rooms');
+        toast.error('Ma\'lumotlarni yuklashda xatolik yuz berdi');
       } finally {
         setIsLoading(false);
       }

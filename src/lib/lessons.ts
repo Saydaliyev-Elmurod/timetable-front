@@ -149,6 +149,17 @@ export const LessonService = {
     if (response.error) throw response.error;
   },
 
+  bulkSave: async (data: LessonRequest[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('LESSONS')}/bulk-save`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
   update: async (id: number, data: LessonRequest): Promise<void> => {
     const response = await API.call(
       `${API.url('LESSONS')}/${id}`,

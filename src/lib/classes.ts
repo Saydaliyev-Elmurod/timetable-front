@@ -29,6 +29,11 @@ export interface ClassRequest {
   availabilities: TimeSlot[];
 }
 
+export interface ClassBulkTimeoffRequest {
+  applyTo: number[];
+  timeOff: TimeSlot[];
+}
+
 export const ClassService = {
   getAll: async (): Promise<ClassResponse[]> => {
     const response = await API.call<ClassResponse[]>(
@@ -91,6 +96,28 @@ export const ClassService = {
     const response = await API.call(
       `${API.url('CLASSES')}/${id}`,
       { method: 'DELETE' }
+    );
+    if (response.error) throw response.error;
+  },
+
+  deleteBulk: async (ids: number[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('CLASSES')}/bulk`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify(ids)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
+  bulkTimeoff: async (data: ClassBulkTimeoffRequest): Promise<void> => {
+    const response = await API.call(
+      `${API.url('CLASSES')}/timeoff`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
     );
     if (response.error) throw response.error;
   }

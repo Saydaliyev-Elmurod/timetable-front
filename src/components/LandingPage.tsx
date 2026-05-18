@@ -387,8 +387,8 @@ function Pricing({ popularTier = 'mini', onGetStarted }: { popularTier?: string,
           </p>
         </div>
         <div className="et-grid-3" style={{ alignItems: 'start' }}>
-          {tiers.map(t => (
-            <PricingCard key={t.key} {...t} popular={t.key === popularTier} onClick={onGetStarted} />
+          {tiers.map(({ key, ...t }) => (
+            <PricingCard key={key} {...t} popular={key === popularTier} onClick={onGetStarted} />
           ))}
         </div>
       </div>

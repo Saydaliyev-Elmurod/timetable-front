@@ -255,7 +255,16 @@
     "description": "Fanlar va ularning mavjudligini boshqaring",
     "import": "Import",
     "add_subject": "Fan qo'shish",
-    "search_placeholder": "Fanlarni qidirish..."
+    "search_placeholder": "Fanlarni qidirish...",
+    "categories": {
+      "ALL": "Barchasi",
+      "EXACT": "Aniq fanlar",
+      "NATURAL": "Tabiiy fanlar",
+      "LANGUAGES": "Tillar",
+      "SOCIAL": "Ijtimoiy fanlar",
+      "CREATIVE": "Amaliy va ijodiy",
+      "OTHER": "Boshqa"
+    }
   },
   "rooms": {
     "title": "Xonalar",
@@ -273,7 +282,23 @@
         "label": "Maxsus Xona",
         "description": "Bu xonada faqat tanlangan fanlarni qo'yish mumkin"
       }
-    }
+    },
+    "table_name": "Xona nomi",
+    "table_short": "Qisqa nomi",
+    "table_type": "Turi",
+    "table_timeoff": "Mavjudlik",
+    "search_placeholder": "Xonani qidiring...",
+    "no_data": "Xonalar topilmadi",
+    "bulk_delete_title": "Xonalarni o'chirish",
+    "bulk_delete_desc": "Siz haqiqatan ham {{n}} ta xonani o'chirib tashlamoqchimisiz?",
+    "delete_title": "Xonani o'chirish",
+    "delete_desc": "Siz haqiqatan ham ushbu xonani o'chirib tashlamoqchimisiz?",
+    "add_success": "Xona qo'shildi",
+    "update_success": "Xona yangilandi",
+    "delete_success": "Xona o'chirildi",
+    "bulk_add_success": "{{count}} ta xona qo'shildi",
+    "bulk_update_success": "Mavjudlik vaqtlari yangilandi",
+    "bulk_delete_success": "Xonalar muvaffaqiyatli o'chirildi"
   },
   "profile": {
     "description": "Shaxsiy ma'lumotlaringizni boshqaring"
@@ -308,6 +333,8 @@
     "save_teacher": "O'qituvchini saqlash",
     "update_teacher": "O'qituvchini yangilash",
     "cancel": "Bekor qilish",
+    "failed_to_load_teachers": "O'qituvchilarni yuklashda xatolik",
+    "teachers_count": "ta o'qituvchi",
     "table": {
       "name": "Nomi",
       "short_name": "Qisqa nom",

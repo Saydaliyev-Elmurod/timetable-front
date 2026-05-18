@@ -25,7 +25,6 @@ export interface RoomRequest {
   shortName: string;
   type: RoomType;
   availabilities: TimeSlot[];
-  allowedSubjectIds?: number[]; // For SPECIAL rooms only
 }
 
 export interface RoomResponse {
@@ -34,7 +33,6 @@ export interface RoomResponse {
   shortName: string;
   type: RoomType;
   availabilities: TimeSlot[];
-  allowedSubjectIds?: number[];
 }
 
 export const RoomService = {
@@ -48,19 +46,22 @@ export const RoomService = {
     return response.data!;
   },
 
-  getPaginated: async (page: number, size: number): Promise<PaginatedResponse<RoomResponse>> => {
+  getPaginated: async (
+    page: number, 
+    size: number, 
+    query?: string, 
+    sort?: string
+  ): Promise<PaginatedResponse<RoomResponse>> => {
+    let url = `${API.url('ROOMS')}?page=${page}&size=${size}`;
+    if (query) url += `&query=${encodeURIComponent(query)}`;
+    if (sort) url += `&sort=${sort}`;
 
-
-    const response = await API.call<PaginatedResponse<RoomResponse>>(
-      `${API.url('ROOMS')}?page=${page}&size=${size}`
-    );
+    const response = await API.call<PaginatedResponse<RoomResponse>>(url);
     if (response.error) throw response.error;
     return response.data!;
   },
 
   getById: async (id: number): Promise<RoomResponse> => {
-
-
     const response = await API.call<RoomResponse>(
       `${API.url('ROOMS')}/${id}`
     );
@@ -69,8 +70,6 @@ export const RoomService = {
   },
 
   create: async (data: RoomRequest): Promise<void> => {
-
-
     const response = await API.call(
       API.url('ROOMS'),
       {
@@ -81,9 +80,18 @@ export const RoomService = {
     if (response.error) throw response.error;
   },
 
+  bulkCreate: async (data: RoomRequest[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('ROOMS')}/bulk`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
   update: async (id: number, data: RoomRequest): Promise<void> => {
-
-
     const response = await API.call(
       `${API.url('ROOMS')}/${id}`,
       {
@@ -94,12 +102,32 @@ export const RoomService = {
     if (response.error) throw response.error;
   },
 
+  bulkUpdate: async (data: { ids: number[], availabilities: TimeSlot[] }): Promise<void> => {
+    const response = await API.call(
+      `${API.url('ROOMS')}/bulk`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }
+    );
+    if (response.error) throw response.error;
+  },
+
   delete: async (id: number): Promise<void> => {
-
-
     const response = await API.call(
       `${API.url('ROOMS')}/${id}`,
       { method: 'DELETE' }
+    );
+    if (response.error) throw response.error;
+  },
+
+  deleteBulk: async (ids: number[]): Promise<void> => {
+    const response = await API.call(
+      `${API.url('ROOMS')}/bulk`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify(ids)
+      }
     );
     if (response.error) throw response.error;
   }

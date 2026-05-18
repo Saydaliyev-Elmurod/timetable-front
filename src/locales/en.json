@@ -258,7 +258,16 @@
     "description": "Manage subjects and their availability",
     "import": "Import",
     "add_subject": "Add Subject",
-    "search_placeholder": "Search subjects..."
+    "search_placeholder": "Search subjects...",
+    "categories": {
+      "ALL": "All",
+      "EXACT": "Exact Sciences",
+      "NATURAL": "Natural Sciences",
+      "LANGUAGES": "Languages",
+      "SOCIAL": "Social Sciences",
+      "CREATIVE": "Creative & Practical",
+      "OTHER": "Other"
+    }
   },
   "rooms": {
     "title": "Rooms",
@@ -276,7 +285,23 @@
         "label": "Special Room",
         "description": "This room can only be used for selected subjects"
       }
-    }
+    },
+    "table_name": "Room Name",
+    "table_short": "Short Name",
+    "table_type": "Type",
+    "table_timeoff": "Availability",
+    "search_placeholder": "Search room...",
+    "no_data": "Rooms not found",
+    "bulk_delete_title": "Delete Rooms",
+    "bulk_delete_desc": "Are you sure you want to delete {{n}} room(s)?",
+    "delete_title": "Delete Room",
+    "delete_desc": "Are you sure you want to delete this room?",
+    "add_success": "Room added",
+    "update_success": "Room updated",
+    "delete_success": "Room deleted",
+    "bulk_add_success": "{{count}} room(s) added",
+    "bulk_update_success": "Availability times updated",
+    "bulk_delete_success": "Rooms deleted successfully"
   },
   "profile": {
     "description": "Manage your personal information"
@@ -311,6 +336,8 @@
     "save_teacher": "Save Teacher",
     "update_teacher": "Update Teacher",
     "cancel": "Cancel",
+    "failed_to_load_teachers": "Failed to load teachers",
+    "teachers_count": "teachers",
     "table": {
       "name": "Name",
       "short_name": "Short Name",

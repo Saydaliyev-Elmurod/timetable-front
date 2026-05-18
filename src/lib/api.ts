@@ -47,7 +47,9 @@ export async function apiCall<T>(
       headers,
     });
 
-    const rawData = await response.json();
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    const rawData = isJson ? await response.json() : null;
 
     if (!response.ok) {
       // Prefer structured server message when available

@@ -245,7 +245,16 @@
     "description": "Управляйте предметами и их доступностью",
     "import": "Импорт",
     "add_subject": "Добавить предмет",
-    "search_placeholder": "Поиск предметов..."
+    "search_placeholder": "Поиск предметов...",
+    "categories": {
+      "ALL": "Все",
+      "EXACT": "Точные науки",
+      "NATURAL": "Естественные науки",
+      "LANGUAGES": "Языки",
+      "SOCIAL": "Гуманитарные науки",
+      "CREATIVE": "Прикладные и творческие",
+      "OTHER": "Прочее"
+    }
   },
   "rooms": {
     "title": "Кабинеты",
@@ -263,7 +272,23 @@
         "label": "Специальный кабинет",
         "description": "В этом кабинете можно проводить только выбранные предметы"
       }
-    }
+    },
+    "table_name": "Название кабинета",
+    "table_short": "Короткое имя",
+    "table_type": "Тип",
+    "table_timeoff": "Доступность",
+    "search_placeholder": "Поиск кабинета...",
+    "no_data": "Кабинеты не найдены",
+    "bulk_delete_title": "Удаление кабинетов",
+    "bulk_delete_desc": "Вы действительно хотите удалить {{n}} кабинет(ов)?",
+    "delete_title": "Удаление кабинета",
+    "delete_desc": "Вы действительно хотите удалить этот кабинет?",
+    "add_success": "Кабинет добавлен",
+    "update_success": "Кабинет обновлен",
+    "delete_success": "Кабинет удален",
+    "bulk_add_success": "{{count}} кабинет(ов) добавлено",
+    "bulk_update_success": "Времена доступности обновлены",
+    "bulk_delete_success": "Кабинеты успешно удалены"
   },
   "profile": {
     "description": "Управляйте вашей личной информацией"
@@ -298,6 +323,8 @@
     "save_teacher": "Сохранить учителя",
     "update_teacher": "Обновить учителя",
     "cancel": "Отмена",
+    "failed_to_load_teachers": "Ошибка загрузки учителей",
+    "teachers_count": "учителей",
     "table": {
       "name": "Имя",
       "short_name": "Код",

@@ -1,2559 +1,693 @@
-import { apiCall } from '../../lib/api';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Download, Upload, Plus, Edit, Trash2, X, Loader2, Search, Check, Layers, Users, DoorOpen, Calendar, LayoutGrid } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '../ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Plus, Trash2, Upload, Download, Copy, Calendar, Check, X, ChevronDown, Sparkles, Share2, HelpCircle, ChevronLeft, ChevronRight, Lightbulb, ExternalLink, FileText, Info, Edit, RefreshCw, ChevronsUpDown } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import Pagination from '../ui/pagination';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../ui/tooltip';
-import { Switch } from '../ui/switch';
-import { Checkbox } from '../ui/checkbox';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../ui/alert-dialog';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '../ui/accordion';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from '../ui/command';
-import { cn } from '../ui/utils';
+import { ClassService, ClassResponse, ClassRequest } from '@/lib/classes';
+import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
+import { RoomService, RoomResponse } from '@/lib/rooms';
+import { organizationApi } from '@/api/organizationApi';
+import ImportModal from '@/components/shared/ImportModal';
 
-import { organizationApi } from '../../api/organizationApi';
-import { getApiUrl } from '@/config/api';
+// ─── Constants & Styles ────────────────────────────────────────────────
 
-export default function ClassesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
-  const { t } = useTranslation();
-  const [classes, setClasses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<any[]>([]);
+const SX_PALETTE = [
+  { id: 'indigo', base: '#4F46E5', tint: '#EEF2FF', ink: '#3730A3' },
+  { id: 'emerald', base: '#10B981', tint: '#ECFDF5', ink: '#065F46' },
+  { id: 'rose', base: '#F43F5E', tint: '#FFF1F2', ink: '#9F1239' },
+  { id: 'amber', base: '#F59E0B', tint: '#FFFBEB', ink: '#92400E' },
+  { id: 'sky', base: '#0EA5E9', tint: '#F0F9FF', ink: '#075985' },
+  { id: 'violet', base: '#8B5CF6', tint: '#F5F3FF', ink: '#5B21B6' },
+];
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [csvData, setCsvData] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [deleteDialogClass, setDeleteDialogClass] = useState(null);
-  const [isImportTipsSidebarOpen, setIsImportTipsSidebarOpen] = useState(true);
+const palOf = (id: number) => SX_PALETTE[id % SX_PALETTE.length];
 
-  // Batch Create states
-  const [isBatchCreateOpen, setIsBatchCreateOpen] = useState(false);
-  const [batchCharacterSet, setBatchCharacterSet] = useState('latin'); // 'latin' or 'cyrillic'
-  const [gradeList, setGradeList] = useState([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  const [gradeQuantities, setGradeQuantities] = useState({
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0
+const CL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+const btnPrimary = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  background: '#4F46E5', color: '#fff', border: 0,
+  padding: '10px 18px', borderRadius: 10,
+  font: '700 13px Manrope', cursor: 'pointer',
+  boxShadow: '0 4px 12px -4px rgba(79, 70, 229, 0.4)',
+  transition: 'all 150ms'
+};
+
+const btnSecondary = {
+  display: 'inline-flex', alignItems: 'center', gap: 8,
+  background: '#fff', color: '#475569', border: '1px solid #E2E8F0',
+  padding: '10px 18px', borderRadius: 10,
+  font: '700 13px Manrope', cursor: 'pointer',
+  transition: 'all 150ms'
+};
+
+const inp = {
+  width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
+  padding: '10px 14px', font: '500 14px Manrope', color: '#0F172A',
+  outline: 0, transition: 'border-color 150ms'
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+
+type AvailState = Record<string, Record<number, boolean>>;
+
+const getFullAvail = (periods: number[]): AvailState => {
+  const res: AvailState = {};
+  CL_DAYS.forEach(d => {
+    res[d] = {};
+    periods.forEach(p => res[d][p] = true);
   });
-  const [generatedClasses, setGeneratedClasses] = useState([]);
-  const [batchMode, setBatchMode] = useState('simple'); // 'simple' or 'quick'
+  return res;
+};
 
-  // Class Availability states
-  const [changedClassAvailability, setChangedClassAvailability] = useState(null); // { classId, availability }
-  const [isApplyToOthersOpen, setIsApplyToOthersOpen] = useState(false);
-  const [selectedClassesForApply, setSelectedClassesForApply] = useState([]);
-  const [allClassesForModal, setAllClassesForModal] = useState([]);
+const convertToApiFormat = (state: AvailState): TimeSlot[] => {
+  return Object.entries(state).map(([day, pMap]) => ({
+    dayOfWeek: day,
+    lessons: Object.entries(pMap).filter(([_, v]) => v).map(([p]) => Number(p)).sort((a, b) => a - b)
+  }));
+};
 
-  // Tips & Tricks sidebar state
-  const [isTipsSidebarOpen, setIsTipsSidebarOpen] = useState(false);
-
-  // Inline form state
-  const [showInlineForm, setShowInlineForm] = useState(false);
-  const [inlineFormData, setInlineFormData] = useState({
-    name: '',
-    shortName: '',
-    classTeacher: '',
-    roomIds: [],
-    isGrouped: false,
-    groups: [],
-    originalGroups: [],
-    availability: {
-      monday: [1, 2, 3, 4, 5, 6, 7],
-      tuesday: [1, 2, 3, 4, 5, 6, 7],
-      wednesday: [1, 2, 3, 4, 5, 6, 7],
-      thursday: [1, 2, 3, 4, 5, 6, 7],
-      friday: [1, 2, 3, 4, 5, 6, 7],
-      saturday: [1, 2, 3, 4, 5, 6, 7],
-      sunday: [1, 2, 3, 4, 5, 6, 7],
-    },
-  });
-  const [showAvailabilityInForm, setShowAvailabilityInForm] = useState(true);
-  const [showGroupsInForm, setShowGroupsInForm] = useState(false);
-  const [editingClassId, setEditingClassId] = useState(null);
-
-  // Availability view for existing classes
-  const [expandedAvailability, setExpandedAvailability] = useState(null);
-
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
-
-  useEffect(() => {
-    const fetchOrganizationSettings = async () => {
-      try {
-        const org = await organizationApi.get();
-        if (org && org.periods) {
-          // Count non-break periods
-          const nonBreakPeriodsCount = org.periods.filter(p => !p.isBreak).length;
-          // Create array [1, 2, ..., count]
-          const newPeriods = Array.from({ length: nonBreakPeriodsCount }, (_, i) => i + 1);
-          if (newPeriods.length > 0) {
-            setPeriods(newPeriods);
-
-            // Also update default availability in inline form data if it hasn't been modified yet
-            // or just ensure we use these periods when resetting the form.
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch organization settings:', error);
-      }
-    };
-    fetchOrganizationSettings();
-  }, []);
-
-  // API helper functions
-  const convertToTimeSlots = (availability) => {
-    const dayMapping = {
-      monday: 'MONDAY',
-      tuesday: 'TUESDAY',
-      wednesday: 'WEDNESDAY',
-      thursday: 'THURSDAY',
-      friday: 'FRIDAY',
-      saturday: 'SATURDAY',
-      sunday: 'SUNDAY'
-    };
-
-    const timeSlots = [];
-    Object.entries(availability).forEach(([day, lessons]) => {
-      if (lessons && lessons.length > 0) {
-        timeSlots.push({
-          dayOfWeek: dayMapping[day],
-          lessons: lessons.sort((a, b) => a - b)
-        });
+const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]): AvailState => {
+  const res = getFullAvail(periods);
+  CL_DAYS.forEach(d => periods.forEach(p => res[d][p] = false));
+  if (slots) {
+    slots.forEach(s => {
+      if (res[s.dayOfWeek]) {
+        s.lessons.forEach(l => res[s.dayOfWeek][l] = true);
       }
     });
-    return timeSlots;
-  };
+  }
+  return res;
+};
 
-  const convertFromTimeSlots = (timeSlots) => {
-    const dayMapping = {
-      MONDAY: 'monday',
-      TUESDAY: 'tuesday',
-      WEDNESDAY: 'wednesday',
-      THURSDAY: 'thursday',
-      FRIDAY: 'friday',
-      SATURDAY: 'saturday',
-      SUNDAY: 'sunday'
-    };
+// ─── Components ────────────────────────────────────────────────────────
 
-    const availability = {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: []
-    };
-
-    if (timeSlots) {
-      timeSlots.forEach(slot => {
-        const day = dayMapping[slot.dayOfWeek];
-        if (day) {
-          availability[day] = slot.lessons || [];
-        }
-      });
-    }
-
-    return availability;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Fetch teachers from API
-  const fetchTeachers = useCallback(async () => {
-    try {
-      const response = await apiCall<any>(`${getApiUrl('TEACHERS')}/all`);
-      if (!response.error && response.data) {
-        const teacherList = Array.isArray(response.data) ? response.data : [];
-        setTeachers(teacherList.map((t: any) => ({
-          id: t?.id,
-          name: t?.fullName || t?.name || t('teachers.unknown')
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-    }
-  }, [t]);
-
-  // Fetch rooms from API
-  const fetchRooms = useCallback(async () => {
-    try {
-      const response = await apiCall<any>(`${getApiUrl('ROOMS')}/all`);
-      if (!response.error && response.data) {
-        const roomList = Array.isArray(response.data) ? response.data : [];
-        setRooms(roomList.map((r: any) => ({
-          id: r?.id,
-          name: r?.name || t('rooms.unknown'),
-          capacity: r?.capacity || 0
-        })));
-      }
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
-    }
-  }, [t]);
-
-  // Fetch classes from API
-  const fetchClasses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await apiCall<any>(`${getApiUrl('CLASSES')}?page=${currentPage - 1}&size=${itemsPerPage}`);
-
-      if (response.error) {
-        throw new Error('Failed to fetch classes');
-      }
-
-      const data = response.data;
-
-      if (!data) {
-        console.error('fetchClasses: API returned no data', response);
-        setClasses([]);
-        return;
-      }
-
-      // If paginated response is expected, protect against missing content
-      const content = Array.isArray(data.content) ? data.content : [];
-
-      // Convert API response to local format (safely)
-      const convertedClasses = content.map((cls: any) => ({
-        id: cls?.id ?? 0,
-        name: cls?.name ?? 'Unnamed Class',
-        shortName: cls?.shortName ?? '',
-        isActive: cls?.isActive ?? true,
-        classTeacher: cls?.teacher?.id?.toString() || '',
-        roomIds: Array.isArray(cls?.rooms) ? cls.rooms.map((r: any) => String(r?.id ?? '')) : [],
-        isGrouped: cls?.isGrouped ?? false,
-        groups: Array.isArray(cls?.groups) ? cls.groups.map((g: any) => ({ name: g?.name ?? '' })) : [],
-        availability: convertFromTimeSlots(cls?.availabilities),
-        updatedDate: cls?.updatedDate,
-        createdDate: cls?.createdDate
-      }));
-      setClasses(convertedClasses);
-
-      // Update pagination info when provided by API
-      if (data && typeof data.totalPages === 'number') {
-        setTotalPages(data.totalPages);
-      } else {
-        setTotalPages(Math.ceil((content ? content.length : convertedClasses.length) / itemsPerPage) || 1);
-      }
-
-      if (data && typeof data.totalElements === 'number') {
-        setTotalElements(data.totalElements);
-      } else {
-        setTotalElements(content ? content.length : convertedClasses.length);
-      }
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-      toast.error(t('classes.failed_to_load_classes'));
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, itemsPerPage]);
-
-  // Fetch all classes for modal
-  const fetchAllClasses = useCallback(async () => {
-    try {
-      const response = await apiCall<any>(`${getApiUrl('CLASSES')}/all`);
-      if (!response.error && response.data) {
-        const data = Array.isArray(response.data) ? response.data : [];
-        const convertedClasses = data.map((cls: any) => ({
-          id: cls?.id ?? 0,
-          name: cls?.name ?? 'Unnamed Class',
-          shortName: cls?.shortName ?? '',
-          isActive: cls?.isActive ?? true,
-          classTeacher: cls?.teacher?.id?.toString() || '',
-          roomIds: Array.isArray(cls?.rooms) ? cls.rooms.map((r: any) => String(r?.id ?? '')) : [],
-          availability: convertFromTimeSlots(cls?.availabilities),
-          updatedDate: cls?.updatedDate,
-          createdDate: cls?.createdDate
-        }));
-        setAllClassesForModal(convertedClasses);
-      }
-    } catch (error) {
-      console.error('Error fetching all classes:', error);
-      toast.error('Failed to load all classes');
-    }
-  }, []);
-
-  // Fetch data on mount and when pagination changes
-  useEffect(() => {
-    fetchClasses();
-    fetchTeachers();
-    fetchRooms();
-  }, [fetchClasses, fetchTeachers, fetchRooms]);
-
-  const filteredClasses = React.useMemo(() =>
-    classes.filter(
-      (cls) =>
-        cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cls.shortName.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-    [classes, searchQuery]
+function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] }) {
+  const color = '#10B981';
+  return (
+    <div style={{ display: 'flex', gap: 2 }}>
+      {CL_DAYS.map(d => (
+        <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {periods.slice(0, 8).map(p => (
+            <div key={p} style={{
+              width: 4, height: 4, borderRadius: 1,
+              background: avail[d]?.[p] ? color : '#E2E8F0'
+            }} />
+          ))}
+        </div>
+      ))}
+    </div>
   );
-  // If server-side pagination is used, `classes` represents the current page content.
-  const paginatedClasses = React.useMemo(() =>
-    // fallback to client-side slicing only when classes likely contain full dataset
-    classes && classes.length ? classes : filteredClasses.slice(
-      (currentPage - 1) * itemsPerPage,
-      currentPage * itemsPerPage
-    ),
-    [classes, filteredClasses, currentPage, itemsPerPage]
-  );
+}
 
-  const generateShortName = useCallback((fullName) => {
-    if (!fullName) return '';
+function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: number[], onChange: (s: AvailState) => void }) {
+  const toggle = (d: string, p: number) => {
+    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d][p] } };
+    onChange(next);
+  };
 
-    const gradeMatch = fullName.match(/grade\s*(\d+)/i);
-    const grade = gradeMatch ? gradeMatch[1] : '';
+  const toggleDay = (d: string) => {
+    const allOn = periods.every(p => avail[d][p]);
+    const next = { ...avail, [d]: {} as any };
+    periods.forEach(p => next[d][p] = !allOn);
+    onChange(next);
+  };
 
-    const subjectMap = {
-      'mathematics': 'MA',
-      'math': 'MA',
-      'science': 'SC',
-      'english': 'EN',
-      'history': 'HI',
-      'geography': 'GE',
-      'physics': 'PH',
-      'chemistry': 'CH',
-      'biology': 'BI',
-      'literature': 'LI',
-      'art': 'AR',
-      'music': 'MU',
-      'physical education': 'PE',
-      'computer science': 'CS'
-    };
-
-    let subject = '';
-    for (const [key, value] of Object.entries(subjectMap)) {
-      if (fullName.toLowerCase().includes(key)) {
-        subject = value;
-        break;
-      }
-    }
-
-    if (!subject) {
-      const words = fullName.split(' ').filter(word =>
-        !['grade', 'class', 'year', 'level'].includes(word.toLowerCase())
-      );
-      if (words.length > 0) {
-        subject = words[0].substring(0, 2).toUpperCase();
-      }
-    }
-
-    return grade && subject ? `${grade}-${subject}` : fullName.substring(0, 6).toUpperCase();
-  }, []);
-
-  const handleAddClass = () => {
-    setShowInlineForm(true);
-    setEditingClassId(null);
-    setInlineFormData({
-      name: '',
-      shortName: '',
-      classTeacher: '',
-      roomIds: [],
-      isGrouped: false,
-      groups: [],
-      originalGroups: [],
-      availability: {
-        monday: periods,
-        tuesday: periods,
-        wednesday: periods,
-        thursday: periods,
-        friday: periods,
-        saturday: periods,
-        sunday: periods,
-      },
+  const togglePeriod = (p: number) => {
+    const allOn = CL_DAYS.every(d => avail[d][p]);
+    const next = { ...avail };
+    CL_DAYS.forEach(d => {
+      next[d] = { ...next[d], [p] : !allOn };
     });
-    setShowGroupsInForm(false);
-    // When opening in modal, show availability calendar by default
-    setShowAvailabilityInForm(true);
-  };
-
-  const handleEdit = (classItem) => {
-    try {
-      setEditingClassId(classItem.id);
-      setInlineFormData({
-        name: classItem.name,
-        shortName: classItem.shortName,
-        classTeacher: classItem.classTeacher ? classItem.classTeacher.toString() : '',
-        roomIds: classItem.roomIds ? classItem.roomIds.map(String) : [],
-        isGrouped: classItem.isGrouped || (classItem.groups && classItem.groups.length > 0),
-        groups: classItem.groups ? classItem.groups.map(g => ({ ...g, isNew: false })) : [],
-        originalGroups: classItem.groups ? classItem.groups.map(g => ({ ...g })) : [],
-        availability: classItem.availability,
-      });
-      setShowGroupsInForm(false);
-      setShowInlineForm(true);
-      setShowAvailabilityInForm(true);
-    } catch (error) {
-      toast.error('Failed to load class data');
-      console.error(error);
-    }
-  };
-
-  const handleClone = (classItem) => {
-    setShowInlineForm(true);
-    setEditingClassId(null);
-    setInlineFormData({
-      name: `${classItem.name} (Copy)`,
-      shortName: `${classItem.shortName}-C`,
-      classTeacher: classItem.classTeacher || '',
-      roomIds: classItem.roomIds || [],
-      isGrouped: classItem.isGrouped || false,
-      groups: classItem.groups ? classItem.groups.map(g => ({ name: g.name, isNew: false })) : [],
-      originalGroups: [],
-      availability: JSON.parse(JSON.stringify(classItem.availability)),
-    });
-    setShowGroupsInForm(false);
-    // When opening in modal, show availability calendar by default
-    setShowAvailabilityInForm(true);
-  };
-
-  const handleSaveInlineForm = async () => {
-    if (!inlineFormData.name.trim()) {
-      toast.error('Please enter a class name');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const baseData = {
-        name: inlineFormData.name.trim(),
-        shortName: inlineFormData.shortName.trim() || generateShortName(inlineFormData.name.trim()),
-        availabilities: convertToTimeSlots(inlineFormData.availability),
-        teacherId: inlineFormData.classTeacher ? parseInt(inlineFormData.classTeacher, 10) : null,
-        rooms: inlineFormData.roomIds.map(id => parseInt(id, 10)), // array of numbers
-        groups: inlineFormData.groups.map(g => ({ name: g.name }))
-      };
-
-      let requestData;
-      const isEdit = editingClassId !== null;
-
-      if (isEdit) {
-        // For update, use ClassUpdateRequest
-        // Only send NEW groups (groups that don't have id property or have isNew: true)
-        const newGroups = inlineFormData.groups.filter(g => !g.id || g.isNew).map(g => ({ name: g.name }));
-        const updatedGroups = inlineFormData.groups.filter(g => g.id && !g.isNew).map(g => ({ id: g.id, name: g.name }));
-
-        requestData = {
-          ...baseData,
-          deletedRooms: [], // not tracking changes, so empty
-          newGroups: newGroups,
-          updatedGroups: updatedGroups,
-          deletedGroupIds: []
-        };
-      } else {
-        // For create, use ClassRequest
-        requestData = baseData;
-      }
-      const url = isEdit
-        ? `${getApiUrl('CLASSES')}/${editingClassId}`
-        : getApiUrl('CLASSES');
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const response = await apiCall(url, {
-        method: method,
-        body: JSON.stringify(requestData),
-      });
-
-      if (response.error) {
-        throw new Error(`Failed to ${isEdit ? 'update' : 'create'} class`);
-      }
-
-      toast.success(`Class ${isEdit ? 'updated' : 'added'} successfully`);
-      setShowInlineForm(false);
-      setShowAvailabilityInForm(false);
-      setEditingClassId(null);
-      fetchClasses();
-    } catch (error) {
-      console.error('Error saving class:', error);
-      toast.error(`Failed to ${editingClassId ? 'update' : 'create'} class`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancelInlineForm = () => {
-    setShowInlineForm(false);
-    setShowAvailabilityInForm(false);
-    setEditingClassId(null);
-  };
-
-  const updateInlineFormField = (field, value) => {
-    setInlineFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      if (field === 'name' && value) {
-        updated.shortName = generateShortName(value);
-      }
-      return updated;
-    });
-  };
-
-  const toggleInlineAvailability = (day, period) => {
-    setInlineFormData(prev => {
-      const dayPeriods = prev.availability[day];
-      const newPeriods = dayPeriods.includes(period)
-        ? dayPeriods.filter(p => p !== period)
-        : [...dayPeriods, period].sort((a, b) => a - b);
-
-      return {
-        ...prev,
-        availability: {
-          ...prev.availability,
-          [day]: newPeriods
-        }
-      };
-    });
-  };
-
-  const toggleInlineDay = (day) => {
-    const currentPeriods = inlineFormData.availability[day];
-    const allSelected = periods.every(p => currentPeriods.includes(p));
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: {
-        ...prev.availability,
-        [day]: allSelected ? [] : [...periods]
-      }
-    }));
-  };
-
-  const toggleInlinePeriodAcrossDays = (period) => {
-    const isSelected = days.some(day => inlineFormData.availability[day].includes(period));
-    const newAvailability = { ...inlineFormData.availability };
-
-    days.forEach(day => {
-      if (isSelected) {
-        newAvailability[day] = newAvailability[day].filter(p => p !== period);
-      } else {
-        if (!newAvailability[day].includes(period)) {
-          newAvailability[day] = [...newAvailability[day], period].sort((a, b) => a - b);
-        }
-      }
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const selectAllInlineAvailability = () => {
-    const newAvailability = {};
-    days.forEach(day => {
-      newAvailability[day] = [...periods];
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const clearAllInlineAvailability = () => {
-    const newAvailability = {};
-    days.forEach(day => {
-      newAvailability[day] = [];
-    });
-
-    setInlineFormData(prev => ({
-      ...prev,
-      availability: newAvailability
-    }));
-  };
-
-  const handleDelete = (classItem) => {
-    setDeleteDialogClass(classItem);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteDialogClass) return;
-
-    setLoading(true);
-    try {
-      const response = await apiCall(`${getApiUrl('CLASSES')}/${deleteDialogClass.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.error) {
-        throw new Error('Failed to delete class');
-      }
-
-      toast.success(t('classes.deleted_success'));
-      setDeleteDialogClass(null);
-      fetchClasses();
-    } catch (error) {
-      console.error('Error deleting class:', error);
-      toast.error(t('classes.delete_failed'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImport = () => {
-    setIsImportDialogOpen(true);
-    setCsvData('');
-    setSelectedFile(null);
-  };
-
-  const handleDownloadTemplate = () => {
-    // Create CSV template
-    const headers = 'Name,Short Name,Teacher ID,Room IDs,Is Active,Mon Periods,Tue Periods,Wed Periods,Thu Periods,Fri Periods,Sat Periods,Sun Periods';
-    const example1 = 'Grade 10 Mathematics,10-MA,1,1;2,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,';
-    const example2 = 'Grade 9 Science,9-SC,2,5;6;7,true,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,,';
-    const csv = [headers, example1, example2].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'classes_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast.success('Template downloaded successfully');
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setCsvData(event.target.result);
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleProcessImport = () => {
-    if (!csvData.trim()) {
-      toast.error('Please upload a file or paste CSV data');
-      return;
-    }
-
-    try {
-      const lines = csvData.trim().split('\n');
-      if (lines.length < 2) {
-        toast.error('CSV file must contain at least a header row and one data row');
-        return;
-      }
-
-      const headers = lines[0].split(',');
-      const importedClasses = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        if (values.length < 2 || !values[0].trim()) continue;
-
-        const availability = {
-          monday: values[5] ? values[5].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          tuesday: values[6] ? values[6].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          wednesday: values[7] ? values[7].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          thursday: values[8] ? values[8].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          friday: values[9] ? values[9].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          saturday: values[10] ? values[10].split(';').map(Number).filter(n => !isNaN(n)) : [],
-          sunday: values[11] ? values[11].split(';').map(Number).filter(n => !isNaN(n)) : [],
-        };
-
-        // Parse room IDs (semicolon-separated)
-        const roomIds = values[3]?.trim() ? values[3].trim().split(';').filter(id => id.trim()) : [];
-
-        const newClass = {
-          id: Math.max(0, ...classes.map(c => c.id)) + importedClasses.length + 1,
-          name: values[0].trim(),
-          shortName: values[1]?.trim() || generateShortName(values[0].trim()),
-          classTeacher: values[2]?.trim() || '',
-          roomIds: roomIds,
-          isActive: values[4]?.toLowerCase() === 'true',
-          availability,
-        };
-
-        importedClasses.push(newClass);
-      }
-
-      setClasses(prev => [...prev, ...importedClasses]);
-      toast.success(`Successfully imported ${importedClasses.length} ${importedClasses.length === 1 ? 'class' : 'classes'}`);
-      setIsImportDialogOpen(false);
-      setCsvData('');
-      setSelectedFile(null);
-    } catch (error) {
-      toast.error('Error processing CSV file. Please check the format.');
-      console.error(error);
-    }
-  };
-
-  const getTotalAvailablePeriods = (availability) => {
-    return Object.values(availability).flat().length;
-  };
-
-  const handleItemsPerPageChange = (value) => {
-    setItemsPerPage(parseInt(value));
-    setCurrentPage(1);
-  };
-
-  // Batch Create Functions
-  const getLetterSequence = (index, characterSet) => {
-    if (characterSet === 'latin') {
-      return String.fromCharCode(65 + index); // A, B, C, D...
-    } else {
-      // Cyrillic: А, Б, В, Г, Д, Е, Ё, Ж, З, И, К, Л, М, Н, О, П, Р, С, Т, У, Ф, Х, Ц, Ч, Ш, Щ, Э, Ю, Я
-      const cyrillicLetters = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ё', 'Ж', 'З', 'И', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У', 'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Э', 'Ю', 'Я'];
-      return cyrillicLetters[index] || '';
-    }
-  };
-
-  const handleBatchGenerate = () => {
-    const newClasses = [];
-
-    Object.entries(gradeQuantities).forEach(([grade, quantity]) => {
-      const numQuantity = parseInt(quantity) || 0;
-      for (let i = 0; i < numQuantity; i++) {
-        const letter = getLetterSequence(i, batchCharacterSet);
-        const className = `${grade}-${letter}`;
-        newClasses.push({
-          grade: parseInt(grade),
-          letter,
-          name: className,
-          fullName: `Grade ${grade} ${letter}`
-        });
-      }
-    });
-
-    setGeneratedClasses(newClasses);
-  };
-
-  const handleBatchCreate = async () => {
-    const newClasses = [];
-
-    Object.entries(gradeQuantities).forEach(([grade, quantity]) => {
-      const numQuantity = parseInt(quantity as string) || 0;
-      for (let i = 0; i < numQuantity; i++) {
-        const letter = getLetterSequence(i, batchCharacterSet);
-        const className = `${grade}-${letter}`;
-        newClasses.push({
-          name: `Grade ${grade} ${letter}`,
-          shortName: className,
-        });
-      }
-    });
-
-    if (newClasses.length === 0) {
-      toast.error('Please set quantities for at least one grade');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await apiCall(`${getApiUrl('CLASSES')}/bulk`, {
-        method: 'POST',
-        body: JSON.stringify(newClasses),
-      });
-
-      if (response.error) {
-        toast.error(response.error.message || 'Xatolik yuz berdi');
-      } else {
-        toast.success(`${newClasses.length} ta sinf muvaffaqiyatli yaratildi`);
-      }
-
-      setIsBatchCreateOpen(false);
-      setGradeQuantities({
-        1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0
-      });
-      fetchClasses();
-    } catch (error) {
-      console.error('Error creating batch classes:', error);
-      toast.error('Failed to create batch classes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBatchReset = () => {
-    const resetQuantities = {};
-    gradeList.forEach(grade => {
-      resetQuantities[grade] = 0;
-    });
-    setGradeQuantities(resetQuantities);
-    setGeneratedClasses([]);
-  };
-
-  const handleAddGrade = () => {
-    const maxGrade = Math.max(...gradeList);
-    const newGrade = maxGrade + 1;
-    setGradeList(prev => [...prev, newGrade]);
-    setGradeQuantities(prev => ({ ...prev, [newGrade]: 0 }));
-  };
-
-  const handleRemoveGrade = () => {
-    if (gradeList.length <= 1) {
-      toast.error('Must have at least one grade level');
-      return;
-    }
-    const maxGrade = Math.max(...gradeList);
-    setGradeList(prev => prev.filter(g => g !== maxGrade));
-    setGradeQuantities(prev => {
-      const newQuantities = { ...prev };
-      delete newQuantities[maxGrade];
-      return newQuantities;
-    });
-  };
-
-  const handleQuickSetup = (preset) => {
-    const newQuantities = {};
-    gradeList.forEach(grade => {
-      newQuantities[grade] = preset;
-    });
-    setGradeQuantities(newQuantities);
-  };
-
-  // Class Availability Functions
-  const handleOpenApplyToOthers = () => {
-    setIsApplyToOthersOpen(true);
-    setSelectedClassesForApply([]);
-    fetchAllClasses();
-  };
-
-  const handleToggleClassForApply = (classId) => {
-    setSelectedClassesForApply(prev =>
-      prev.includes(classId)
-        ? prev.filter(id => id !== classId)
-        : [...prev, classId]
-    );
-  };
-
-  const handleSelectAllForApply = () => {
-    const otherClasses = allClassesForModal
-      .filter(cls => cls.id !== changedClassAvailability?.classId)
-      .map(cls => cls.id);
-    setSelectedClassesForApply(otherClasses);
-  };
-
-  const handleDeselectAllForApply = () => {
-    setSelectedClassesForApply([]);
-  };
-
-  const handleApplyToSelectedClasses = async () => {
-    if (selectedClassesForApply.length === 0) {
-      toast.error(t('classes.apply_to_others.error_select_one'));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const sourceAvailability = changedClassAvailability.availability;
-      const timeSlots = convertToTimeSlots(sourceAvailability);
-
-      const requestBody = {
-        applyTo: selectedClassesForApply,
-        timeOff: timeSlots
-      };
-
-      const response = await apiCall(`${getApiUrl('CLASSES')}/timeoff`, {
-        method: 'POST',
-        body: JSON.stringify(requestBody),
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to apply availability');
-      }
-
-      toast.success(`Availability settings applied to ${selectedClassesForApply.length} classes`);
-
-      setIsApplyToOthersOpen(false);
-      setChangedClassAvailability(null);
-      setSelectedClassesForApply([]);
-      fetchClasses();
-    } catch (error) {
-      console.error('Error applying availability:', error);
-      toast.error(t('classes.apply_to_others.error_failed'));
-    } finally {
-      setLoading(false);
-    }
+    onChange(next);
   };
 
   return (
-    <div className="flex gap-6 p-6 relative">
-      {/* Main Content */}
-      <div className={`flex-1 space-y-4 transition-all duration-300 ${isTipsSidebarOpen ? 'mr-0' : 'mr-0'}`}>
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2>{t('classes.title')}</h2>
-            <p className="text-muted-foreground">{t('classes.description')}</p>
-          </div>
-          <div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={fetchClasses}
-                size="sm"
-                disabled={loading}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                {t('classes.refresh')}
-              </Button>
-              <Button variant="outline" onClick={handleImport} size="sm">
-                <Upload className="mr-2 h-4 w-4" />
-                {t('classes.import')}
-              </Button>
-              <Button variant="outline" onClick={() => setIsBatchCreateOpen(true)} size="sm" className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-blue-100">
-                <Sparkles className="mr-2 h-4 w-4" />
-                {t('classes.batch_create')}
-              </Button>
-              <Button onClick={handleAddClass} size="sm" className="bg-green-600 hover:bg-green-700">
-                <Plus className="mr-2 h-4 w-4" />
-                {t('classes.add_class')}
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(8, 1fr)', gap: 4 }}>
+      <div />
+      {periods.slice(0, 8).map(p => (
+        <button key={p} onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
+      ))}
+      {CL_DAYS.map(d => (
+        <React.Fragment key={d}>
+          <button onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', textAlign: 'left', cursor: 'pointer' }}>{d.slice(0, 3)}</button>
+          {periods.slice(0, 8).map(p => (
+            <button key={p} onClick={() => toggle(d, p)} style={{ height: 24, borderRadius: 4, border: 0, cursor: 'pointer', background: avail[d][p] ? '#10B981' : '#F1F5F9', transition: 'all 100ms' }} />
+          ))}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
 
-        {/* Search */}
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder={t('classes.search_placeholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
+function ClassRow({ t, cls, periods, selected, onSelect, onEdit, onDelete }: any) {
+  const pal = palOf(cls.id);
+  const avail = useMemo(() => convertFromApiFormat(cls.availabilities, periods), [cls, periods]);
+  const totalHours = cls.availabilities?.reduce((acc: number, s: any) => acc + s.lessons.length, 0) || 0;
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '40px 1.2fr 1fr 140px 90px',
+      alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #F1F5F9',
+      background: selected ? pal.tint : '#fff',
+      transition: 'background 150ms'
+    }}>
+      <input type="checkbox" checked={selected} onChange={() => onSelect(cls.id)} style={{ cursor: 'pointer', width: 18, height: 18 }} />
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: pal.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', color: pal.base, font: '800 16px Manrope' }}>
+          {cls.name.match(/\d+/) || cls.name.charAt(0)}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ font: '700 15px Plus Jakarta Sans', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cls.name}</div>
+          <div style={{ font: '700 10px JetBrains Mono', color: pal.ink, opacity: 0.7 }}>{cls.shortName}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {cls.teacher ? (
+           <div style={{ display: 'flex', alignItems: 'center', gap: 6, font: '600 12px Manrope', color: '#475569', background: '#F1F5F9', padding: '4px 10px', borderRadius: 8 }}>
+             <Users size={12} />
+             {cls.teacher.fullName}
+           </div>
+        ) : (
+          <span style={{ font: '500 12px Manrope', color: '#94A3B8' }}>Ustoz biriktirilmagan</span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <AvailMini avail={avail} periods={periods} />
+        <div style={{ font: '700 11px JetBrains Mono', color: '#64748B' }}>{totalHours} s.</div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        <button onClick={() => onEdit(cls)} style={{ width: 34, height: 34, borderRadius: 10, border: 0, background: '#F1F5F9', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Edit size={15} />
+        </button>
+        <button onClick={() => onDelete(cls.id, cls.name)} style={{ width: 34, height: 34, borderRadius: 10, border: 0, background: '#FFF1F2', color: '#F43F5E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page Component ───────────────────────────────────────────────
+
+export default function ClassesPage() {
+  const { t } = useTranslation();
+  const [library, setLibrary] = useState<ClassResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
+  const [rooms, setRooms] = useState<RoomResponse[]>([]);
+
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [editing, setEditing] = useState<ClassResponse | { new: true } | { bulkTimeoff: true } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [showBatch, setShowBatch] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+
+  useEffect(() => {
+    fetchData();
+  }, [page, size]);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [clsPage, tchs, rms, org] = await Promise.all([
+        ClassService.getPaginated(page, size),
+        TeacherService.getAll(),
+        RoomService.getAll(),
+        organizationApi.get()
+      ]);
+      setLibrary(clsPage.content);
+      setTotalElements(clsPage.totalElements);
+      setTeachers(tchs);
+      setRooms(rms);
+      if (org?.periods) {
+        const nonBreak = org.periods.filter((p: any) => !p.isBreak).length;
+        setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
+      }
+    } catch (error) {
+      toast.error("Ma'lumotlarni yuklashda xatolik");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (data: any) => {
+    try {
+      if (editing && 'bulkTimeoff' in editing) {
+        await ClassService.bulkTimeoff({
+          applyTo: Array.from(selected),
+          timeOff: data.availabilities
+        });
+        setSelected(new Set());
+      } else if (editing && !('new' in editing)) {
+        await ClassService.update((editing as any).id, data);
+      } else if (Array.isArray(data)) {
+        await ClassService.createBulk(data);
+      } else {
+        await ClassService.create(data);
+      }
+      toast.success("Muvaffaqiyatli saqlandi");
+      setEditing(null);
+      fetchData();
+    } catch (error) {
+      toast.error("Saqlashda xatolik");
+    }
+  };
+
+  const handleDelete = async (id?: number) => {
+    try {
+      if (confirmDel?.bulk) {
+        await ClassService.deleteBulk(Array.from(selected));
+        toast.success("Sinflar o'chirildi");
+        setSelected(new Set());
+      } else if (id) {
+        await ClassService.delete(id);
+        toast.success("Sinf o'chirildi");
+      }
+      setConfirmDel(null);
+      fetchData();
+    } catch (error) {
+      toast.error("O'chirishda xatolik");
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelected(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  };
+
+  const filtered = useMemo(() => {
+    if (!query) return library;
+    return library.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || c.shortName.toLowerCase().includes(query.toLowerCase()));
+  }, [library, query]);
+
+  if (isLoading && library.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+        <Loader2 className="animate-spin" size={32} color="#4F46E5" />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+      {/* Toolbar */}
+      <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: 240 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <input 
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Sinfni qidiring..."
+            style={{ width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 9, padding: '10px 12px 10px 34px', font: '500 13px Manrope', color: '#0F172A', outline: 0 }} 
           />
         </div>
 
-        {/* Add / Edit Form (moved to Dialog) */}
-        <Dialog open={showInlineForm} onOpenChange={(open) => {
-          setShowInlineForm(open);
-          if (!open) {
-            setEditingClassId(null);
-            setShowAvailabilityInForm(false);
-            setShowGroupsInForm(false);
-          }
+        <span style={{ flex: 1 }} />
+        <span style={{ font: '600 12px Manrope', color: '#64748B' }}>{totalElements} ta sinf</span>
+
+        <button onClick={() => setShowImport(true)} style={btnSecondary}>
+          <Upload size={14} />
+          Import
+        </button>
+
+        <button onClick={() => setShowBatch(true)} style={btnSecondary}>
+          <Layers size={14} />
+          Guruhli yaratish
+        </button>
+
+        <button onClick={() => setEditing({ new: true })} style={btnPrimary}>
+          <Plus size={14} strokeWidth={2.5} />
+          Yangi sinf
+        </button>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.05)' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '40px 1.2fr 1fr 140px 90px',
+          gap: 18, padding: '14px 18px', background: '#FAFBFD', borderBottom: '1px solid #E2E8F0',
+          font: '800 11px Plus Jakarta Sans', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em'
         }}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-0">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <div className="flex items-start justify-between">
-                <div>
-                  <DialogTitle>{editingClassId ? t('classes.edit_class') : t('classes.add_new_class')}</DialogTitle>
-                  <DialogDescription />
-                </div>
+          <div />
+          <span>Sinf nomi</span>
+          <span>Sinf rahbari</span>
+          <span>Mavjud vaqt</span>
+          <span style={{ textAlign: 'right' }}>Amallar</span>
+        </div>
 
-              </div>
-            </DialogHeader>
+        {filtered.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: '#94A3B8' }}>
+            <Layers size={40} style={{ marginBottom: 12, opacity: 0.5 }} />
+            <div style={{ font: '700 16px Manrope', color: '#0F172A' }}>Hech qanday sinf topilmadi</div>
+          </div>
+        ) : (
+          filtered.map(c => (
+            <ClassRow 
+              key={c.id} cls={c} periods={periods}
+              selected={selected.has(c.id)}
+              onSelect={toggleSelect}
+              onEdit={setEditing}
+              onDelete={(id: number, name: string) => setConfirmDel({ id, name })}
+            />
+          ))
+        )}
+      </div>
 
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t('classes.class_name')}</Label>
-                    <Input
-                      placeholder="e.g., Grade 10 Mathematics"
-                      value={inlineFormData.name}
-                      onChange={(e) => updateInlineFormField('name', e.target.value)}
-                      autoFocus
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t('classes.short_name')}</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Auto-generated"
-                        value={inlineFormData.shortName}
-                        onChange={(e) => updateInlineFormField('shortName', e.target.value)}
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setShowAvailabilityInForm(!showAvailabilityInForm)}
-                        className={`flex-shrink-0 ${showAvailabilityInForm ? 'bg-green-100 border-green-500 text-green-700' : 'border-green-300 text-green-600'}`}
-                        title="Toggle availability"
-                      >
-                        <Calendar className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+      {/* Pagination Footer */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 }}>
+        <span style={{ font: '600 13px Manrope', color: '#94A3B8' }}>Jami {totalElements} ta sinf</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} style={{ ...btnSecondary, padding: '8px 14px' }}>Oldingi</button>
+          <button disabled={library.length < size} onClick={() => setPage(p => p + 1)} style={{ ...btnSecondary, padding: '8px 14px' }}>Keyingi</button>
+        </div>
+      </div>
 
-                {/* Class Teacher Field */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label>{t('classes.class_teacher')}</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-                            <HelpCircle className="h-4 w-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p className="text-sm">
-                            "Class Teacher" is an optional field. If you select a teacher here, that teacher will automatically appear as the default one when adding new lessons to this class. This helps you save time when scheduling lessons for the same teacher.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Select
-                    value={inlineFormData.classTeacher || undefined}
-                    onValueChange={(value) => updateInlineFormField('classTeacher', value)}
-                    disabled={!teachers || teachers.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('classes.class_teacher') + ' (' + t('classes.rooms_optional') + ')'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers && teachers.length > 0 ? (
-                        <>
-                          {teachers.map((teacher) => (
-                            teacher.id ? (
-                              <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                {teacher.name}
-                              </SelectItem>
-                            ) : null
-                          ))}
-                        </>
-                      ) : (
-                        <div className="p-2 text-sm text-muted-foreground text-center">
-                          {t('teachers.no_teachers_found')}
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          background: '#0F172A', color: '#fff', borderRadius: 12, padding: '10px 14px',
+          display: 'flex', alignItems: 'center', gap: 12, zIndex: 55,
+          boxShadow: '0 24px 60px -16px rgba(15,23,42,0.4)',
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '800 13px JetBrains Mono' }}>
+            <span style={{ width: 22, height: 22, borderRadius: 6, background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 10px JetBrains Mono' }}>{selected.size}</span>
+            ta tanlandi
+          </span>
+          <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.18)' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => setEditing({ bulkTimeoff: true })} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              font: '700 12px Manrope', color: '#fff', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+              padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
+            }}>
+              <LayoutGrid size={13} />
+              Vaqtlarni o'zgartirish
+            </button>
+          </div>
+          <button onClick={() => setConfirmDel({ bulk: true, n: selected.size })} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            font: '700 12px Manrope', color: '#fff', background: '#DC2626', border: 0,
+            padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
+          }}>
+            <Trash2 size={13} />
+            O'chirish
+          </button>
+          <button onClick={() => setSelected(new Set())} style={{
+            font: '700 12px Manrope', color: 'rgba(255,255,255,0.7)', background: 'transparent',
+            border: 0, padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
+          }}>Bekor</button>
+        </div>
+      )}
 
-                <div className="space-y-2">
-                  <Label>{t('classes.rooms_optional')}</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between font-normal"
-                      >
-                        {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 ? (
-                          <span className="truncate">
-                            {inlineFormData.roomIds.length} room{inlineFormData.roomIds.length > 1 ? 's' : ''} selected
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">{t('classes.select_rooms_placeholder')}</span>
-                        )}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t('classes.search_rooms')} />
-                        <CommandEmpty>{t('classes.no_rooms')}</CommandEmpty>
-                        <CommandGroup className="max-h-64 overflow-auto">
-                          {rooms.map((room) => (
-                            <CommandItem
-                              key={room.id}
-                              value={room.name}
-                              onSelect={() => {
-                                const current = inlineFormData.roomIds || [];
-                                const roomIdStr = room.id.toString();
-                                const isSelected = current.includes(roomIdStr);
-                                const newRoomIds = isSelected
-                                  ? current.filter((id) => id !== roomIdStr)
-                                  : [...current, roomIdStr];
-                                updateInlineFormField('roomIds', newRoomIds);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  (inlineFormData.roomIds || []).includes(room.id.toString())
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
-                              {room.name} (Capacity: {room.capacity})
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {inlineFormData.roomIds && inlineFormData.roomIds.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {inlineFormData.roomIds.map((roomId) => {
-                        const room = rooms.find((r) => r.id.toString() === roomId);
-                        return room ? (
-                          <Badge key={roomId} variant="secondary" className="pl-2 pr-1">
-                            {room.name}
-                            <button
-                              className="ml-1 hover:bg-black/10 rounded-full p-0.5"
-                              onClick={() => {
-                                const newRoomIds = inlineFormData.roomIds.filter((id) => id !== roomId);
-                                updateInlineFormField('roomIds', newRoomIds);
-                              }}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-                </div>
+      {/* Modals */}
+      {editing && (
+        <ClassEditor 
+          initial={editing === true || (editing as any).new ? null : editing} 
+          periods={periods} teachers={teachers} rooms={rooms}
+          onClose={() => setEditing(null)}
+          onSave={handleSave} 
+        />
+      )}
 
-                {/* Group Checkbox */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isGrouped"
-                      checked={inlineFormData.isGrouped}
-                      onCheckedChange={(checked) => {
-                        const isChecked = checked === true;
-                        setInlineFormData(prev => {
-                          const newData = { ...prev, isGrouped: isChecked };
-                          if (isChecked && (!prev.groups || prev.groups.length === 0)) {
-                            // Set default groups based on language
-                            const defaultGroups = [
-                              t('classes.default_groups.girls'),
-                              t('classes.default_groups.boys'),
-                              t('classes.default_groups.group1'),
-                              t('classes.default_groups.group2')
-                            ];
-                            newData.groups = defaultGroups.map(name => ({ name }));
-                          } else if (!isChecked) {
-                            newData.groups = [];
-                          }
-                          return newData;
-                        });
-                      }}
-                    />
-                    <Label htmlFor="isGrouped" className="text-sm font-medium">
-                      {t('classes.divide_into_groups')}
-                    </Label>
-                  </div>
-                </div>
-
-                {/* Groups Field */}
-                {inlineFormData.isGrouped && (
-                  <div className="space-y-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowGroupsInForm(!showGroupsInForm)}
-                      className="w-full justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{t('classes.groups')} ({inlineFormData.groups?.length || 0})</span>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showGroupsInForm ? 'transform rotate-180' : ''}`} />
-                    </Button>
-
-                    {/* Groups Grid 2x2 - Collapsible */}
-                    {showGroupsInForm && (
-                      <div className="grid grid-cols-2 gap-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
-                        {inlineFormData.groups && inlineFormData.groups.map((group, index) => (
-                          <div key={index} className="flex items-center gap-2 p-3 border rounded-lg bg-white dark:bg-gray-800">
-                            <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full text-xs font-semibold">
-                              {index + 1}
-                            </span>
-                            <input
-                              type="text"
-                              value={group.name}
-                              onChange={(e) => {
-                                const newGroups = [...inlineFormData.groups];
-                                newGroups[index] = { ...group, name: e.target.value };
-                                updateInlineFormField('groups', newGroups);
-                              }}
-                              className="flex-1 px-2 py-1 text-sm border rounded bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder={t('classes.group_name')}
-                            />
-                            <button
-                              onClick={() => {
-                                const newGroups = inlineFormData.groups.filter((_, i) => i !== index);
-                                updateInlineFormField('groups', newGroups);
-                              }}
-                              className="flex-shrink-0 p-1.5 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Add Group Button */}
-                    {showGroupsInForm && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full border-dashed"
-                        onClick={() => {
-                          updateInlineFormField('groups', [
-                            ...inlineFormData.groups,
-                            { name: `${t('classes.default_groups.group1')} ${inlineFormData.groups.length + 1}`, isNew: true }
-                          ]);
-                        }}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        {t('classes.add_new_group')}
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Inline Availability Grid */}
-                {showAvailabilityInForm && (
-                  <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-300 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{t('classes.class_availability')}</p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={selectAllInlineAvailability}
-                          className="h-7 text-xs text-green-600 border-green-300 hover:bg-green-50"
-                        >
-                          {t('classes.select_all')}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={clearAllInlineAvailability}
-                          className="h-7 text-xs text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          {t('classes.clear_all')}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <div className="grid grid-cols-8 gap-1">
-                        <div className="p-1"></div>
-                        {periods.map((period) => (
-                          <button
-                            key={period}
-                            onClick={() => toggleInlinePeriodAcrossDays(period)}
-                            className="p-1 text-center text-xs font-medium rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                          >
-                            P{period}
-                          </button>
-                        ))}
-                      </div>
-                      {days.map((day, dayIndex) => (
-                        <div key={day} className="grid grid-cols-8 gap-1">
-                          <button
-                            onClick={() => toggleInlineDay(day)}
-                            className="p-1 text-xs font-medium capitalize text-left rounded border border-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                          >
-                            {dayLabels[dayIndex]}
-                          </button>
-                          {periods.map((period) => {
-                            const isAvailable = inlineFormData.availability[day].includes(period);
-                            return (
-                              <button
-                                key={period}
-                                onClick={() => toggleInlineAvailability(day, period)}
-                                className={`p-1 text-center rounded border text-xs transition-colors ${isAvailable
-                                  ? 'bg-green-500 border-green-600 text-white hover:bg-green-600'
-                                  : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                                  }`}
-                              >
-                                {isAvailable ? '✓' : '—'}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSaveInlineForm}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        {editingClassId ? t('classes.update_class') : t('classes.save_class')}
-                      </>
-                    ) : (
-                      <>
-                        <Check className="mr-2 h-4 w-4" />
-                        {editingClassId ? t('classes.update_class') : t('classes.save_class')}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleCancelInlineForm}
-                    variant="outline"
-                    size="sm"
-                    disabled={loading}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    {t('classes.cancel')}
-                  </Button>
-                </div>
-              </div>
+      {confirmDel && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 20px 50px -12px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ font: '800 20px Plus Jakarta Sans', color: '#0F172A', marginBottom: 8 }}>{confirmDel.bulk ? "Sinflarni o'chirish" : "Sinfni o'chirish"}</h3>
+            <p style={{ font: '500 14px Manrope', color: '#64748B', marginBottom: 24 }}>
+              {confirmDel.bulk 
+                ? `Siz tanlagan ${confirmDel.n} ta sinfni o'chirishni tasdiqlaysizmi?` 
+                : `"${confirmDel.name}" sinfini o'chirishni tasdiqlaysizmi?`
+              } Bu amalni qaytarib bo'lmaydi.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmDel(null)} style={btnSecondary}>Bekor</button>
+              <button onClick={() => handleDelete(confirmDel.id)} style={{ ...btnPrimary, background: '#EF4444' }}>O'chirish</button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
+      )}
 
-        {/* Table */}
-        <div>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>{t('classes.table.name')}</TableHead>
-                <TableHead>{t('classes.table.short_name')}</TableHead>
-                <TableHead>{t('classes.table.teacher')}</TableHead>
-                <TableHead>{t('classes.table.rooms')}</TableHead>
-                <TableHead className="text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <span>{t('classes.table.availability')}</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
-                            <HelpCircle className="h-4 w-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p className="text-sm">
-                            {t('classes.time_off_description')}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableHead>
-                <TableHead>Updated Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-                  </TableCell>
-                </TableRow>
-              ) : paginatedClasses.map((classItem) => {
-                const totalPeriods = getTotalAvailablePeriods(classItem.availability);
-                const isExpanded = expandedAvailability === classItem.id;
+      {showBatch && (
+        <BatchCreateModal 
+          library={library}
+          periods={periods}
+          onClose={() => setShowBatch(false)}
+          onSave={handleSave}
+        />
+      )}
+    </div>
+  );
+}
 
+// ─── Batch Create Modal ────────────────────────────────────────────────
+
+function BatchCreateModal({ library, periods, onClose, onSave }: any) {
+  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
+  const [selectedLetters, setSelectedLetters] = useState<string[]>([]);
+  
+  const grades = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const letters = ['A', 'B', 'V', 'G', 'D', 'E', 'J', 'I'];
+
+  const generated = useMemo(() => {
+    const res: any[] = [];
+    selectedGrades.forEach(g => {
+      selectedLetters.forEach(l => {
+        const name = `${g}-${l}`;
+        const exists = library.some((c: any) => c.name === name);
+        res.push({ grade: g, letter: l, name, exists });
+      });
+    });
+    return res;
+  }, [selectedGrades, selectedLetters, library]);
+
+  const handleCreate = () => {
+    const toCreate = generated.filter(c => !c.exists).map(c => ({
+      name: c.name,
+      shortName: c.name,
+      availabilities: convertToApiFormat(getFullAvail(periods))
+    }));
+    if (toCreate.length > 0) onSave(toCreate);
+    else onClose();
+  };
+
+  const toggleGrade = (g: number) => setSelectedGrades(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
+  const toggleLetter = (l: string) => setSelectedLetters(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
+      <div style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 540, boxShadow: '0 32px 64px -12px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
+        <header style={{ padding: '24px 28px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ font: '800 22px Plus Jakarta Sans', color: '#0F172A' }}>Sinflarni guruh bo'yicha yaratish</h2>
+            <p style={{ font: '500 13px Manrope', color: '#64748B', marginTop: 4 }}>Parallelni va harflarni belgilang — barchasi bir martada yaratiladi</p>
+          </div>
+          <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 12, border: 0, background: '#F1F5F9', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={20} />
+          </button>
+        </header>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: 28, display: 'flex', flexDirection: 'column', gap: 24 }} className="et-premium-scrollbar">
+          <div>
+            <label style={{ font: '700 11px Plus Jakarta Sans', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 12 }}>Parallellar</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {grades.map(g => {
+                const on = selectedGrades.includes(g);
                 return (
-                  <React.Fragment key={classItem.id}>
-                    <TableRow className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{classItem.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{classItem.shortName}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {classItem.classTeacher ? (
-                          <span>{teachers.find(t => t.id?.toString() === classItem.classTeacher)?.name || t('teachers.unknown')}</span>
-                        ) : (
-                          <span className="text-muted-foreground italic">{t('classes.not_assigned')}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {classItem.roomIds && classItem.roomIds.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {classItem.roomIds.map(roomId => {
-                              const room = rooms.find(r => r.id?.toString() === roomId);
-                              return room ? (
-                                <Badge key={roomId} variant="outline" className="text-xs">
-                                  {room.name}
-                                </Badge>
-                              ) : null;
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground italic">{t('classes.no_rooms_assigned')}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-3 flex-wrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setExpandedAvailability(isExpanded ? null : classItem.id)}
-                            className="h-8 px-2 text-green-700 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950"
-                          >
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {totalPeriods} periods
-                            <ChevronDown className={`ml-1 h-3 w-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          </Button>
-                          {isExpanded && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setChangedClassAvailability({ classId: classItem.id, availability: classItem.availability });
-                                handleOpenApplyToOthers();
-                              }}
-                              className="h-8 px-3 bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400 animate-in fade-in slide-in-from-left-2"
-                            >
-                              <Share2 className="h-3 w-3 mr-1" />
-                              Apply to others
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(classItem.updatedDate)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(classItem)}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                            title={t('actions.edit')}
-                            aria-label={t('actions.edit')}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleClone(classItem)}
-                            className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                            title={t('actions.clone')}
-                            aria-label={t('actions.clone')}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(classItem)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title={t('actions.delete')}
-                            aria-label={t('actions.delete')}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-
-                    {/* Expanded Availability Row */}
-                    {isExpanded && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="bg-green-50/30 dark:bg-green-950/10 p-4">
-                          <div className="bg-white dark:bg-gray-950 rounded-lg border border-green-200 dark:border-green-900 p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Calendar className="h-4 w-4 text-green-600" />
-                              <h4 className="text-green-800 dark:text-green-300">Weekly Availability</h4>
-                            </div>
-
-                            <div className="grid gap-2">
-                              {/* Period headers */}
-                              <div className="grid grid-cols-8 gap-1">
-                                <div className="p-1"></div>
-                                {periods.map((period) => (
-                                  <div
-                                    key={period}
-                                    className="p-1 text-center text-xs font-medium text-muted-foreground"
-                                  >
-                                    P{period}
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Days and availability */}
-                              {days.map((day, dayIndex) => (
-                                <div key={day} className="grid grid-cols-8 gap-1">
-                                  <div className="p-1 text-xs font-medium capitalize flex items-center">
-                                    {dayLabels[dayIndex]}
-                                  </div>
-                                  {periods.map((period) => {
-                                    const isAvailable = classItem.availability[day].includes(period);
-                                    return (
-                                      <div
-                                        key={period}
-                                        className={`p-1 text-center rounded border text-xs ${isAvailable
-                                          ? 'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/50 dark:border-green-700 dark:text-green-200'
-                                          : 'bg-gray-50 border-gray-200 text-gray-400 dark:bg-gray-900 dark:border-gray-800'
-                                          }`}
-                                      >
-                                        {isAvailable ? '✓' : '—'}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
+                  <button key={g} onClick={() => toggleGrade(g)} style={{
+                    padding: '8px 16px', borderRadius: 10, font: '700 13px Manrope', cursor: 'pointer', border: '1.5px solid',
+                    background: on ? '#4F46E5' : '#fff', borderColor: on ? '#4F46E5' : '#E2E8F0', color: on ? '#fff' : '#475569',
+                    transition: 'all 120ms'
+                  }}>{g}-sinf</button>
                 );
               })}
+            </div>
+          </div>
 
-              {paginatedClasses.length === 0 && !loading && (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-muted-foreground">
-                        {searchQuery ? t('classes.no_classes_found') : t('classes.no_classes_yet')}
-                      </p>
-                      {!searchQuery && (
-                        <Button onClick={handleAddClass} size="sm" variant="outline">
-                          <Plus className="mr-2 h-4 w-4" />
-                          {t('classes.add_your_first_class')}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+          <div>
+            <label style={{ font: '700 11px Plus Jakarta Sans', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 12 }}>Harflar</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {letters.map(l => {
+                const on = selectedLetters.includes(l);
+                return (
+                  <button key={l} onClick={() => toggleLetter(l)} style={{
+                    width: 42, height: 42, borderRadius: 10, font: '800 14px JetBrains Mono', cursor: 'pointer', border: '1.5px solid',
+                    background: on ? '#4F46E5' : '#fff', borderColor: on ? '#4F46E5' : '#E2E8F0', color: on ? '#fff' : '#475569',
+                    transition: 'all 120ms'
+                  }}>{l}</button>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* Pagination */}
-          {totalElements > 0 && (
-            <div className="border-t p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} classes
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm text-muted-foreground">Items per page:</Label>
-                    <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
+          {generated.length > 0 && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <label style={{ font: '700 11px Plus Jakarta Sans', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ko'rib chiqish</label>
+                <span style={{ font: '700 12px Manrope', color: '#64748B' }}>{generated.filter(c => !c.exists).length} yangi · {generated.filter(c => c.exists).length} mavjud</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {generated.map(c => (
+                  <div key={c.name} style={{
+                    padding: '10px 14px', borderRadius: 12, border: '1.5px solid',
+                    background: c.exists ? '#fff' : '#EEF2FF', borderColor: c.exists ? '#FFE4E6' : '#C7D2FE',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                  }}>
+                    <span style={{ font: '800 14px Plus Jakarta Sans', color: '#0F172A' }}>{c.name}</span>
+                    <span style={{ font: '700 10px Manrope', color: c.exists ? '#F43F5E' : '#4F46E5', textTransform: 'uppercase' }}>{c.exists ? 'mavjud' : 'yangi'}</span>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={(p: number) => setCurrentPage(p)} />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteDialogClass} onOpenChange={() => setDeleteDialogClass(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Class</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{deleteDialogClass?.name}"? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Import CSV Dialog */}
-        <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
-          setIsImportDialogOpen(open);
-          if (!open) {
-            setCsvData('');
-            setSelectedFile(null);
-          }
-        }}>
-          <DialogContent className="max-w-5xl max-h-[90vh] p-0 gap-0">
-            {/* Header */}
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-blue-600 text-white">
-                    <Upload className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <DialogTitle>Bulk Import Classes</DialogTitle>
-                    <DialogDescription>
-                      Import multiple classes from CSV format
-                    </DialogDescription>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => setIsImportDialogOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogHeader>
-
-            <div className="flex">
-              {/* Main Content */}
-              <div className="flex-1 px-6 py-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
-                <div className="space-y-6">
-                  {/* CSV Format Section */}
-                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-600 text-white rounded">
-                          <Info className="h-3.5 w-3.5" />
-                        </div>
-                        <h3 className="text-base">CSV Format</h3>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDownloadTemplate}
-                        className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download Template
-                      </Button>
-                    </div>
-
-                    <p className="text-sm mb-4 text-blue-900 dark:text-blue-100">
-                      Import classes using CSV format. Only <span className="font-medium text-blue-700 dark:text-blue-300">Name</span> is required, all other fields are optional.
-                    </p>
-
-                    {/* Column Order */}
-                    <div className="space-y-2 mb-4">
-                      <Label className="text-sm text-blue-900 dark:text-blue-100">Column Order:</Label>
-                      <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-200 dark:border-blue-900">
-                        <code className="text-xs font-mono text-gray-700 dark:text-gray-300">
-                          Name, Short Name, Teacher ID, Room IDs, Is Active, Mon Periods, Tue Periods, Wed Periods, Thu Periods, Fri Periods, Sat Periods, Sun Periods
-                        </code>
-                      </div>
-                    </div>
-
-                    {/* Field Requirements */}
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Name:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Required</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Short Name:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Optional (auto-generated)</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Teacher ID:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Optional</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Room IDs:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Optional (1;2;3 format)</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Is Active:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Optional (defaults to true)</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 mt-1.5 flex-shrink-0"></div>
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-900 dark:text-blue-100">Mon-Sun Periods:</span>{' '}
-                          <span className="text-blue-700 dark:text-blue-300">Optional (semicolon-separated)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Upload Section */}
-                  <div className="border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-lg p-10 text-center bg-white dark:bg-gray-950">
-                    <FileText className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-5">
-                      Upload a CSV file or paste CSV data below
-                    </p>
-                    <div className="flex justify-center">
-                      <label htmlFor="csv-upload">
-                        <Button
-                          variant="default"
-                          className="bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                          asChild
-                        >
-                          <span>
-                            <Download className="mr-2 h-4 w-4" />
-                            Choose CSV File
-                          </span>
-                        </Button>
-                        <Input
-                          id="csv-upload"
-                          type="file"
-                          accept=".csv"
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                    {selectedFile && (
-                      <p className="text-sm text-blue-600 mt-4 flex items-center justify-center gap-2">
-                        <Check className="h-4 w-4" />
-                        {selectedFile.name}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Paste CSV Data */}
-                  <div className="space-y-2">
-                    <Label className="text-sm">Or paste CSV data here</Label>
-                    <textarea
-                      value={csvData}
-                      onChange={(e) => setCsvData(e.target.value)}
-                      placeholder="Grade 10A,10A,1,1;2,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,&#10;Grade 9 Science,9-SC,2,5;6,true,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,1;2;3;4;5;6;7,,&#10;Grade 11 Math,11-MA,,,true,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,1;2;3;4;5,,"
-                      className="w-full min-h-[140px] p-3 border border-border rounded-lg font-mono text-xs resize-y bg-card focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      style={{ fontFamily: 'monospace' }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tips & Tricks Sidebar */}
-              <div
-                className={`border-l bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 transition-all duration-300 overflow-y-auto ${isImportTipsSidebarOpen ? 'w-80' : 'w-0'
-                  }`}
-                style={{ maxHeight: 'calc(90vh - 140px)' }}
-              >
-                {isImportTipsSidebarOpen && (
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Lightbulb className="h-5 w-5 text-amber-600" />
-                        <h3 className="text-base">{t('classes.tips.title')}</h3>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setIsImportTipsSidebarOpen(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Tip 1 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            1
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip1.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip1.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 2 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip2.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip2.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 3 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip3.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip3.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 4 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip4.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip4.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 5 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">Excel to CSV</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              If you have data in Excel, use "Save As" and choose "CSV (Comma delimited)" format.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 6 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            6
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip5.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip5.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tip 7 */}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0 text-xs">
-                            7
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="text-sm mb-1">{t('classes.tips.tip6.title')}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t('classes.tips.tip6.desc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Toggle Tips Button */}
-              {!isImportTipsSidebarOpen && (
-                <div className="w-10 flex items-start justify-center pt-6 border-l bg-gradient-to-br from-amber-50/50 to-orange-50/50 dark:from-amber-950/10 dark:to-orange-950/10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 hover:bg-amber-100 dark:hover:bg-amber-900/20"
-                    onClick={() => setIsImportTipsSidebarOpen(true)}
-                  >
-                    <Lightbulb className="h-5 w-5 text-amber-600" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t bg-gray-50 dark:bg-gray-900/50 flex items-center justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsImportDialogOpen(false);
-                  setCsvData('');
-                  setSelectedFile(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleProcessImport}
-                className="bg-blue-600 hover:bg-blue-700"
-                disabled={!csvData.trim()}
-              >
-                Import Classes
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Batch Create Dialog */}
-        <Dialog open={isBatchCreateOpen} onOpenChange={setIsBatchCreateOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                Batch Create Classes
-              </DialogTitle>
-              <DialogDescription>
-                Choose a mode to automatically generate class names
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              {/* Mode Selection */}
-              <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
-                <Button
-                  variant={batchMode === 'simple' ? 'default' : 'ghost'}
-                  className="flex-1"
-                  onClick={() => setBatchMode('simple')}
-                >
-                  Simple Mode
-                </Button>
-                <Button
-                  variant={batchMode === 'quick' ? 'default' : 'ghost'}
-                  className="flex-1"
-                  onClick={() => setBatchMode('quick')}
-                >
-                  Quick Setup
-                </Button>
-              </div>
-
-              {batchMode === 'simple' ? (
-                <>
-                  {/* Character Set Selection */}
-                  <div className="space-y-3">
-                    <RadioGroup value={batchCharacterSet} onValueChange={setBatchCharacterSet}>
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="latin" id="latin" />
-                          <Label htmlFor="latin" className="cursor-pointer font-normal">
-                            ABC (Latin)
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="cyrillic" id="cyrillic" />
-                          <Label htmlFor="cyrillic" className="cursor-pointer font-normal">
-                            АБВГД (Cyrillic)
-                          </Label>
-                        </div>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Grade Levels List */}
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-[60px_120px_1fr] gap-4 items-center pb-2 border-b">
-                      <Label className="text-sm text-muted-foreground">Grade</Label>
-                      <Label className="text-sm text-muted-foreground text-center">Quantity</Label>
-                      <Label className="text-sm text-muted-foreground">Preview</Label>
-                    </div>
-
-                    <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                      {gradeList.map(grade => {
-                        const quantity = gradeQuantities[grade] || 0;
-                        const preview = quantity > 0
-                          ? Array.from({ length: quantity }, (_, i) =>
-                            `${grade}-${getLetterSequence(i, batchCharacterSet)}`
-                          ).join(', ')
-                          : '';
-
-                        return (
-                          <div key={grade} className="grid grid-cols-[60px_120px_1fr] gap-4 items-center">
-                            <div className="flex items-center justify-center h-12 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                              <span className="font-medium">{grade}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12 shrink-0"
-                                onClick={() => {
-                                  setGradeQuantities(prev => ({
-                                    ...prev,
-                                    [grade]: Math.max(0, (prev[grade] || 0) - 1)
-                                  }));
-                                }}
-                              >
-                                -
-                              </Button>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="26"
-                                value={gradeQuantities[grade] || ''}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  const numValue = value === '' ? 0 : Math.max(0, Math.min(26, parseInt(value) || 0));
-                                  setGradeQuantities(prev => ({
-                                    ...prev,
-                                    [grade]: numValue
-                                  }));
-                                }}
-                                className="h-12 w-16 text-center p-0"
-                                placeholder="0"
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12 shrink-0"
-                                onClick={() => {
-                                  setGradeQuantities(prev => ({
-                                    ...prev,
-                                    [grade]: Math.min(26, (prev[grade] || 0) + 1)
-                                  }));
-                                }}
-                              >
-                                +
-                              </Button>
-                            </div>
-
-                            <div className="flex items-center h-12 px-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg min-h-[48px]">
-                              <span className="text-sm text-muted-foreground truncate">
-                                {preview || '—'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Add/Remove Grade Buttons */}
-                    <div className="flex gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRemoveGrade}
-                        disabled={gradeList.length <= 1}
-                        className="flex-1"
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Remove Grade {Math.max(...gradeList)}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddGrade}
-                        className="flex-1 bg-green-50 border-green-300 text-green-700 hover:bg-green-100 dark:bg-green-950/20 dark:border-green-800 dark:text-green-400"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Grade {Math.max(...gradeList) + 1}
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Quick Setup Mode */}
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      <Label>Character Set</Label>
-                      <RadioGroup value={batchCharacterSet} onValueChange={setBatchCharacterSet}>
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="latin" id="latin-quick" />
-                            <Label htmlFor="latin-quick" className="cursor-pointer font-normal">
-                              ABC (Latin)
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="cyrillic" id="cyrillic-quick" />
-                            <Label htmlFor="cyrillic-quick" className="cursor-pointer font-normal">
-                              АБВГД (Cyrillic)
-                            </Label>
-                          </div>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label>Quick Presets</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(2)}>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                                <span className="text-lg">2️⃣</span>
-                              </div>
-                              <div>
-                                <h4 className="text-sm">2 Classes per Grade</h4>
-                                <p className="text-xs text-muted-foreground">Standard dual-stream</p>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-
-                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(3)}>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                                <span className="text-lg">3️⃣</span>
-                              </div>
-                              <div>
-                                <h4 className="text-sm">3 Classes per Grade</h4>
-                                <p className="text-xs text-muted-foreground">Medium school</p>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-
-                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(4)}>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                                <span className="text-lg">4️⃣</span>
-                              </div>
-                              <div>
-                                <h4 className="text-sm">4 Classes per Grade</h4>
-                                <p className="text-xs text-muted-foreground">Large school</p>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-
-                        <Card className="p-4 cursor-pointer hover:bg-accent transition-colors border-2 hover:border-purple-300" onClick={() => handleQuickSetup(5)}>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                                <span className="text-lg">5️⃣</span>
-                              </div>
-                              <div>
-                                <h4 className="text-sm">5 Classes per Grade</h4>
-                                <p className="text-xs text-muted-foreground">Very large school</p>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      </div>
-                    </div>
-
-                    {/* Preview in Quick Mode */}
-                    {Object.values(gradeQuantities).some(q => q > 0) && (
-                      <div className="space-y-3">
-                        <Label>Preview ({Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes)</Label>
-                        <div className="border rounded-lg p-4 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-purple-950/20 dark:to-blue-950/20 max-h-60 overflow-y-auto">
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {gradeList.map(grade => {
-                              const quantity = gradeQuantities[grade] || 0;
-                              if (quantity === 0) return null;
-
-                              const classes = Array.from({ length: quantity }, (_, i) =>
-                                `${grade}-${getLetterSequence(i, batchCharacterSet)}`
-                              );
-
-                              return (
-                                <div key={grade} className="space-y-1">
-                                  <p className="text-xs font-medium text-muted-foreground">Grade {grade}</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {classes.map((cls, idx) => (
-                                      <Badge key={idx} variant="outline" className="bg-white dark:bg-gray-900 border-purple-200 text-purple-700 dark:text-purple-300 text-xs">
-                                        {cls}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Summary */}
-              {Object.values(gradeQuantities).some(q => q > 0) && batchMode === 'simple' && (
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium">Total classes to create:</span>
-                  </div>
-                  <Badge className="bg-purple-600 text-white">
-                    {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} classes
-                  </Badge>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => {
-                setIsBatchCreateOpen(false);
-                handleBatchReset();
-              }}>
-                Cancel
-              </Button>
-              {Object.values(gradeQuantities).some(q => q > 0) && (
-                <Button onClick={() => {
-                  handleBatchGenerate();
-                  handleBatchCreate();
-                }} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                  <Check className="mr-2 h-4 w-4" />
-                  Create {Object.values(gradeQuantities).reduce((sum, q) => sum + (q || 0), 0)} Classes
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Apply to Other Classes Dialog */}
-        <Dialog open={isApplyToOthersOpen} onOpenChange={setIsApplyToOthersOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Share2 className="h-5 w-5 text-blue-600" />
-                {t('classes.apply_to_others.title')}
-              </DialogTitle>
-              <DialogDescription>
-                {changedClassAvailability && (
-                  <p className="text-sm text-muted-foreground">
-                    {t('classes.apply_to_others.description', {
-                      class: allClassesForModal.find(c => c.id === changedClassAvailability.classId)?.shortName || classes.find(c => c.id === changedClassAvailability.classId)?.shortName
-                    }).split('<1>').map((part, i) =>
-                      i === 1 ? <span key={i} className="font-medium text-blue-600">{part.replace('</1>', '')}</span> : part
-                    )}
-                  </p>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              {/* Action buttons */}
-              <div className="flex items-center justify-between pb-2 border-b">
-                <p className="text-sm text-muted-foreground">
-                  {t('classes.apply_to_others.select_classes')}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAllForApply}
-                    className="h-8 text-xs"
-                  >
-                    {t('classes.apply_to_others.select_all')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDeselectAllForApply}
-                    className="h-8 text-xs"
-                  >
-                    {t('classes.apply_to_others.clear_all')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Classes list */}
-              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                {allClassesForModal
-                  .filter(cls => cls.id !== changedClassAvailability?.classId)
-                  .sort((a, b) => a.shortName.localeCompare(b.shortName))
-                  .map(classItem => (
-                    <div
-                      key={classItem.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 ${selectedClassesForApply.includes(classItem.id)
-                        ? 'bg-blue-50 border-blue-300 dark:bg-blue-950/30 dark:border-blue-700'
-                        : 'bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-700'
-                        }`}
-                      onClick={() => handleToggleClassForApply(classItem.id)}
-                    >
-                      <Checkbox
-                        checked={selectedClassesForApply.includes(classItem.id)}
-                        onCheckedChange={() => handleToggleClassForApply(classItem.id)}
-                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                      />
-                      <div className="flex-1 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{classItem.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="text-xs">
-                              {classItem.shortName}
-                            </Badge>
-                            <Badge
-                              variant="outline"
-                              className="text-xs bg-gray-50 text-gray-600 border-gray-300 dark:bg-gray-900"
-                            >
-                              {getTotalAvailablePeriods(classItem.availability)} periods
-                            </Badge>
-                          </div>
-                        </div>
-                        {selectedClassesForApply.includes(classItem.id) && (
-                          <div className="flex items-center gap-2 text-blue-600 animate-in fade-in slide-in-from-right-2">
-                            <span className="text-sm">{t('classes.apply_to_others.will_be_updated')}</span>
-                            <Badge className="bg-blue-600 text-white">
-                              {changedClassAvailability && getTotalAvailablePeriods(changedClassAvailability.availability)} periods
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-
-              {/* Summary */}
-              {selectedClassesForApply.length > 0 && (
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">{t('classes.apply_to_others.selected')}</span>
-                  </div>
-                  <Badge className="bg-blue-600 text-white">
-                    {selectedClassesForApply.length} {selectedClassesForApply.length === 1 ? t('lessons.classes_count', { count: 1 }).replace('1 ', '') : t('lessons.classes_count', { count: 2 }).replace('2 ', '')}
-                  </Badge>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsApplyToOthersOpen(false);
-                  setSelectedClassesForApply([]);
-                }}
-              >
-                {t('classes.apply_to_others.cancel')}
-              </Button>
-              <Button
-                onClick={handleApplyToSelectedClasses}
-                disabled={selectedClassesForApply.length === 0}
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-              >
-                <Check className="mr-2 h-4 w-4" />
-                {t('classes.apply_to_others.apply_button', { count: selectedClassesForApply.length, class: selectedClassesForApply.length === 1 ? 'Class' : 'Classes' })}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Tips & Tricks Sidebar */}
-      <div className={`fixed top-0 right-0 h-screen transition-all duration-300 ease-in-out z-40 ${isTipsSidebarOpen ? 'translate-x-0' : 'translate-x-[284px]'
-        }`} style={{ paddingTop: '80px' }}>
-        <div className="relative h-full">
-          {/* Toggle Button */}
-          <button
-            onClick={() => setIsTipsSidebarOpen(!isTipsSidebarOpen)}
-            className="absolute left-0 top-8 -translate-x-full bg-card border border-r-0 border-border rounded-l-lg p-2 hover:bg-accent transition-colors shadow-sm"
-            aria-label={isTipsSidebarOpen ? 'Close tips' : 'Open tips'}
-          >
-            {isTipsSidebarOpen ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-amber-500" />
-                <ChevronLeft className="h-4 w-4" />
-              </div>
-            )}
+        <footer style={{ padding: '20px 28px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#FAFBFD' }}>
+          <button onClick={onClose} style={btnSecondary}>Bekor qilish</button>
+          <button onClick={handleCreate} disabled={generated.length === 0} style={{ ...btnPrimary, opacity: generated.length === 0 ? 0.5 : 1 }}>
+            {generated.filter(c => !c.exists).length} ta sinf yaratish
           </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
 
-          {/* Sidebar Content */}
-          <Card className="w-[300px] h-full rounded-none border-l border-y-0 border-r-0 shadow-lg overflow-hidden flex flex-col">
-            <CardHeader className="border-b bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-amber-500" />
-                <span>Tips & Tricks</span>
-              </CardTitle>
-              <CardDescription>
-                Quick tips to help you work faster
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {/* Tip 1 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">💡</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      You can assign a default teacher to speed up lesson creation.
-                    </p>
-                  </div>
-                </div>
+// ─── Class Editor Modal ───────────────────────────────────────────────
 
-                {/* Tip 2 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">🕒</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Use Availability to control when lessons can be scheduled.
-                    </p>
-                  </div>
-                </div>
+function ClassEditor({ initial, periods, teachers, rooms, onClose, onSave }: any) {
+  const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
+  const isBulk = !!initial && 'bulkTimeoff' in initial;
+  const isNew = !!initial && 'new' in initial;
 
-                {/* Tip 3 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">🧭</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Click the "?" icons to see detailed explanations of each field.
-                    </p>
-                  </div>
-                </div>
+  const [entries, setEntries] = useState(() => 
+    isEdit ? [{ name: initial.name, shortName: initial.shortName }] : [{ name: '', shortName: '' }]
+  );
+  const [teacherId, setTeacherId] = useState<string>(isEdit ? String(initial.teacher?.id || '') : '');
+  const [avail, setAvail] = useState<AvailState>(() => 
+    isEdit ? convertFromApiFormat(initial.availabilities, periods) : getFullAvail(periods)
+  );
 
-                {/* Tip 4 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">🧩</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Use the Clone button to quickly duplicate a class with all its settings.
-                    </p>
-                  </div>
-                </div>
+  const handleSave = () => {
+    if (isBulk) {
+      onSave({ availabilities: convertToApiFormat(avail) });
+      return;
+    }
 
-                {/* Tip 5 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">⚡</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Use batch creation to quickly set up multiple classes for different grades.
-                    </p>
-                  </div>
-                </div>
+    const filled = entries.filter(e => e.name.trim());
+    if (filled.length === 0) {
+      toast.error("Sinf nomini kiritish majburiy");
+      return;
+    }
 
-                {/* Tip 6 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">🎯</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Click on the periods count to expand and view the full weekly availability grid.
-                    </p>
-                  </div>
-                </div>
+    if (isEdit) {
+      const e = filled[0];
+      onSave({
+        name: e.name.trim(),
+        shortName: e.shortName.trim() || e.name.trim(),
+        teacherId: teacherId ? parseInt(teacherId) : null,
+        availabilities: convertToApiFormat(avail)
+      });
+    } else {
+      const requests = filled.map(e => ({
+        name: e.name.trim(),
+        shortName: e.shortName.trim() || e.name.trim(),
+        teacherId: teacherId ? parseInt(teacherId) : null,
+        availabilities: convertToApiFormat(avail)
+      }));
+      onSave(requests);
+    }
+  };
 
-                {/* Tip 7 */}
-                <div className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <span className="text-lg">📋</span>
+  const addEntry = () => setEntries(prev => [...prev, { name: '', shortName: '' }]);
+  const updateEntry = (i: number, patch: any) => setEntries(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e));
+  const removeEntry = (i: number) => setEntries(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+      <div style={{ background: '#fff', width: '100%', maxWidth: 540, borderRadius: 24, boxShadow: '0 32px 64px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: '92vh', overflow: 'hidden' }}>
+        <header style={{ padding: '24px 28px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ font: '800 11px Plus Jakarta Sans', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{isBulk ? "Ommaviy tahrirlash" : "Sinf Ma'lumotlari"}</div>
+            <h2 style={{ font: '800 22px Plus Jakarta Sans', color: '#0F172A', marginTop: 2 }}>{isBulk ? "Vaqtlarni o'zgartirish" : (isEdit ? entries[0].name : "Yangi sinf qo'shish")}</h2>
+          </div>
+          <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 12, border: 0, background: '#F1F5F9', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={20} />
+          </button>
+        </header>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: 28, display: 'flex', flexDirection: 'column', gap: 24 }} className="et-premium-scrollbar">
+          {!isBulk && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {entries.map((e, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr' + (isNew && entries.length > 1 ? ' 44px' : ''), gap: 12, alignItems: 'flex-end' }}>
+                    <div>
+                      {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Sinf nomi *</label>}
+                      <input value={e.name} onChange={ev => updateEntry(i, { name: ev.target.value })} style={inp} placeholder="Masalan: 10-A" autoFocus={i === 0} />
+                    </div>
+                    <div>
+                      {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Qisqa nomi</label>}
+                      <input value={e.shortName} onChange={ev => updateEntry(i, { shortName: ev.target.value.toUpperCase() })} style={{ ...inp, fontFamily: 'JetBrains Mono' }} placeholder="10A" />
+                    </div>
+                    {isNew && entries.length > 1 && (
+                      <button onClick={() => removeEntry(i)} style={{ width: 42, height: 42, borderRadius: 12, border: '1.5px solid #E2E8F0', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      Export your class list to Excel for easy sharing or backup.
-                    </p>
-                  </div>
-                </div>
+                ))}
+                
+                {isNew && (
+                  <button onClick={addEntry} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, font: '700 13px Manrope', color: '#4F46E5', background: '#EEF2FF', border: '1.5px dashed #C7D2FE', padding: '10px 16px', borderRadius: 12, marginTop: 4, cursor: 'pointer' }}>
+                    <Plus size={16} /> Yangi sinf
+                  </button>
+                )}
               </div>
-            </CardContent>
-            <div className="border-t p-4">
-              <Button
-                variant="outline"
-                className="w-full justify-between hover:bg-accent"
-                onClick={() => onNavigate && onNavigate('docs-classes')}
-              >
-                <span>View Full Documentation</span>
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+
+              <div>
+                <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Sinf rahbari</label>
+                <select 
+                  value={teacherId} 
+                  onChange={e => setTeacherId(e.target.value)} 
+                  style={{ ...inp, appearance: 'none', background: '#fff' }}
+                >
+                  <option value="">Tanlanmagan</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.fullName}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          <div>
+            <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud dars soatlari</label>
+            <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 16, padding: 16 }}>
+              <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
             </div>
-          </Card>
+          </div>
         </div>
+
+        <footer style={{ padding: '20px 28px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#FAFBFD' }}>
+          <button onClick={onClose} style={btnSecondary}>Bekor</button>
+          <button onClick={handleSave} style={btnPrimary}>
+            {isBulk ? "Hammasiga qo'llash" : (isEdit ? "Saqlash" : (entries.length > 1 ? "Barchasini qo'shish" : "Qo'shish"))}
+          </button>
+        </footer>
       </div>
     </div>
   );

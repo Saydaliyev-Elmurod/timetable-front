@@ -277,9 +277,10 @@ function ClassPicker({ values, onChange, onClose }) {
   const [q, setQ] = React.useState('');
   const set = new Set(values);
   const groups = LC_CLASSES.reduce((acc, c) => {
-    const p = c.split('-')[0];
-    if (!q || c.toLowerCase().includes(q.toLowerCase())) {
-      (acc[p] = acc[p] || []).push(c);
+    const name = c.name || '';
+    const p = name.includes('-') ? name.split('-')[0] : 'Boshqa';
+    if (!q || name.toLowerCase().includes(q.toLowerCase())) {
+      (acc[p] = acc[p] || []).push(name);
     }
     return acc;
   }, {});
@@ -496,7 +497,7 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
             <div style={{ display:'flex', flexDirection:'column', gap:4, width:'100%' }}>
               {r.teacher.groups.map((g, gi) => (
                 <GroupRow key={gi} g={g} gi={gi} total={r.teacher.groups.length}
-                  subjectId={r.subjectId}
+                  subjectId={r.subjectId} classes={r.classes}
                   openCell={openCell} onOpen={(f)=>onOpen(r.id, f)} onClose={onClose}
                   onChange={(patch)=>{
                     const groups = r.teacher.groups.map((gg,i) => i === gi ? { ...gg, ...patch } : gg);
@@ -589,7 +590,7 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
 // ─── GroupRow — one sub-group within a split lesson ──────────────────────────
 const GROUP_SUGGEST = ["O'g'il bolalar", "Qizlar", "1-guruh", "2-guruh", "3-guruh", "Kuchli", "Boshlovchi"];
 
-function GroupRow({ g, gi, total, subjectId, onChange, onRemove, onAddBelow, openCell, onOpen, onClose }) {
+function GroupRow({ g, gi, total, subjectId, classes, onChange, onRemove, onAddBelow, openCell, onOpen, onClose }) {
   const tone = ['#4F46E5','#0D9488','#D97706','#7C3AED','#0EA5E9'][gi % 5];
   const tint = ['rgba(79,70,229,0.06)','rgba(20,184,166,0.07)','rgba(217,119,6,0.07)','rgba(124,58,237,0.07)','rgba(14,165,233,0.07)'][gi % 5];
   const [editing, setEditing] = React.useState(!g.label);
@@ -630,8 +631,10 @@ function GroupRow({ g, gi, total, subjectId, onChange, onRemove, onAddBelow, ope
   );
 }
 
-function GroupLabelInput({ value, onCommit, onClose }) {
+function GroupLabelInput({ value, classes, onCommit, onClose }) {
   const [v, setV] = React.useState(value || '');
+  const classGroups = getGroupsForClasses(classes || []);
+  const suggests = classGroups.length > 0 ? classGroups : GROUP_SUGGEST;
   const [showSug, setShowSug] = React.useState(true);
   const ref = React.useRef(null);
   React.useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
@@ -657,7 +660,7 @@ function GroupLabelInput({ value, onCommit, onClose }) {
           boxShadow:'0 10px 24px -8px rgba(15,23,42,0.15)', padding:5,
           display:'flex', flexDirection:'column', gap:2, minWidth:140,
         }}>
-          {GROUP_SUGGEST.map(s => (
+          {suggests.map(s => (
             <button key={s} onMouseDown={e=>{e.preventDefault(); onCommit(s);}} style={{
               textAlign:'left', font:'500 12px Manrope', color:'#475569',
               border:0, background:'transparent', padding:'5px 8px', borderRadius:5, cursor:'pointer',
@@ -1419,17 +1422,23 @@ function computeGroups(rows, groupBy) {
   };
   for (const r of rows) {
     const h = r.hours || 0;
+    let pushed = false;
     if (groupBy === 'class') {
-      for (const c of r.classes) push(c, r, h);
+      for (const c of r.classes) { push(c, r, h); pushed = true; }
     } else if (groupBy === 'subject') {
-      if (r.subjectId) push(r.subjectId, r, h);
+      if (r.subjectId) { push(r.subjectId, r, h); pushed = true; }
     } else if (groupBy === 'teacher') {
-      if (typeof r.teacher === 'string' && r.teacher) push(r.teacher, r, h);
-      else if (r.teacher?.groups) for (const g of r.teacher.groups) g.tid && push(g.tid, r, h);
+      if (typeof r.teacher === 'string' && r.teacher) { push(r.teacher, r, h); pushed = true; }
+      else if (r.teacher?.groups) {
+        for (const g of r.teacher.groups) if (g.tid) { push(g.tid, r, h); pushed = true; }
+      }
     } else if (groupBy === 'room') {
-      if (typeof r.teacher === 'string') r.room && push(r.room, r, h);
-      else if (r.teacher?.groups) for (const g of r.teacher.groups) g.room && push(g.room, r, h);
+      if (typeof r.teacher === 'string') { if (r.room) { push(r.room, r, h); pushed = true; } }
+      else if (r.teacher?.groups) {
+        for (const g of r.teacher.groups) if (g.room) { push(g.room, r, h); pushed = true; }
+      }
     }
+    if (!pushed) push('MISC', r, h);
   }
   return Object.values(buckets);
 }
@@ -1453,6 +1462,13 @@ function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpd
       else if (r.teacher?.groups) r.teacher.groups.forEach(gg => gg.room && rooms.add(gg.room));
     });
 
+    if (k === 'MISC') {
+      return {
+        title: "Tayinlanmagan darslar",
+        kind: 'misc',
+        meta: [['darslar', g.rows.length], ['soat', g.hoursSum]]
+      };
+    }
     if (groupBy === 'class') {
       return {
         title:k,
@@ -1676,10 +1692,25 @@ function headStripe(head, groupBy) {
 // --- lessons/LessonsPage.jsx ---
 // ─── LessonsPage — top-level page; tabs + accordion grouped view ────────────
 
-function LessonsPage({ onSave }) {
-  // Make sure each row has dur (1=single, 2=double, 3=triple)
-  const seed = React.useMemo(() => LC_SEED.map(r => ({ ...r, dur: r.dur || 1 })), []);
+function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms = [], classes = [], initialLessons = [] }) {
+  // Sync global variables for legacy pickers that still use them
+  React.useEffect(() => {
+    LC_SUBJECTS = subjects;
+    LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map(s => [s.id, s]));
+    LC_TEACHERS = teachers;
+    LC_TEACHER_BY_ID = Object.fromEntries(teachers.map(t => [t.id, t]));
+    LC_ROOMS = rooms;
+    LC_CLASSES = classes.map(c => typeof c === 'string' ? { name: c, groups: [] } : c);
+  }, [subjects, teachers, rooms, classes]);
+
+  const seed = React.useMemo(() => initialLessons.map(r => ({ ...r, dur: r.dur || 1 })), [initialLessons]);
   const [rows, setRows]           = React.useState(seed);
+  
+  // Update local rows if initialLessons changes
+  React.useEffect(() => {
+    setRows(seed);
+  }, [seed]);
+
   const [groupBy, setGroupBy]     = React.useState('class');
   const [expanded, setExpanded]   = React.useState(new Set());
   const [openCell, setOpenCell]   = React.useState(null);
@@ -1690,13 +1721,28 @@ function LessonsPage({ onSave }) {
   const [editClass, setEditClass] = React.useState(null); // class id to edit
   const [showMatrix, setShowMatrix] = React.useState(false);
 
+  // Notify parent of row changes
+  const notifyChanges = (newRows) => {
+    onRowsChange && onRowsChange(newRows);
+  };
+
   // ── Row ops ────────────────────────────────────────────────────────────
-  const updateRow = (id, patch) => setRows(rs => rs.map(r => r.id === id ? { ...r, ...patch } : r));
+  const updateRow = (id, patch) => setRows(rs => {
+    const next = rs.map(r => r.id === id ? { ...r, ...patch } : r);
+    notifyChanges(next);
+    return next;
+  });
   const dupRow = (id) => setRows(rs => {
     const i = rs.findIndex(r => r.id === id);
-    return [...rs.slice(0,i+1), { ...rs[i], id:'L'+Date.now() }, ...rs.slice(i+1)];
+    const next = [...rs.slice(0,i+1), { ...rs[i], id:'L'+Date.now() }, ...rs.slice(i+1)];
+    notifyChanges(next);
+    return next;
   });
-  const delRow = (id) => setRows(rs => rs.filter(r => r.id !== id));
+  const delRow = (id) => setRows(rs => {
+    const next = rs.filter(r => r.id !== id);
+    notifyChanges(next);
+    return next;
+  });
 
   // Add lesson contextually — pre-fills group dimension
   const addToGroup = (gBy, key) => {
@@ -1709,7 +1755,11 @@ function LessonsPage({ onSave }) {
     if (gBy === 'teacher') blank.teacher = key;
     if (gBy === 'room')    blank.room = key;
     // Insert at TOP for visibility
-    setRows(rs => [blank, ...rs]);
+    setRows(rs => {
+      const next = [blank, ...rs];
+      notifyChanges(next);
+      return next;
+    });
     // Ensure expanded
     const n = new Set(expanded); n.add(key); setExpanded(n);
     // Auto-open subject picker (most common first step)
@@ -1717,7 +1767,11 @@ function LessonsPage({ onSave }) {
   };
   const addLooseRow = () => {
     const blank = { id:'L'+Date.now(), classes:[], subjectId:'', teacher:'', room:'', hours:1, dur:1 };
-    setRows(rs => [blank, ...rs]);
+    setRows(rs => {
+      const next = [blank, ...rs];
+      notifyChanges(next);
+      return next;
+    });
     setTimeout(()=>setOpenCell({ row: blank.id, field:'class' }), 60);
   };
 
@@ -2048,8 +2102,21 @@ const primaryBtnT = {
 
 
 
+// --- lessons/Groups.jsx ---
+const getGroupsForClasses = (classNames) => {
+  const groups = new Set();
+  classNames.forEach(name => {
+    const c = LC_CLASSES.find(cl => cl.name === name);
+    if (c && c.groups) {
+      c.groups.forEach(g => groups.add(g.name));
+    }
+  });
+  return [...groups];
+};
+
 export function initLessonsData(classes, subjects, teachers, rooms, lessons) {
-  LC_CLASSES = classes;
+  // classes can be objects {id, name, groups: [{id, name}]}
+  LC_CLASSES = classes.map(c => typeof c === 'string' ? { name: c, groups: [] } : c);
   LC_SUBJECTS = subjects;
   LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map(s => [s.id, s]));
   LC_TEACHERS = teachers;
