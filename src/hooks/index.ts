@@ -24,3 +24,12 @@ export type { SubjectWithAvailability } from './useSubjects';
 
 // Lessons
 export { useLessons } from './useLessons';
+
+// Generic CRUD list state
+export { useCrudResource } from './useCrudResource';
+export type {
+  PagedResult,
+  CrudFetchFn,
+  UseCrudResourceOptions,
+  UseCrudResourceResult,
+} from './useCrudResource';

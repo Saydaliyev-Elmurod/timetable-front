@@ -1,43 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Download, Upload, Building2, School, Clock, LayoutGrid, 
-  Search, Plus, Edit, Trash2, X, Loader2, ChevronRight, 
-  ArrowRight, Check, Calendar, Filter
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useCrudResource } from '@/hooks';
+import {
+  Upload, Building2, School, Clock, LayoutGrid,
+  Plus, Edit, Trash2, X, Loader2, ChevronRight,
+  ArrowRight, Check, Calendar, Filter,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { TimeSlot } from '@/lib/teachers';
-import ImportModal from '@/components/shared/ImportModal';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
 
-// ─── Constants & Styles ────────────────────────────────────────────────
+const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
 
-const CL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+// ─── Constants ─────────────────────────────────────────────────────────
+
+const CL_DAYS = API_DAYS_OF_WEEK;
 const CL_DAYS_SHORT = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Yak'];
-
-const btnPrimary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#4F46E5', color: '#fff', border: 0,
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  boxShadow: '0 4px 12px -4px rgba(79, 70, 229, 0.4)',
-  transition: 'all 150ms'
-};
-
-const btnSecondary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#fff', color: '#475569', border: '1px solid #E2E8F0',
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  transition: 'all 150ms'
-};
-
-const inp = {
-  width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-  padding: '10px 14px', font: '500 14px Manrope', color: '#0F172A',
-  outline: 0, transition: 'border-color 150ms'
-};
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -90,52 +70,40 @@ function Badge({ children, color, tint, ink }: any) {
 
 export default function RoomsPage() {
   const { t, locale } = useTranslation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [library, setLibrary] = useState<RoomResponse[]>([]);
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
-  
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+
   const [editing, setEditing] = useState<RoomResponse | { new: true } | { bulkTimeoff: true } | null>(null);
   const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const fetchRooms = useCallback(
+    (page: number, size: number, query: string) => RoomService.getPaginated(page, size, query),
+    [],
+  );
 
+  const {
+    items: library,
+    isLoading,
+    totalElements,
+    totalPages,
+    page, size, setPage, setSize,
+    query, setQuery,
+    selected, setSelected, toggleSelect, clearSelection,
+    refresh: fetchData,
+  } = useCrudResource<RoomResponse>(fetchRooms, {
+    searchDebounceMs: 400,
+    errorMessage: t('rooms.fetch_error', "Ma'lumotlarni yuklashda xatolik"),
+  });
+
+  // One-time periods fetch (independent of rooms pagination)
   useEffect(() => {
-    fetchData();
-  }, [page, size]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (page === 0) fetchData(); else setPage(0);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [roomsPage, org] = await Promise.all([
-        RoomService.getPaginated(page, size, query),
-        organizationApi.get()
-      ]);
-      setLibrary(roomsPage.content);
-      setTotalPages(roomsPage.totalPages);
-      setTotalElements(roomsPage.totalElements);
+    organizationApi.get().then((org) => {
       if (org?.periods) {
         const nonBreak = org.periods.filter(p => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
-    } catch (error) {
-      toast.error(t('rooms.fetch_error', 'Ma\'lumotlarni yuklashda xatolik'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }).catch(() => {});
+  }, []);
 
   const handleSave = async (data: any) => {
     try {
@@ -153,7 +121,7 @@ export default function RoomsPage() {
         toast.success(t('rooms.add_success', "Xona qo'shildi"));
       }
       setEditing(null);
-      setSelected(new Set());
+      clearSelection();
       fetchData();
     } catch (error) {
       toast.error(t('common.save_error', "Saqlashda xatolik"));
@@ -164,7 +132,7 @@ export default function RoomsPage() {
     try {
       await RoomService.deleteBulk(Array.from(selected));
       toast.success(t('rooms.bulk_delete_success', `${selected.size} ta xona o'chirildi`));
-      setSelected(new Set());
+      clearSelection();
       setConfirmDel(null);
       fetchData();
     } catch (error) {
@@ -172,37 +140,18 @@ export default function RoomsPage() {
     }
   };
 
-  const toggleSelect = (id: number) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelected(next);
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 20 }}>
-      {/* Header & Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-            <input 
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={t('rooms.search_placeholder', 'Xonani qidiring...')}
-              style={{ ...inp, width: 300, paddingLeft: 38, background: '#fff' }} 
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setShowImport(true)} style={btnSecondary}>
-            <Upload size={16} /> {t('common.import', 'Import')}
-          </button>
-          <button onClick={() => setEditing({ new: true })} style={btnPrimary}>
-            <Plus size={16} /> {t('rooms.add_room', 'Xona qo\'shish')}
-          </button>
-        </div>
-      </div>
+      <CrudPageHeader
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder={t('rooms.search_placeholder', 'Xonani qidiring...')}
+        searchWidth={300}
+        actions={[
+          { id: 'import', label: t('common.import', 'Import'), icon: Upload, iconSize: 16, onClick: () => setShowImport(true) },
+          { id: 'add', label: t('rooms.add_room', "Xona qo'shish"), icon: Plus, iconSize: 16, onClick: () => setEditing({ new: true }), variant: 'primary' },
+        ]}
+      />
 
       {/* Table Card */}
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -279,24 +228,14 @@ export default function RoomsPage() {
         </div>
       </div>
 
-      {/* Bulk actions bar */}
-      {selected.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-          background: '#0F172A', padding: '12px 20px', borderRadius: 16,
-          display: 'flex', alignItems: 'center', gap: 16, zIndex: 100,
-          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
-        }}>
-          <span style={{ font: '700 13px Manrope', color: '#fff' }}>{selected.size} ta tanlandi</span>
-          <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)' }} />
-          <button onClick={() => setEditing({ bulkTimeoff: true })} style={{ background: 'transparent', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Clock size={14} /> Vaqtlarni o'zgartirish
-          </button>
-          <button onClick={() => setConfirmDel({ bulk: true, n: selected.size })} style={{ background: '#F43F5E', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Trash2 size={14} /> O'chirish
-          </button>
-        </div>
-      )}
+      <BulkActionBar
+        count={selected.size}
+        actions={[
+          { id: 'bulk-timeoff', label: "Vaqtlarni o'zgartirish", icon: Clock, onClick: () => setEditing({ bulkTimeoff: true }) },
+        ]}
+        onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
+        onClear={clearSelection}
+      />
 
       {/* Modals */}
       {editing && (
@@ -323,24 +262,26 @@ export default function RoomsPage() {
       )}
 
       {showImport && (
-        <ImportModal 
-          title={t('rooms.import_rooms', 'Xonalarni import qilish')}
-          description={t('rooms.import_description', 'Excel yoki CSV fayli orqali xonalarni ommaviy qo\'shing')}
-          templateColumns={['Xona nomi', 'Qisqa nomi', 'Turi (SHARED/SPECIAL)']}
-          onImport={async (data) => {
-            const requests = data.map((row: any) => ({
-              name: row['Xona nomi'] || row['name'],
-              shortName: row['Qisqa nomi'] || row['shortName'] || (row['Xona nomi'] || row['name']).substring(0, 5),
-              type: row['Turi'] === 'SPECIAL' || row['type'] === 'SPECIAL' ? RoomType.SPECIAL : RoomType.SHARED,
-              availabilities: convertToApiFormat(getFullAvail(periods))
-            }));
-            await RoomService.bulkCreate(requests);
-            toast.success(t('rooms.import_success', 'Xonalar muvaffaqiyatli import qilindi'));
-            setShowImport(false);
-            fetchData();
-          }}
-          onClose={() => setShowImport(false)}
-        />
+        <Suspense fallback={null}>
+          <ImportModal
+            title={t('rooms.import_rooms', 'Xonalarni import qilish')}
+            description={t('rooms.import_description', "Excel yoki CSV fayli orqali xonalarni ommaviy qo'shing")}
+            templateColumns={['Xona nomi', 'Qisqa nomi', 'Turi (SHARED/SPECIAL)']}
+            onImport={async (data) => {
+              const requests = data.map((row: any) => ({
+                name: row['Xona nomi'] || row['name'],
+                shortName: row['Qisqa nomi'] || row['shortName'] || (row['Xona nomi'] || row['name']).substring(0, 5),
+                type: row['Turi'] === 'SPECIAL' || row['type'] === 'SPECIAL' ? RoomType.SPECIAL : RoomType.SHARED,
+                availabilities: convertToApiFormat(getFullAvail(periods))
+              }));
+              await RoomService.bulkCreate(requests);
+              toast.success(t('rooms.import_success', 'Xonalar muvaffaqiyatli import qilindi'));
+              setShowImport(false);
+              fetchData();
+            }}
+            onClose={() => setShowImport(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

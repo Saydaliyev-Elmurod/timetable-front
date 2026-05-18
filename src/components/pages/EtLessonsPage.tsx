@@ -1,62 +1,103 @@
 import React from 'react';
 import { toast } from 'sonner';
 
+// ─── Data model types ───────────────────────────────────────────────────────
+
+export interface EtSubject {
+  id: string;
+  name: string;
+  short: string;
+  /** Packed "bg,fg,bar" hex values */
+  ck: string;
+}
+
+export interface EtTeacher {
+  id: string;
+  name: string;
+  avatar: string;
+  tone: string;
+  subs: string[];
+  cap: number;
+  load: number;
+}
+
+export interface EtRoom {
+  id: string;
+  no: string;
+  type: string;
+  label: string;
+  fits: string | string[];
+}
+
+export interface EtClassGroup {
+  id: number;
+  name: string;
+}
+
+export interface EtClass {
+  id?: number;
+  name: string;
+  groups?: EtClassGroup[];
+}
+
+export interface EtGroupAssignment {
+  label: string;
+  tid: string;
+  room: string;
+}
+
+export type EtTeacherValue = string | { groups: EtGroupAssignment[] };
+
+export interface EtLessonRow {
+  id: string;
+  classes: string[];
+  subjectId: string;
+  teacher: EtTeacherValue;
+  room: string;
+  hours: number;
+  dur: number;
+  block?: string;
+}
+
 // --- lessons/Catalog.jsx ---
 // ─── Catalog & shared helpers for the Lessons-entry page ─────────────────────
-// Single source of truth for subjects, teachers, rooms, classes + mock seed
-// of lesson-rows. All shared via window.* at the bottom.
 
 const LC = {
-  // Class groups (used by the class filter rail)
   parallels: ['5','6','7','8','9','10','11'],
   letters:   ['A','B','V','G'],
 };
 
-// Expand classes — every parallel × letter
-let LC_CLASSES = [];
-
-// Subjects — id, label, short, colorKey -> matches SC token in MockData if loaded,
-// otherwise we provide our own copy so the page is standalone.
-let LC_SUBJECTS = [];
-
-let LC_SUBJECT_BY_ID = {};
+let LC_CLASSES: EtClass[] = [];
+let LC_SUBJECTS: EtSubject[] = [];
+let LC_SUBJECT_BY_ID: Record<string, EtSubject> = {};
+let LC_TEACHERS: EtTeacher[] = [];
+let LC_TEACHER_BY_ID: Record<string, EtTeacher> = {};
+let LC_ROOMS: EtRoom[] = [];
+let LC_SEED: EtLessonRow[] = [];
 
 // Helper: parse "bg,fg,bar" packed in ck
-const subjColors = (s) => {
+const subjColors = (s: EtSubject | undefined): [string, string, string] => {
   if (!s) return ['#F1F5F9','#475569','#94A3B8'];
   const [bg,fg,bar] = s.ck.split(',');
-  return [bg,fg,bar];
+  return [bg, fg, bar];
 };
 
-// Teachers — name, photo initials, subject ids they can teach, weekly load capacity
-let LC_TEACHERS = [];
-
-let LC_TEACHER_BY_ID = {};
-
-// Rooms — number, type, capacity
-let LC_ROOMS = [];
-
-// Seed of lesson definitions — what the user already entered.
-// Each row: { id, classes:[], subjectId, teacher: id | { groups:[{label,tid,room}] }, room, hours, block }
-// block: '1' = all singles; '2' = all doubles; or pattern like '2+1'
-let LC_SEED = [];
-
 // Helpers exposed for components
-const subjById      = (id) => LC_SUBJECT_BY_ID[id];
-const teacherById   = (id) => LC_TEACHER_BY_ID[id];
-const roomById      = (id) => LC_ROOMS.find(r => r.id === id);
-const teachersForSub= (sid) => LC_TEACHERS.filter(t => t.subs.includes(sid));
-const roomsForSub   = (sid) => LC_ROOMS.filter(r => r.fits === '*' || (Array.isArray(r.fits) && r.fits.includes(sid)));
+const subjById      = (id: string): EtSubject | undefined => LC_SUBJECT_BY_ID[id];
+const teacherById   = (id: string): EtTeacher | undefined => LC_TEACHER_BY_ID[id];
+const roomById      = (id: string): EtRoom | undefined => LC_ROOMS.find((r: any) => r.id === id);
+const teachersForSub= (sid: string): EtTeacher[] => LC_TEACHERS.filter((t: any) => t.subs.includes(sid));
+const roomsForSub   = (sid: string): EtRoom[] => LC_ROOMS.filter((r: any) => r.fits === '*' || (Array.isArray(r.fits) && r.fits.includes(sid)));
 
 // Expand a "block" string like "2+2+1+1" to readable preview
-const blockExpand = (b) => {
+const blockExpand = (b: string | undefined | null): number[] => {
   if (!b) return [];
-  return String(b).split('+').map(x => parseInt(x,10) || 1);
+  return String(b).split('+').map((x: any) => parseInt(x,10) || 1);
 };
 
 // Compute teacher hours implied by current lesson rows
-function computeTeacherLoad(rows) {
-  const out = {};
+function computeTeacherLoad(rows: EtLessonRow[]): Record<string, number> {
+  const out: Record<string, number> = {};
   for (const r of rows) {
     const hrs = r.hours || 0;
     if (typeof r.teacher === 'string') {
@@ -78,19 +119,19 @@ function computeTeacherLoad(rows) {
 // Room / Class cells. Mounted ABSOLUTELY inside the cell with a small
 // arrow. Keyboard: arrow keys navigate, Enter selects, Esc closes.
 
-function Popover({ children, onClose, width=320, align='left', maxH=320 }) {
+function Popover({ children, onClose, width=320, align='left', maxH=320 }: any) {
   React.useEffect(() => {
-    const onDown = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+    const onDown = (e: any) => { if (e.key === 'Escape') onClose && onClose(); };
     window.addEventListener('keydown', onDown);
     return () => window.removeEventListener('keydown', onDown);
   }, [onClose]);
   return (
     <div style={{
-      position:'absolute', top:'calc(100% + 6px)', [align]:0, zIndex:60,
+      position:'absolute' as const, top:'calc(100% + 6px)', [align]:0, zIndex:60,
       width, maxHeight:maxH,
       background:'#fff', borderRadius:12, border:'1px solid #E2E8F0',
       boxShadow:'0 20px 40px -12px rgba(15,23,42,0.18), 0 4px 12px -2px rgba(15,23,42,0.08)',
-      fontFamily:'Manrope', overflow:'hidden', display:'flex', flexDirection:'column',
+      fontFamily:'Manrope', overflow:'hidden' as const, display:'flex' as const, flexDirection:'column' as const,
       animation:'pop 140ms cubic-bezier(0.22,1,0.36,1)',
     }}>
       {children}
@@ -99,47 +140,47 @@ function Popover({ children, onClose, width=320, align='left', maxH=320 }) {
 }
 
 // Generic searchable list with item renderer
-function PickerList({ items, query, onQuery, onPick, placeholder, renderItem, footer, autoFocus=true }) {
+function PickerList({ items, query, onQuery, onPick, placeholder, renderItem, footer, autoFocus=true }: any) {
   const [hi, setHi] = React.useState(0);
   React.useEffect(() => { setHi(0); }, [query]);
   const filt = items;
-  const onKey = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h+1, filt.length-1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h-1, 0)); }
+  const onKey = (e: any) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h: any) => Math.min(h+1, filt.length-1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h: any) => Math.max(h-1, 0)); }
     else if (e.key === 'Enter')   { e.preventDefault(); filt[hi] && onPick(filt[hi]); }
   };
   return (
     <>
-      <div style={{ padding:8, borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:8 }}>
+      <div style={{ padding:8, borderBottom:'1px solid #F1F5F9', display:'flex' as const, alignItems:'center' as const, gap:8 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input
           autoFocus={autoFocus}
           value={query}
-          onChange={e => onQuery(e.target.value)}
+          onChange={(e: any) => onQuery(e.target.value)}
           onKeyDown={onKey}
           placeholder={placeholder}
           style={{ border:0, outline:0, flex:1, font:'500 13px Manrope', color:'#0F172A', background:'transparent' }}
         />
         <kbd style={kbdStyle}>↵</kbd>
       </div>
-      <div style={{ overflowY:'auto', maxHeight:240, padding:4 }}>
+      <div style={{ overflowY:'auto' as const, maxHeight:240, padding:4 }}>
         {filt.length === 0 && (
           <div style={{ padding:'14px 12px', color:'#94A3B8', fontSize:13 }}>Hech narsa topilmadi · <span style={{ color:'#4F46E5', fontWeight:600 }}>+ yangi yaratish</span></div>
         )}
-        {filt.map((it, i) => (
+        {filt.map((it: any, i: any) => (
           <div key={i}
                onMouseEnter={() => setHi(i)}
-               onMouseDown={(e) => { e.preventDefault(); onPick(it); }}
+               onMouseDown={(e: any) => { e.preventDefault(); onPick(it); }}
                style={{
-                 padding:'8px 10px', borderRadius:8, cursor:'pointer',
+                 padding:'8px 10px', borderRadius:8, cursor:'pointer' as const,
                  background: i === hi ? '#F1F5F9' : 'transparent',
-                 display:'flex', alignItems:'center', gap:10,
+                 display:'flex' as const, alignItems:'center' as const, gap:10,
                }}>
             {renderItem(it, i === hi)}
           </div>
         ))}
       </div>
-      {footer && <div style={{ borderTop:'1px solid #F1F5F9', padding:'8px 10px', background:'#F8FAFC', display:'flex', alignItems:'center', gap:8, fontSize:11, color:'#64748B' }}>{footer}</div>}
+      {footer && <div style={{ borderTop:'1px solid #F1F5F9', padding:'8px 10px', background:'#F8FAFC', display:'flex' as const, alignItems:'center' as const, gap:8, fontSize:11, color:'#64748B' }}>{footer}</div>}
     </>
   );
 }
@@ -151,9 +192,9 @@ const kbdStyle = {
 };
 
 // ─── Subject picker ──────────────────────────────────────────────────────────
-function SubjectPicker({ value, onPick, onClose }) {
+function SubjectPicker({ value, onPick, onClose }: any) {
   const [q, setQ] = React.useState('');
-  const filt = LC_SUBJECTS.filter(s =>
+  const filt = LC_SUBJECTS.filter((s: any) =>
     !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.short.toLowerCase().includes(q.toLowerCase())
   );
   return (
@@ -161,13 +202,13 @@ function SubjectPicker({ value, onPick, onClose }) {
       <PickerList
         items={filt} query={q} onQuery={setQ}
         placeholder="Fanni qidiring…"
-        onPick={(s) => { onPick(s.id); onClose(); }}
-        renderItem={(s, hi) => {
+        onPick={(s: any) => { onPick(s.id); onClose(); }}
+        renderItem={(s: any, hi: any) => {
           const [bg,fg,bar] = subjColors(s);
           const active = value === s.id;
           return (
             <>
-              <span style={{ width:24, height:24, borderRadius:6, background:bg, color:fg, display:'flex', alignItems:'center', justifyContent:'center', font:'700 11px Plus Jakarta Sans', flexShrink:0 }}>{s.short[0]}</span>
+              <span style={{ width:24, height:24, borderRadius:6, background:bg, color:fg, display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, font:'700 11px Plus Jakarta Sans', flexShrink:0 }}>{s.short[0]}</span>
               <span style={{ flex:1, font:'600 13px Manrope', color:'#0F172A' }}>{s.name}</span>
               <span style={{ font:'500 11px JetBrains Mono', color:'#94A3B8' }}>{s.short}</span>
               {active && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -183,32 +224,32 @@ function SubjectPicker({ value, onPick, onClose }) {
 // ─── Teacher picker ──────────────────────────────────────────────────────────
 // Auto-filters to teachers of the given subject. If subjectId provided, shows
 // only matching teachers + an "All" toggle.
-function TeacherPicker({ subjectId, value, onPick, onClose, contextLabel }) {
+function TeacherPicker({ subjectId, value, onPick, onClose, contextLabel }: any) {
   const [q, setQ] = React.useState('');
   const [allSubs, setAllSubs] = React.useState(false);
   const pool = (!allSubs && subjectId) ? teachersForSub(subjectId) : LC_TEACHERS;
-  const filt = pool.filter(t => !q || t.name.toLowerCase().includes(q.toLowerCase()));
+  const filt = pool.filter((t: any) => !q || t.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <Popover onClose={onClose} width={340}>
       <PickerList
         items={filt} query={q} onQuery={setQ}
         placeholder={subjectId ? `${subjById(subjectId)?.name} o'qituvchisini qidiring…` : "O'qituvchini qidiring…"}
-        onPick={(t) => { onPick(t.id); onClose(); }}
-        renderItem={(t) => {
+        onPick={(t: any) => { onPick(t.id); onClose(); }}
+        renderItem={(t: any) => {
           const overload = t.load / t.cap;
           const tone = overload >= 0.95 ? '#EF4444' : overload >= 0.8 ? '#F59E0B' : '#14B8A6';
           return (
             <>
-              <span style={{ width:28, height:28, borderRadius:999, background:t.tone, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', font:'700 11px Plus Jakarta Sans', flexShrink:0, letterSpacing:'-0.02em' }}>{t.avatar}</span>
+              <span style={{ width:28, height:28, borderRadius:999, background:t.tone, color:'#fff', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, font:'700 11px Plus Jakarta Sans', flexShrink:0, letterSpacing:'-0.02em' }}>{t.avatar}</span>
               <span style={{ flex:1, minWidth:0 }}>
                 <div style={{ font:'600 13px Manrope', color:'#0F172A' }}>{t.name}</div>
                 <div style={{ font:'500 11px Manrope', color:'#94A3B8', marginTop:1 }}>
-                  {t.subs.map(s => subjById(s)?.short).join(' · ')}
+                  {t.subs.map((s: any) => subjById(s)?.short).join(' · ')}
                 </div>
               </span>
-              <span style={{ textAlign:'right', flexShrink:0 }}>
+              <span style={{ textAlign:'right' as const, flexShrink:0 }}>
                 <div style={{ font:'600 10px JetBrains Mono', color:tone, letterSpacing:'.02em' }}>{t.load}/{t.cap}</div>
-                <div style={{ width:36, height:3, borderRadius:2, background:'#F1F5F9', marginTop:3, overflow:'hidden' }}>
+                <div style={{ width:36, height:3, borderRadius:2, background:'#F1F5F9', marginTop:3, overflow:'hidden' as const }}>
                   <div style={{ width: Math.min(100, overload*100)+'%', height:'100%', background:tone }}/>
                 </div>
               </span>
@@ -219,8 +260,8 @@ function TeacherPicker({ subjectId, value, onPick, onClose, contextLabel }) {
         footer={
           <>
             {subjectId && (
-              <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer' }}>
-                <input type="checkbox" checked={allSubs} onChange={e => setAllSubs(e.target.checked)} style={{ accentColor:'#4F46E5' }}/>
+              <label style={{ display:'flex' as const, alignItems:'center' as const, gap:6, cursor:'pointer' as const }}>
+                <input type="checkbox" checked={allSubs} onChange={(e: any) => setAllSubs(e.target.checked)} style={{ accentColor:'#4F46E5' }}/>
                 <span>Boshqa fan o'qituvchilarini ham ko'rsatish</span>
               </label>
             )}
@@ -233,23 +274,23 @@ function TeacherPicker({ subjectId, value, onPick, onClose, contextLabel }) {
 }
 
 // ─── Room picker ─────────────────────────────────────────────────────────────
-function RoomPicker({ subjectId, value, onPick, onClose }) {
+function RoomPicker({ subjectId, value, onPick, onClose }: any) {
   const [q, setQ] = React.useState('');
   const [onlyFit, setOnlyFit] = React.useState(true);
   const pool = (onlyFit && subjectId) ? roomsForSub(subjectId) : LC_ROOMS;
-  const filt = pool.filter(r => !q || r.no.toLowerCase().includes(q.toLowerCase()) || r.label.toLowerCase().includes(q.toLowerCase()));
+  const filt = pool.filter((r: any) => !q || r.no.toLowerCase().includes(q.toLowerCase()) || r.label.toLowerCase().includes(q.toLowerCase()));
   return (
     <Popover onClose={onClose} width={300}>
       <PickerList
         items={filt} query={q} onQuery={setQ}
         placeholder="Xona № yoki nom…"
-        onPick={(r) => { onPick(r.id); onClose(); }}
-        renderItem={(r) => {
+        onPick={(r: any) => { onPick(r.id); onClose(); }}
+        renderItem={(r: any) => {
           const ico = r.type === 'gym' ? '🏟' : r.type === 'lab' ? '🧪' : r.type === 'art' ? '✎' : '▢';
           const fit = r.fits === '*' || (Array.isArray(r.fits) && r.fits.includes(subjectId));
           return (
             <>
-              <span style={{ width:32, height:24, borderRadius:6, background:'#F1F5F9', color:'#475569', display:'flex', alignItems:'center', justifyContent:'center', font:'700 12px JetBrains Mono', flexShrink:0 }}>{r.no}</span>
+              <span style={{ width:32, height:24, borderRadius:6, background:'#F1F5F9', color:'#475569', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, font:'700 12px JetBrains Mono', flexShrink:0 }}>{r.no}</span>
               <span style={{ flex:1, minWidth:0 }}>
                 <div style={{ font:'600 13px Manrope', color:'#0F172A' }}>{r.label}</div>
                 <div style={{ font:'500 11px Manrope', color:'#94A3B8' }}>{r.type === 'lab' ? 'Laboratoriya' : r.type === 'gym' ? 'Sport zali' : r.type === 'art' ? 'Maxsus xona' : 'Standart xona'}</div>
@@ -261,8 +302,8 @@ function RoomPicker({ subjectId, value, onPick, onClose }) {
         }}
         footer={
           subjectId ? (
-            <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer' }}>
-              <input type="checkbox" checked={onlyFit} onChange={e => setOnlyFit(e.target.checked)} style={{ accentColor:'#4F46E5' }}/>
+            <label style={{ display:'flex' as const, alignItems:'center' as const, gap:6, cursor:'pointer' as const }}>
+              <input type="checkbox" checked={onlyFit} onChange={(e: any) => setOnlyFit(e.target.checked)} style={{ accentColor:'#4F46E5' }}/>
               <span>Faqat fanga mos xonalar</span>
             </label>
           ) : null
@@ -273,10 +314,10 @@ function RoomPicker({ subjectId, value, onPick, onClose }) {
 }
 
 // ─── Class picker (multi-select) ─────────────────────────────────────────────
-function ClassPicker({ values, onChange, onClose }) {
+function ClassPicker({ values, onChange, onClose }: any) {
   const [q, setQ] = React.useState('');
   const set = new Set(values);
-  const groups = LC_CLASSES.reduce((acc, c) => {
+  const groups = LC_CLASSES.reduce((acc: any, c: any) => {
     const name = c.name || '';
     const p = name.includes('-') ? name.split('-')[0] : 'Boshqa';
     if (!q || name.toLowerCase().includes(q.toLowerCase())) {
@@ -284,42 +325,42 @@ function ClassPicker({ values, onChange, onClose }) {
     }
     return acc;
   }, {});
-  const toggle = (c) => {
+  const toggle = (c: any) => {
     if (set.has(c)) { set.delete(c); } else { set.add(c); }
     onChange([...set]);
   };
-  const toggleParallel = (p, classes) => {
-    const allOn = classes.every(c => set.has(c));
-    classes.forEach(c => allOn ? set.delete(c) : set.add(c));
+  const toggleParallel = (p: any, classes: any) => {
+    const allOn = classes.every((c: any) => set.has(c));
+    classes.forEach((c: any) => allOn ? set.delete(c) : set.add(c));
     onChange([...set]);
   };
   return (
     <Popover onClose={onClose} width={320}>
-      <div style={{ padding:8, borderBottom:'1px solid #F1F5F9', display:'flex', alignItems:'center', gap:8 }}>
+      <div style={{ padding:8, borderBottom:'1px solid #F1F5F9', display:'flex' as const, alignItems:'center' as const, gap:8 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Sinfni qidiring…" style={{ border:0, outline:0, flex:1, font:'500 13px Manrope', color:'#0F172A', background:'transparent' }}/>
         <span style={{ font:'600 11px JetBrains Mono', color:'#4F46E5' }}>{values.length} tanlangan</span>
       </div>
-      <div style={{ overflowY:'auto', maxHeight:280, padding:'8px 10px' }}>
+      <div style={{ overflowY:'auto' as const, maxHeight:280, padding:'8px 10px' }}>
         {Object.entries(groups).map(([p, classes]) => {
-          const allOn = classes.every(c => set.has(c));
+          const allOn = classes.every((c: any) => set.has(c));
           return (
             <div key={p} style={{ marginBottom:10 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                <div style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.06em', textTransform:'uppercase', color:'#64748B' }}>{p}-sinflar</div>
-                <button onMouseDown={(e)=>{e.preventDefault(); toggleParallel(p, classes);}} style={{ font:'600 11px Manrope', color:allOn?'#DC2626':'#4F46E5', border:0, background:'transparent', cursor:'pointer', padding:0 }}>
+              <div style={{ display:'flex' as const, alignItems:'center' as const, justifyContent:'space-between' as const, marginBottom:6 }}>
+                <div style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.06em', textTransform:'uppercase' as const, color:'#64748B' }}>{p}-sinflar</div>
+                <button onMouseDown={(e: any) =>{e.preventDefault(); toggleParallel(p, classes);}} style={{ font:'600 11px Manrope', color:allOn?'#DC2626':'#4F46E5', border:0, background:'transparent', cursor:'pointer' as const, padding:0 }}>
                   {allOn ? "barchasini olib tashlash" : "barchasini tanlash"}
                 </button>
               </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {classes.map(c => {
+              <div style={{ display:'flex' as const, flexWrap:'wrap' as const, gap:6 }}>
+                {classes.map((c: any) => {
                   const on = set.has(c);
                   return (
                     <button key={c}
-                      onMouseDown={(e)=>{e.preventDefault(); toggle(c);}}
+                      onMouseDown={(e: any) =>{e.preventDefault(); toggle(c);}}
                       style={{
                         font:'700 12px JetBrains Mono',
-                        padding:'6px 10px', borderRadius:8, cursor:'pointer',
+                        padding:'6px 10px', borderRadius:8, cursor:'pointer' as const,
                         border: on ? '1px solid #4F46E5' : '1px solid #E2E8F0',
                         background: on ? '#EEF2FF' : '#fff',
                         color: on ? '#4338CA' : '#475569',
@@ -331,9 +372,9 @@ function ClassPicker({ values, onChange, onClose }) {
           );
         })}
       </div>
-      <div style={{ borderTop:'1px solid #F1F5F9', padding:'8px 10px', background:'#F8FAFC', display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:11, color:'#64748B' }}>
+      <div style={{ borderTop:'1px solid #F1F5F9', padding:'8px 10px', background:'#F8FAFC', display:'flex' as const, alignItems:'center' as const, justifyContent:'space-between' as const, fontSize:11, color:'#64748B' }}>
         <span>Bir nechtasini tanlasangiz — bir xil reja barcha sinflarga qo'shiladi</span>
-        <button onMouseDown={(e)=>{e.preventDefault(); onClose();}} style={{ font:'600 12px Manrope', color:'#0F172A', background:'#fff', border:'1px solid #E2E8F0', padding:'5px 10px', borderRadius:6, cursor:'pointer' }}>Tayyor</button>
+        <button onMouseDown={(e: any) =>{e.preventDefault(); onClose();}} style={{ font:'600 12px Manrope', color:'#0F172A', background:'#fff', border:'1px solid #E2E8F0', padding:'5px 10px', borderRadius:6, cursor:'pointer' as const }}>Tayyor</button>
       </div>
     </Popover>
   );
@@ -342,9 +383,9 @@ function ClassPicker({ values, onChange, onClose }) {
 // ─── Hours / Block editor ────────────────────────────────────────────────────
 // Compact stepper for weekly hours + a "blok" pattern picker.
 // Block patterns are pre-built for the chosen hours but custom is allowed.
-function HoursBlockEditor({ hours, block, onChange, onClose }) {
+function HoursBlockEditor({ hours, block, onChange, onClose }: any) {
   // Pre-set block patterns per hours count
-  const patterns = (h) => {
+  const patterns = (h: any) => {
     const out = ['1'.repeat(h).split('').join('+')];           // all singles
     if (h >= 2 && h % 2 === 0) out.push('2'.repeat(h/2).split('').join('+')); // all doubles
     if (h >= 3) out.push('2' + '+1'.repeat(h-2));               // 2 + rest singles
@@ -353,33 +394,33 @@ function HoursBlockEditor({ hours, block, onChange, onClose }) {
     return [...new Set(out)];
   };
   const opts = patterns(hours);
-  const setH = (h) => onChange({ hours:h, block: patterns(h)[0] });
+  const setH = (h: any) => onChange({ hours:h, block: patterns(h)[0] });
   return (
     <Popover onClose={onClose} width={300}>
       <div style={{ padding:14 }}>
-        <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:8 }}>Haftalik soat</div>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#94A3B8', marginBottom:8 }}>Haftalik soat</div>
+        <div style={{ display:'flex' as const, alignItems:'center' as const, gap:8 }}>
           <button onClick={()=>setH(Math.max(1, hours-1))} style={stepBtn}>−</button>
-          <div style={{ flex:1, textAlign:'center', font:'800 28px Plus Jakarta Sans', color:'#0F172A', letterSpacing:'-0.02em' }}>{hours}</div>
+          <div style={{ flex:1, textAlign:'center' as const, font:'800 28px Plus Jakarta Sans', color:'#0F172A', letterSpacing:'-0.02em' }}>{hours}</div>
           <button onClick={()=>setH(Math.min(10, hours+1))} style={stepBtn}>+</button>
         </div>
         <div style={{ height:1, background:'#F1F5F9', margin:'14px 0' }}/>
-        <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#94A3B8', marginBottom:8 }}>Dars bloklari</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          {opts.map(opt => {
+        <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#94A3B8', marginBottom:8 }}>Dars bloklari</div>
+        <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+          {opts.map((opt: any) => {
             const on = opt === block;
             const parts = blockExpand(opt);
             return (
               <button key={opt}
                 onClick={() => onChange({ hours, block:opt })}
                 style={{
-                  display:'flex', alignItems:'center', gap:10,
+                  display:'flex' as const, alignItems:'center' as const, gap:10,
                   border: on ? '1px solid #4F46E5' : '1px solid #E2E8F0',
                   background: on ? '#EEF2FF' : '#fff',
-                  borderRadius:10, padding:'8px 10px', cursor:'pointer', textAlign:'left',
+                  borderRadius:10, padding:'8px 10px', cursor:'pointer' as const, textAlign:'left' as const,
                 }}>
-                <div style={{ display:'flex', gap:3, flex:'0 0 auto' }}>
-                  {parts.map((p,i) => (
+                <div style={{ display:'flex' as const, gap:3, flex:'0 0 auto' }}>
+                  {parts.map((p: any, i: any) => (
                     <div key={i} style={{
                       width: p===2 ? 22 : 10, height:14, borderRadius:3,
                       background: on ? '#4F46E5' : '#CBD5E1',
@@ -402,7 +443,7 @@ function HoursBlockEditor({ hours, block, onChange, onClose }) {
 
 const stepBtn = {
   width:32, height:32, border:'1px solid #E2E8F0', background:'#fff',
-  borderRadius:8, font:'700 16px Manrope', color:'#475569', cursor:'pointer',
+  borderRadius:8, font:'700 16px Manrope', color:'#475569', cursor:'pointer' as const,
 };
 
 
@@ -414,10 +455,10 @@ const stepBtn = {
 // Same row, but in other group-by modes one of those columns is the implicit
 // group header (e.g. when grouped by Teacher → hide teacher column).
 
-function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, onClose }) {
+function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, onClose }: any) {
   const r = row;
   const isGroup = typeof r.teacher === 'object' && r.teacher && r.teacher.groups;
-  const set = (patch) => onChange({ ...r, ...patch });
+  const set = (patch: any) => onChange({ ...r, ...patch });
   const splitToGroups = () => {
     const baseTid = typeof r.teacher === 'string' ? r.teacher : '';
     set({ teacher: { groups: [
@@ -434,7 +475,7 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
   const errs = [];
   if (!r.subjectId) errs.push('Fan');
   if (!isGroup && !r.teacher) errs.push("O'qituvchi");
-  if (isGroup && r.teacher.groups.some(g => !g.tid || !g.label)) errs.push("Guruh");
+  if (isGroup && r.teacher.groups.some((g: any) => !g.tid || !g.label)) errs.push("Guruh");
   const ok = errs.length === 0;
 
   // Columns are conditional by groupBy
@@ -456,15 +497,15 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
 
   return (
     <div data-row-id={r.id} style={{
-      display:'grid', gridTemplateColumns: cols,
-      alignItems:'stretch', borderTop:'1px solid #F1F5F9',
+      display:'grid' as const, gridTemplateColumns: cols,
+      alignItems:'stretch' as const, borderTop:'1px solid #F1F5F9',
       background:'#fff', transition:'background 120ms',
     }}>
       {showClass && (
         <div style={cellWrap2}>
           <ClassChips classes={r.classes} onClick={() => onOpen(r.id, 'class')}/>
           {openCell?.row === r.id && openCell.field === 'class' && (
-            <ClassPicker values={r.classes} onChange={(v) => set({ classes:v })} onClose={onClose}/>
+            <ClassPicker values={r.classes} onChange={(v: any) => set({ classes:v })} onClose={onClose}/>
           )}
         </div>
       )}
@@ -472,19 +513,19 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
         <div style={cellWrap2}>
           <SubjectChip subjectId={r.subjectId} onClick={() => onOpen(r.id, 'subject')}/>
           {openCell?.row === r.id && openCell.field === 'subject' && (
-            <SubjectPicker value={r.subjectId} onPick={(sid) => set({ subjectId:sid })} onClose={onClose}/>
+            <SubjectPicker value={r.subjectId} onPick={(sid: any) => set({ subjectId:sid })} onClose={onClose}/>
           )}
         </div>
       )}
       {showTeach && (
         <div style={{ ...cellWrap2, padding:'4px 4px' }}>
           {!isGroup ? (
-            <div style={{ display:'flex', alignItems:'center', gap:6, width:'100%' }}>
-              <div style={{ flex:1, minWidth:0, position:'relative' }}>
+            <div style={{ display:'flex' as const, alignItems:'center' as const, gap:6, width:'100%' }}>
+              <div style={{ flex:1, minWidth:0, position:'relative' as const }}>
                 <TeacherChip tid={r.teacher} onClick={() => onOpen(r.id, 'teacher')}/>
                 {openCell?.row === r.id && openCell.field === 'teacher' && (
                   <TeacherPicker subjectId={r.subjectId} value={r.teacher}
-                    onPick={(tid)=>set({ teacher:tid })} onClose={onClose}
+                    onPick={(tid: any) =>set({ teacher:tid })} onClose={onClose}
                     contextLabel={r.classes[0] ? `${r.classes[0]} uchun` : ''}/>
                 )}
               </div>
@@ -494,18 +535,18 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
               </button>
             </div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:4, width:'100%' }}>
-              {r.teacher.groups.map((g, gi) => (
+            <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:4, width:'100%' }}>
+              {r.teacher.groups.map((g: any, gi: any) => (
                 <GroupRow key={gi} g={g} gi={gi} total={r.teacher.groups.length}
                   subjectId={r.subjectId} classes={r.classes}
-                  openCell={openCell} onOpen={(f)=>onOpen(r.id, f)} onClose={onClose}
-                  onChange={(patch)=>{
-                    const groups = r.teacher.groups.map((gg,i) => i === gi ? { ...gg, ...patch } : gg);
+                  openCell={openCell} onOpen={(f: any) =>onOpen(r.id, f)} onClose={onClose}
+                  onChange={(patch: any) =>{
+                    const groups = r.teacher.groups.map((gg: any, i: any) => i === gi ? { ...gg, ...patch } : gg);
                     set({ teacher: { groups } });
                   }}
                   onRemove={()=>{
                     if (r.teacher.groups.length <= 2) { unsplit(); return; }
-                    const groups = r.teacher.groups.filter((_,i) => i !== gi);
+                    const groups = r.teacher.groups.filter((_: any, i: any) => i !== gi);
                     set({ teacher:{ groups } });
                   }}
                   onAddBelow={()=>{
@@ -522,11 +563,11 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
       {/* Hours — plain number */}
       <div style={cellWrap2}>
         <input type="number" min="1" max="20" value={r.hours}
-          onChange={e => set({ hours: Math.max(1, parseInt(e.target.value,10) || 1) })}
+          onChange={(e: any) => set({ hours: Math.max(1, parseInt(e.target.value,10) || 1) })}
           style={{
             width:'100%', font:'700 16px JetBrains Mono', color:'#0F172A',
             border:'1px solid transparent', borderRadius:8,
-            padding:'7px 10px', background:'transparent', textAlign:'center',
+            padding:'7px 10px', background:'transparent', textAlign:'center' as const,
             outline:0,
           }}
         />
@@ -534,7 +575,7 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
 
       {/* Davomiyligi — chips 1/2/3 */}
       <div style={cellWrap2}>
-        <DurationChips dur={r.dur || 1} onChange={(d) => set({ dur: d })}/>
+        <DurationChips dur={r.dur || 1} onChange={(d: any) => set({ dur: d })}/>
       </div>
 
       {/* Room */}
@@ -545,18 +586,18 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
               <RoomChip rid={r.room} onClick={() => onOpen(r.id, 'room')}/>
               {openCell?.row === r.id && openCell.field === 'room' && (
                 <RoomPicker subjectId={r.subjectId} value={r.room}
-                  onPick={(rid) => set({ room:rid })} onClose={onClose}/>
+                  onPick={(rid: any) => set({ room:rid })} onClose={onClose}/>
               )}
             </>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:4, width:'100%', padding:'2px 0' }}>
-              {r.teacher.groups.map((g, gi) => (
-                <div key={gi} style={{ position:'relative' }}>
+            <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:4, width:'100%', padding:'2px 0' }}>
+              {r.teacher.groups.map((g: any, gi: any) => (
+                <div key={gi} style={{ position:'relative' as const }}>
                   <RoomChip rid={g.room} onClick={() => onOpen(r.id, 'groom-'+gi)}/>
                   {openCell?.row === r.id && openCell.field === 'groom-'+gi && (
                     <RoomPicker subjectId={r.subjectId} value={g.room}
-                      onPick={(rid)=>{
-                        const groups = r.teacher.groups.map((gg,i) => i === gi ? { ...gg, room: rid } : gg);
+                      onPick={(rid: any) =>{
+                        const groups = r.teacher.groups.map((gg: any, i: any) => i === gi ? { ...gg, room: rid } : gg);
                         set({ teacher:{ groups } });
                       }} onClose={onClose}/>
                   )}
@@ -568,13 +609,13 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
       )}
 
       {/* Status / actions */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:2, padding:'0 8px', borderLeft:'1px solid #F1F5F9' }}>
+      <div style={{ display:'flex' as const, alignItems:'center' as const, justifyContent:'flex-end' as const, gap:2, padding:'0 8px', borderLeft:'1px solid #F1F5F9' }}>
         {ok ? (
-          <span title="Tayyor" style={{ width:18, height:18, borderRadius:999, background:'#F0FDFA', color:'#0D9488', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span title="Tayyor" style={{ width:18, height:18, borderRadius:999, background:'#F0FDFA', color:'#0D9488', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
           </span>
         ) : (
-          <span title={errs.join(' · ')+' yetishmaydi'} style={{ width:18, height:18, borderRadius:999, background:'#FEF3C7', color:'#D97706', display:'flex', alignItems:'center', justifyContent:'center', font:'800 11px Plus Jakarta Sans' }}>!</span>
+          <span title={errs.join(' · ')+' yetishmaydi'} style={{ width:18, height:18, borderRadius:999, background:'#FEF3C7', color:'#D97706', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, font:'800 11px Plus Jakarta Sans' }}>!</span>
         )}
         <button onClick={onDup} title="Dublikat" style={iconBtn2}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -590,38 +631,38 @@ function LessonRow({ row, groupBy, onChange, onDup, onDelete, openCell, onOpen, 
 // ─── GroupRow — one sub-group within a split lesson ──────────────────────────
 const GROUP_SUGGEST = ["O'g'il bolalar", "Qizlar", "1-guruh", "2-guruh", "3-guruh", "Kuchli", "Boshlovchi"];
 
-function GroupRow({ g, gi, total, subjectId, classes, onChange, onRemove, onAddBelow, openCell, onOpen, onClose }) {
+function GroupRow({ g, gi, total, subjectId, classes, onChange, onRemove, onAddBelow, openCell, onOpen, onClose }: any) {
   const tone = ['#4F46E5','#0D9488','#D97706','#7C3AED','#0EA5E9'][gi % 5];
   const tint = ['rgba(79,70,229,0.06)','rgba(20,184,166,0.07)','rgba(217,119,6,0.07)','rgba(124,58,237,0.07)','rgba(14,165,233,0.07)'][gi % 5];
   const [editing, setEditing] = React.useState(!g.label);
 
   return (
     <div style={{
-      display:'grid', gridTemplateColumns:'14px 110px 1fr 22px',
-      alignItems:'center', gap:6, padding:'4px 6px', borderRadius:8,
+      display:'grid' as const, gridTemplateColumns:'14px 110px 1fr 22px',
+      alignItems:'center' as const, gap:6, padding:'4px 6px', borderRadius:8,
       background:tint,
     }}>
       <span style={{ width:3, height:18, borderRadius:2, background:tone }}/>
       {editing ? (
-        <GroupLabelInput value={g.label} onCommit={(v) => { onChange({ label:v }); setEditing(false); }} onClose={() => setEditing(false)}/>
+        <GroupLabelInput value={g.label} onCommit={(v: any) => { onChange({ label:v }); setEditing(false); }} onClose={() => setEditing(false)}/>
       ) : (
         <button onClick={()=>setEditing(true)} style={{
-          font:'700 10px Plus Jakarta Sans', letterSpacing:'.04em', textTransform:'uppercase',
+          font:'700 10px Plus Jakarta Sans', letterSpacing:'.04em', textTransform:'uppercase' as const,
           color:tone, background:'transparent', border:'1px dashed transparent', borderRadius:5,
-          padding:'4px 6px', textAlign:'left', cursor:'pointer',
-          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+          padding:'4px 6px', textAlign:'left' as const, cursor:'pointer' as const,
+          overflow:'hidden' as const, textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const,
         }} title="Guruh nomini tahrirlash">
           {g.label || '+ nom kiriting'}
         </button>
       )}
-      <div style={{ position:'relative' }}>
+      <div style={{ position:'relative' as const }}>
         <TeacherChip tid={g.tid} dense onClick={() => onOpen('gteacher-'+gi)}/>
         {openCell?.field === 'gteacher-'+gi && (
           <TeacherPicker subjectId={subjectId} value={g.tid}
-            onPick={(tid)=>onChange({ tid })} onClose={onClose}/>
+            onPick={(tid: any) =>onChange({ tid })} onClose={onClose}/>
         )}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+      <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:2 }}>
         {gi === total - 1 && (
           <button onClick={onAddBelow} title="Yana guruh qo'shish" style={miniIcon}>+</button>
         )}
@@ -631,7 +672,7 @@ function GroupRow({ g, gi, total, subjectId, classes, onChange, onRemove, onAddB
   );
 }
 
-function GroupLabelInput({ value, classes, onCommit, onClose }) {
+function GroupLabelInput({ value, classes, onCommit, onClose }: any) {
   const [v, setV] = React.useState(value || '');
   const classGroups = getGroupsForClasses(classes || []);
   const suggests = classGroups.length > 0 ? classGroups : GROUP_SUGGEST;
@@ -639,7 +680,7 @@ function GroupLabelInput({ value, classes, onCommit, onClose }) {
   const ref = React.useRef(null);
   React.useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
   return (
-    <div style={{ position:'relative' }}>
+    <div style={{ position:'relative' as const }}>
       <input ref={ref} value={v}
         onChange={e=>setV(e.target.value)}
         onBlur={()=>{ setTimeout(()=>{ onCommit(v.trim()); }, 120); }}
@@ -655,15 +696,15 @@ function GroupLabelInput({ value, classes, onCommit, onClose }) {
         }}/>
       {showSug && (
         <div style={{
-          position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:30,
+          position:'absolute' as const, top:'calc(100% + 4px)', left:0, zIndex:30,
           background:'#fff', border:'1px solid #E2E8F0', borderRadius:8,
           boxShadow:'0 10px 24px -8px rgba(15,23,42,0.15)', padding:5,
-          display:'flex', flexDirection:'column', gap:2, minWidth:140,
+          display:'flex' as const, flexDirection:'column' as const, gap:2, minWidth:140,
         }}>
-          {suggests.map(s => (
+          {suggests.map((s: any) => (
             <button key={s} onMouseDown={e=>{e.preventDefault(); onCommit(s);}} style={{
-              textAlign:'left', font:'500 12px Manrope', color:'#475569',
-              border:0, background:'transparent', padding:'5px 8px', borderRadius:5, cursor:'pointer',
+              textAlign:'left' as const, font:'500 12px Manrope', color:'#475569',
+              border:0, background:'transparent', padding:'5px 8px', borderRadius:5, cursor:'pointer' as const,
             }}>{s}</button>
           ))}
         </div>
@@ -673,26 +714,26 @@ function GroupLabelInput({ value, classes, onCommit, onClose }) {
 }
 
 // ─── DurationChips — single / double / triple ────────────────────────────────
-function DurationChips({ dur, onChange }) {
+function DurationChips({ dur, onChange }: any) {
   const opts = [
     { v:1, label:'Yakka',  desc:'1 soat', dots:1 },
     { v:2, label:'Juftlik', desc:'2 soat ketma-ket', dots:2 },
     { v:3, label:'Uchlik', desc:'3 soat ketma-ket', dots:3 },
   ];
   return (
-    <div style={{ display:'flex', gap:3, padding:'2px 0' }}>
-      {opts.map(o => {
+    <div style={{ display:'flex' as const, gap:3, padding:'2px 0' }}>
+      {opts.map((o: any) => {
         const on = dur === o.v;
         return (
           <button key={o.v} onClick={()=>onChange(o.v)} title={o.desc}
             style={{
-              flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-              padding:'5px 4px', borderRadius:7, cursor:'pointer',
+              flex:1, display:'flex' as const, flexDirection:'column' as const, alignItems:'center' as const, gap:3,
+              padding:'5px 4px', borderRadius:7, cursor:'pointer' as const,
               border: on ? '1px solid #4F46E5' : '1px solid #E2E8F0',
               background: on ? '#EEF2FF' : '#fff',
             }}>
-            <div style={{ display:'flex', gap:2 }}>
-              {Array.from({length:o.dots}).map((_,i)=>(
+            <div style={{ display:'flex' as const, gap:2 }}>
+              {Array.from({length:o.dots}).map((_: any, i: any) =>(
                 <div key={i} style={{ width:5, height:5, borderRadius:1.5, background: on?'#4F46E5':'#CBD5E1' }}/>
               ))}
             </div>
@@ -705,12 +746,12 @@ function DurationChips({ dur, onChange }) {
 }
 
 // ─── Class chip / subject chip / teacher chip / room chip (same as before) ──
-function ClassChips({ classes, onClick }) {
+function ClassChips({ classes, onClick }: any) {
   if (!classes.length) return <button onClick={onClick} style={emptyCellBtn2}>+ Sinf</button>;
   return (
     <button onClick={onClick} style={cellBtn2}>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-        {classes.slice(0,3).map(c => (
+      <div style={{ display:'flex' as const, flexWrap:'wrap' as const, gap:4 }}>
+        {classes.slice(0,3).map((c: any) => (
           <span key={c} style={{ font:'700 11px JetBrains Mono', padding:'3px 7px', borderRadius:6, background:'#EEF2FF', color:'#4338CA' }}>{c}</span>
         ))}
         {classes.length > 3 && <span style={{ font:'700 11px JetBrains Mono', padding:'3px 7px', borderRadius:6, background:'#F1F5F9', color:'#475569' }}>+{classes.length-3}</span>}
@@ -718,52 +759,52 @@ function ClassChips({ classes, onClick }) {
     </button>
   );
 }
-function SubjectChip({ subjectId, onClick }) {
+function SubjectChip({ subjectId, onClick }: any) {
   if (!subjectId) return <button onClick={onClick} style={emptyCellBtn2}>+ Fan</button>;
   const s = subjById(subjectId); const [bg,fg,bar] = subjColors(s);
   return (
     <button onClick={onClick} style={cellBtn2}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 10px 5px 6px', borderRadius:8, background:bg, color:fg, font:'700 13px Manrope' }}>
-        <span style={{ width:18, height:18, borderRadius:5, background:bar, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{s.short[0]}</span>
+      <span style={{ display:'inline-flex' as const, alignItems:'center' as const, gap:8, padding:'5px 10px 5px 6px', borderRadius:8, background:bg, color:fg, font:'700 13px Manrope' }}>
+        <span style={{ width:18, height:18, borderRadius:5, background:bar, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{s.short[0]}</span>
         {s.name}
       </span>
     </button>
   );
 }
-function TeacherChip({ tid, onClick, dense=false }) {
+function TeacherChip({ tid, onClick, dense=false }: any) {
   if (!tid) return <button onClick={onClick} style={emptyCellBtn2}>+ O'qituvchi</button>;
   const t = teacherById(tid); const over = t.load >= t.cap;
   return (
     <button onClick={onClick} style={cellBtn2}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:8, minWidth:0 }}>
-        <span style={{ width:24, height:24, borderRadius:999, background:t.tone, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, letterSpacing:'-0.02em' }}>{t.avatar}</span>
-        <span style={{ minWidth:0, overflow:'hidden' }}>
-          <div style={{ font:'600 13px Manrope', color:'#0F172A', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</div>
+      <span style={{ display:'inline-flex' as const, alignItems:'center' as const, gap:8, minWidth:0 }}>
+        <span style={{ width:24, height:24, borderRadius:999, background:t.tone, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const, flexShrink:0, letterSpacing:'-0.02em' }}>{t.avatar}</span>
+        <span style={{ minWidth:0, overflow:'hidden' as const }}>
+          <div style={{ font:'600 13px Manrope', color:'#0F172A', lineHeight:1.2, overflow:'hidden' as const, textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const }}>{t.name}</div>
           {!dense && <div style={{ font:'500 10px JetBrains Mono', color:over?'#DC2626':'#94A3B8', marginTop:1 }}>{t.load}/{t.cap}h</div>}
         </span>
       </span>
     </button>
   );
 }
-function RoomChip({ rid, onClick }) {
+function RoomChip({ rid, onClick }: any) {
   if (!rid) return <button onClick={onClick} style={emptyCellBtn2}>—</button>;
   const r = roomById(rid);
   return (
     <button onClick={onClick} style={cellBtn2}>
-      <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}>
+      <span style={{ display:'inline-flex' as const, alignItems:'center' as const, gap:6 }}>
         <span style={{ font:'700 12px JetBrains Mono', padding:'3px 8px', borderRadius:6, background:'#F1F5F9', color:'#334155' }}>{r.no}</span>
-        <span style={{ font:'500 12px Manrope', color:'#64748B', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.label}</span>
+        <span style={{ font:'500 12px Manrope', color:'#64748B', overflow:'hidden' as const, textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const }}>{r.label}</span>
       </span>
     </button>
   );
 }
 
-const cellWrap2 = { position:'relative', padding:'4px 4px', borderRight:'1px solid #F1F5F9', display:'flex', alignItems:'center' };
-const cellBtn2  = { display:'block', width:'100%', textAlign:'left', background:'transparent', border:'1px solid transparent', borderRadius:8, padding:'6px 8px', cursor:'pointer', font:'inherit' };
+const cellWrap2 = { position:'relative' as const, padding:'4px 4px', borderRight:'1px solid #F1F5F9', display:'flex' as const, alignItems:'center' as const };
+const cellBtn2  = { display:'block' as const, width:'100%', textAlign:'left' as const, background:'transparent', border:'1px solid transparent', borderRadius:8, padding:'6px 8px', cursor:'pointer' as const, font:'inherit' };
 const emptyCellBtn2 = { ...cellBtn2, color:'#CBD5E1', font:'500 12px Manrope', border:'1px dashed transparent' };
-const miniBtn2 = { display:'inline-flex', alignItems:'center', gap:3, font:'600 11px Manrope', color:'#64748B', border:'1px dashed #CBD5E1', background:'#fff', padding:'3px 6px', borderRadius:6, cursor:'pointer', flexShrink:0 };
-const iconBtn2 = { width:24, height:24, display:'inline-flex', alignItems:'center', justifyContent:'center', border:0, background:'transparent', color:'#94A3B8', cursor:'pointer', borderRadius:6 };
-const miniIcon = { width:18, height:14, font:'600 12px Manrope', lineHeight:1, color:'#94A3B8', background:'transparent', border:0, cursor:'pointer', borderRadius:4, padding:0 };
+const miniBtn2 = { display:'inline-flex' as const, alignItems:'center' as const, gap:3, font:'600 11px Manrope', color:'#64748B', border:'1px dashed #CBD5E1', background:'#fff', padding:'3px 6px', borderRadius:6, cursor:'pointer' as const, flexShrink:0 };
+const iconBtn2 = { width:24, height:24, display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const, border:0, background:'transparent', color:'#94A3B8', cursor:'pointer' as const, borderRadius:6 };
+const miniIcon = { width:18, height:14, font:'600 12px Manrope', lineHeight:1, color:'#94A3B8', background:'transparent', border:0, cursor:'pointer' as const, borderRadius:4, padding:0 };
 
 
 
@@ -773,7 +814,7 @@ const miniIcon = { width:18, height:14, font:'600 12px Manrope', lineHeight:1, c
 // Cell = hours/week. Click cell to edit hours + assign teacher.
 // Bulk row-fill: "Matematika 5 soat for all 10-class".
 
-function MatrixView({ rows, classes, onCellEdit }) {
+function MatrixView({ rows, classes, onCellEdit }: any) {
   // Build a lookup: { subjectId: { classCode: { hours, teacher } } }
   const map = {};
   for (const r of rows) {
@@ -785,56 +826,56 @@ function MatrixView({ rows, classes, onCellEdit }) {
   }
   return (
     <div style={{
-      background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden',
+      background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden' as const,
       boxShadow:'0 4px 12px -2px rgba(15,23,42,0.05)',
     }}>
-      <div style={{ overflowX:'auto' }}>
+      <div style={{ overflowX:'auto' as const }}>
         <table style={{ borderCollapse:'separate', borderSpacing:0, minWidth:'100%', font:'500 13px Manrope' }}>
           <thead>
             <tr>
-              <th style={{ ...mxHead, left:0, position:'sticky', zIndex:3, minWidth:180, background:'#F8FAFC', textAlign:'left', paddingLeft:14 }}>Fan</th>
-              {classes.map(c => (
-                <th key={c} style={{ ...mxHead, minWidth:64, textAlign:'center' }}>
+              <th style={{ ...mxHead, left:0, position:'sticky' as const, zIndex:3, minWidth:180, background:'#F8FAFC', textAlign:'left' as const, paddingLeft:14 }}>Fan</th>
+              {classes.map((c: any) => (
+                <th key={c} style={{ ...mxHead, minWidth:64, textAlign:'center' as const }}>
                   <span style={{ font:'700 11px JetBrains Mono', color:'#475569' }}>{c}</span>
                 </th>
               ))}
-              <th style={{ ...mxHead, minWidth:64, textAlign:'right', paddingRight:12 }}>
-                <span style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.1em', color:'#94A3B8', textTransform:'uppercase' }}>Jami</span>
+              <th style={{ ...mxHead, minWidth:64, textAlign:'right' as const, paddingRight:12 }}>
+                <span style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.1em', color:'#94A3B8', textTransform:'uppercase' as const }}>Jami</span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {LC_SUBJECTS.map(s => {
+            {LC_SUBJECTS.map((s: any) => {
               const row = map[s.id] || {};
               const [bg,fg,bar] = subjColors(s);
-              const total = classes.reduce((sum,c) => sum + (row[c]?.hours || 0), 0);
+              const total = classes.reduce((sum: any, c: any) => sum + (row[c]?.hours || 0), 0);
               return (
                 <tr key={s.id}>
-                  <td style={{ ...mxCell, position:'sticky', left:0, background:'#fff', zIndex:2, paddingLeft:14, borderRight:'1px solid #E2E8F0' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ width:22, height:22, borderRadius:6, background:bg, color:fg, font:'800 11px Plus Jakarta Sans', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{s.short[0]}</span>
+                  <td style={{ ...mxCell, position:'sticky' as const, left:0, background:'#fff', zIndex:2, paddingLeft:14, borderRight:'1px solid #E2E8F0' }}>
+                    <div style={{ display:'flex' as const, alignItems:'center' as const, gap:8 }}>
+                      <span style={{ width:22, height:22, borderRadius:6, background:bg, color:fg, font:'800 11px Plus Jakarta Sans', display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{s.short[0]}</span>
                       <span style={{ font:'600 13px Manrope', color:'#0F172A' }}>{s.name}</span>
                     </div>
                   </td>
-                  {classes.map(c => {
+                  {classes.map((c: any) => {
                     const cell = row[c];
                     const h = cell?.hours;
                     return (
-                      <td key={c} style={{ ...mxCell, textAlign:'center', padding:0 }}>
+                      <td key={c} style={{ ...mxCell, textAlign:'center' as const, padding:0 }}>
                         <button onClick={() => onCellEdit && onCellEdit(s.id, c)}
                           style={{
                             width:'100%', height:'100%', minHeight:42,
-                            border:0, cursor:'pointer',
+                            border:0, cursor:'pointer' as const,
                             background: h ? bg : 'transparent',
                             color: h ? fg : '#CBD5E1',
                             font:'800 14px Plus Jakarta Sans', letterSpacing:'-0.01em',
-                            position:'relative',
+                            position:'relative' as const,
                           }}>
                           {h ? (
                             <>
                               {h}
                               {cell?.grouped && (
-                                <span title="Guruhli" style={{ position:'absolute', top:3, right:5, font:'700 8px JetBrains Mono', color:fg, opacity:.7 }}>÷2</span>
+                                <span title="Guruhli" style={{ position:'absolute' as const, top:3, right:5, font:'700 8px JetBrains Mono', color:fg, opacity:.7 }}>÷2</span>
                               )}
                             </>
                           ) : '·'}
@@ -842,7 +883,7 @@ function MatrixView({ rows, classes, onCellEdit }) {
                       </td>
                     );
                   })}
-                  <td style={{ ...mxCell, textAlign:'right', paddingRight:12 }}>
+                  <td style={{ ...mxCell, textAlign:'right' as const, paddingRight:12 }}>
                     <span style={{ font:'700 13px JetBrains Mono', color: total > 0 ? '#0F172A' : '#CBD5E1' }}>{total || '—'}</span>
                   </td>
                 </tr>
@@ -850,14 +891,14 @@ function MatrixView({ rows, classes, onCellEdit }) {
             })}
             {/* Column totals */}
             <tr>
-              <td style={{ ...mxCell, position:'sticky', left:0, background:'#F8FAFC', zIndex:2, paddingLeft:14, borderRight:'1px solid #E2E8F0', borderTop:'2px solid #E2E8F0' }}>
-                <span style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.08em', textTransform:'uppercase', color:'#64748B' }}>Sinf yuki</span>
+              <td style={{ ...mxCell, position:'sticky' as const, left:0, background:'#F8FAFC', zIndex:2, paddingLeft:14, borderRight:'1px solid #E2E8F0', borderTop:'2px solid #E2E8F0' }}>
+                <span style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.08em', textTransform:'uppercase' as const, color:'#64748B' }}>Sinf yuki</span>
               </td>
-              {classes.map(c => {
-                const sum = LC_SUBJECTS.reduce((s, sub) => s + (map[sub.id]?.[c]?.hours || 0), 0);
+              {classes.map((c: any) => {
+                const sum = LC_SUBJECTS.reduce((s: any, sub: any) => s + (map[sub.id]?.[c]?.hours || 0), 0);
                 const tone = sum > 36 ? '#DC2626' : sum > 30 ? '#D97706' : '#0D9488';
                 return (
-                  <td key={c} style={{ ...mxCell, textAlign:'center', borderTop:'2px solid #E2E8F0', background:'#F8FAFC' }}>
+                  <td key={c} style={{ ...mxCell, textAlign:'center' as const, borderTop:'2px solid #E2E8F0', background:'#F8FAFC' }}>
                     <span style={{ font:'800 12px JetBrains Mono', color: sum ? tone : '#CBD5E1' }}>{sum || '·'}</span>
                   </td>
                 );
@@ -867,7 +908,7 @@ function MatrixView({ rows, classes, onCellEdit }) {
           </tbody>
         </table>
       </div>
-      <div style={{ padding:'10px 14px', background:'#F8FAFC', borderTop:'1px solid #E2E8F0', display:'flex', alignItems:'center', gap:12, font:'500 11px Manrope', color:'#64748B' }}>
+      <div style={{ padding:'10px 14px', background:'#F8FAFC', borderTop:'1px solid #E2E8F0', display:'flex' as const, alignItems:'center' as const, gap:12, font:'500 11px Manrope', color:'#64748B' }}>
         <span style={{ width:8, height:8, borderRadius:2, background:'#4F46E5' }}/>
         <span>Bir katakka soatlar — bosing va o'qituvchi tanlang. ÷2 — guruhli darslar. Pastdagi qator sinfning umumiy yuki.</span>
         <span style={{ marginLeft:'auto', font:'500 11px JetBrains Mono', color:'#94A3B8' }}>shift+click — qatordagi barcha sinflarni teng to'ldirish</span>
@@ -878,8 +919,8 @@ function MatrixView({ rows, classes, onCellEdit }) {
 
 const mxHead = {
   padding:'10px 8px', background:'#F8FAFC', borderBottom:'1px solid #E2E8F0',
-  font:'700 11px Plus Jakarta Sans', letterSpacing:'.06em', textTransform:'uppercase', color:'#475569',
-  position:'sticky', top:0, zIndex:1,
+  font:'700 11px Plus Jakarta Sans', letterSpacing:'.06em', textTransform:'uppercase' as const, color:'#475569',
+  position:'sticky' as const, top:0, zIndex:1,
 };
 const mxCell = {
   padding:'8px', borderBottom:'1px solid #F1F5F9',
@@ -891,36 +932,36 @@ const mxCell = {
 // ─── BulkPaste modal + Templates panel ───────────────────────────────────────
 
 // Modal scrim + container
-function Modal({ title, sub, onClose, children, width=680, footer }) {
+function Modal({ title, sub, onClose, children, width=680, footer }: any) {
   return (
     <div onClick={onClose} style={{
-      position:'fixed', inset:0, background:'rgba(15,23,42,0.45)',
-      zIndex:100, display:'flex', alignItems:'center', justifyContent:'center',
+      position:'fixed' as const, inset:0, background:'rgba(15,23,42,0.45)',
+      zIndex:100, display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const,
       padding:24, animation:'fade 160ms ease',
     }}>
       <div onClick={e=>e.stopPropagation()} style={{
         width, maxWidth:'100%', maxHeight:'90vh', background:'#fff',
         borderRadius:16, boxShadow:'0 32px 64px -16px rgba(15,23,42,0.4)',
-        display:'flex', flexDirection:'column', overflow:'hidden',
+        display:'flex' as const, flexDirection:'column' as const, overflow:'hidden' as const,
         fontFamily:'Manrope',
       }}>
-        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E2E8F0', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:14 }}>
+        <div style={{ padding:'18px 22px', borderBottom:'1px solid #E2E8F0', display:'flex' as const, alignItems:'flex-start' as const, justifyContent:'space-between' as const, gap:14 }}>
           <div>
             <div style={{ font:'700 18px Plus Jakarta Sans', color:'#0F172A', letterSpacing:'-0.01em' }}>{title}</div>
             {sub && <div style={{ font:'500 13px Manrope', color:'#64748B', marginTop:3 }}>{sub}</div>}
           </div>
-          <button onClick={onClose} style={{ border:0, background:'transparent', cursor:'pointer', color:'#94A3B8', padding:4 }}>
+          <button onClick={onClose} style={{ border:0, background:'transparent', cursor:'pointer' as const, color:'#94A3B8', padding:4 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div style={{ padding:22, overflowY:'auto', flex:1 }}>{children}</div>
-        {footer && <div style={{ padding:'14px 22px', borderTop:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:10, background:'#F8FAFC' }}>{footer}</div>}
+        <div style={{ padding:22, overflowY:'auto' as const, flex:1 }}>{children}</div>
+        {footer && <div style={{ padding:'14px 22px', borderTop:'1px solid #E2E8F0', display:'flex' as const, alignItems:'center' as const, justifyContent:'flex-end' as const, gap:10, background:'#F8FAFC' }}>{footer}</div>}
       </div>
     </div>
   );
 }
 
-function BulkPasteModal({ onClose, onApply }) {
+function BulkPasteModal({ onClose, onApply }: any) {
   const sample = `Sinf\tFan\tO'qituvchi\tXona\tSoat\tBlok
 10-A\tMatematika\tN. Karimova\t204\t6\t2+2+1+1
 10-A\tOna tili\tM. Yusupov\t208\t3\t1
@@ -956,9 +997,9 @@ function BulkPasteModal({ onClose, onApply }) {
           </button>
         </>
       }>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, height:380 }}>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B' }}>1. Joylang (Ctrl+V)</div>
+      <div style={{ display:'grid' as const, gridTemplateColumns:'1fr 1fr', gap:14, height:380 }}>
+        <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:8 }}>
+          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B' }}>1. Joylang (Ctrl+V)</div>
           <textarea value={text} onChange={e=>setText(e.target.value)}
             style={{
               flex:1, resize:'none', font:'500 12px JetBrains Mono',
@@ -970,26 +1011,26 @@ function BulkPasteModal({ onClose, onApply }) {
             <span style={{ color:'#4F46E5', fontWeight:600 }}>Maslahat:</span> Bir nechta sinfni vergul bilan ajrating — masalan <code style={{ background:'#F1F5F9', padding:'1px 5px', borderRadius:4, color:'#0F172A' }}>10-A,10-B,10-V</code>
           </div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B' }}>2. Ko'rib chiqing</div>
-          <div style={{ flex:1, border:'1px solid #E2E8F0', borderRadius:10, overflow:'auto', background:'#FAFBFD' }}>
+        <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:8 }}>
+          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B' }}>2. Ko'rib chiqing</div>
+          <div style={{ flex:1, border:'1px solid #E2E8F0', borderRadius:10, overflow:'auto' as const, background:'#FAFBFD' }}>
             {parsed.length === 0 ? (
               <div style={{ padding:20, color:'#94A3B8', font:'500 13px Manrope' }}>Yana ma'lumot kerak…</div>
             ) : (
               <table style={{ width:'100%', borderCollapse:'collapse', font:'500 12px Manrope' }}>
                 <thead>
                   <tr style={{ background:'#F1F5F9' }}>
-                    {['Sinf','Fan','O\'q','Xona','Soat','Blok'].map(h => (
-                      <th key={h} style={{ padding:'6px 8px', font:'700 10px Plus Jakarta Sans', letterSpacing:'.08em', textTransform:'uppercase', color:'#64748B', textAlign:'left', position:'sticky', top:0, background:'#F1F5F9' }}>{h}</th>
+                    {['Sinf','Fan','O\'q','Xona','Soat','Blok'].map((h: any) => (
+                      <th key={h} style={{ padding:'6px 8px', font:'700 10px Plus Jakarta Sans', letterSpacing:'.08em', textTransform:'uppercase' as const, color:'#64748B', textAlign:'left' as const, position:'sticky' as const, top:0, background:'#F1F5F9' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {parsed.map((r,i) => (
+                  {parsed.map((r: any, i: any) => (
                     <tr key={i} style={{ borderTop:'1px solid #F1F5F9' }}>
                       <td style={pTd}>
-                        <div style={{ display:'flex', gap:3, flexWrap:'wrap' }}>
-                          {r.classes.map(c => <span key={c} style={{ font:'700 10px JetBrains Mono', padding:'2px 5px', borderRadius:4, background:'#EEF2FF', color:'#4338CA' }}>{c}</span>)}
+                        <div style={{ display:'flex' as const, gap:3, flexWrap:'wrap' as const }}>
+                          {r.classes.map((c: any) => <span key={c} style={{ font:'700 10px JetBrains Mono', padding:'2px 5px', borderRadius:4, background:'#EEF2FF', color:'#4338CA' }}>{c}</span>)}
                         </div>
                       </td>
                       <td style={pTd}>{r.subject}</td>
@@ -1047,10 +1088,10 @@ const TEMPLATES = [
   },
 ];
 
-function TemplatesModal({ onClose, onApply }) {
+function TemplatesModal({ onClose, onApply }: any) {
   const [pickedTemplate, setPickedTemplate] = React.useState(TEMPLATES[0].id);
   const [pickedClasses, setPickedClasses] = React.useState(['10-A']);
-  const T = TEMPLATES.find(t => t.id === pickedTemplate);
+  const T = TEMPLATES.find((t: any) => t.id === pickedTemplate);
 
   return (
     <Modal title="Shablondan dars qo'shish" sub="Tayyor o'quv reja shablonini tanlang va sinflarga qo'llang."
@@ -1064,15 +1105,15 @@ function TemplatesModal({ onClose, onApply }) {
           <button onClick={() => { onApply(T, pickedClasses); onClose(); }} style={primaryBtnL}>Qo'llash</button>
         </>
       }>
-      <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', gap:18 }}>
+      <div style={{ display:'grid' as const, gridTemplateColumns:'260px 1fr', gap:18 }}>
         {/* Templates list */}
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B' }}>Shablonlar</div>
-          {TEMPLATES.map(t => {
+        <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:8 }}>
+          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B' }}>Shablonlar</div>
+          {TEMPLATES.map((t: any) => {
             const on = t.id === pickedTemplate;
             return (
               <button key={t.id} onClick={()=>setPickedTemplate(t.id)} style={{
-                textAlign:'left', cursor:'pointer',
+                textAlign:'left' as const, cursor:'pointer' as const,
                 border: on ? '1px solid #4F46E5' : '1px solid #E2E8F0',
                 background: on ? '#EEF2FF' : '#fff',
                 borderRadius:10, padding:'10px 12px',
@@ -1080,7 +1121,7 @@ function TemplatesModal({ onClose, onApply }) {
                 <div style={{ font:'700 13px Manrope', color: on?'#4338CA':'#0F172A' }}>{t.name}</div>
                 <div style={{ font:'500 11px Manrope', color:'#94A3B8', marginTop:3 }}>{t.desc}</div>
                 <div style={{ font:'500 10px JetBrains Mono', color:'#94A3B8', marginTop:6 }}>
-                  {t.subs.reduce((s,x)=>s+x[1],0)} soat / hafta
+                  {t.subs.reduce((s: any, x: any) =>s+x[1],0)} soat / hafta
                 </div>
               </button>
             );
@@ -1089,16 +1130,16 @@ function TemplatesModal({ onClose, onApply }) {
 
         {/* Preview & class selector */}
         <div>
-          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B', marginBottom:8 }}>Qo'llash uchun sinflar</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:18 }}>
-            {LC_CLASSES.map(c => {
+          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B', marginBottom:8 }}>Qo'llash uchun sinflar</div>
+          <div style={{ display:'flex' as const, flexWrap:'wrap' as const, gap:5, marginBottom:18 }}>
+            {LC_CLASSES.map((c: any) => {
               const on = pickedClasses.includes(c);
               return (
                 <button key={c} onClick={()=>{
                   setPickedClasses(on ? pickedClasses.filter(x=>x!==c) : [...pickedClasses, c]);
                 }} style={{
                   font:'700 11px JetBrains Mono',
-                  padding:'5px 9px', borderRadius:7, cursor:'pointer',
+                  padding:'5px 9px', borderRadius:7, cursor:'pointer' as const,
                   border: on?'1px solid #4F46E5':'1px solid #E2E8F0',
                   background: on?'#EEF2FF':'#fff',
                   color: on?'#4338CA':'#475569',
@@ -1107,27 +1148,27 @@ function TemplatesModal({ onClose, onApply }) {
             })}
           </div>
 
-          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B', marginBottom:8 }}>Reja tarkibi</div>
-          <div style={{ border:'1px solid #E2E8F0', borderRadius:10, overflow:'hidden' }}>
+          <div style={{ font:'600 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B', marginBottom:8 }}>Reja tarkibi</div>
+          <div style={{ border:'1px solid #E2E8F0', borderRadius:10, overflow:'hidden' as const }}>
             {T.subs.map(([sid, hrs, blk, flag], i) => {
               const s = subjById(sid);
               const [bg,fg,bar] = subjColors(s);
               const parts = blockExpand(blk);
               return (
-                <div key={i} style={{ display:'grid', gridTemplateColumns:'160px 1fr 60px 60px', alignItems:'center', padding:'7px 12px', borderTop: i?'1px solid #F1F5F9':'none', background: i%2 ? '#FAFBFD' : '#fff' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ width:18, height:18, borderRadius:5, background:bg, color:fg, font:'800 10px Plus Jakarta Sans', display:'inline-flex', alignItems:'center', justifyContent:'center' }}>{s.short[0]}</span>
+                <div key={i} style={{ display:'grid' as const, gridTemplateColumns:'160px 1fr 60px 60px', alignItems:'center' as const, padding:'7px 12px', borderTop: i?'1px solid #F1F5F9':'none', background: i%2 ? '#FAFBFD' : '#fff' }}>
+                  <div style={{ display:'flex' as const, alignItems:'center' as const, gap:8 }}>
+                    <span style={{ width:18, height:18, borderRadius:5, background:bg, color:fg, font:'800 10px Plus Jakarta Sans', display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{s.short[0]}</span>
                     <span style={{ font:'600 13px Manrope', color:'#0F172A' }}>{s.name}</span>
                   </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <div style={{ display:'flex', gap:2 }}>
-                      {parts.map((p,j)=>(<div key={j} style={{ width:p===2?14:6, height:9, borderRadius:2, background:'#CBD5E1' }}/>))}
+                  <div style={{ display:'flex' as const, alignItems:'center' as const, gap:6 }}>
+                    <div style={{ display:'flex' as const, gap:2 }}>
+                      {parts.map((p: any, j: any) =>(<div key={j} style={{ width:p===2?14:6, height:9, borderRadius:2, background:'#CBD5E1' }}/>))}
                     </div>
                     <span style={{ font:'500 11px JetBrains Mono', color:'#94A3B8' }}>{blk}</span>
-                    {flag === 'GROUP' && <span style={{ font:'700 9px Plus Jakarta Sans', color:'#0D9488', background:'#F0FDFA', padding:'2px 5px', borderRadius:4, letterSpacing:'.04em', textTransform:'uppercase' }}>guruh</span>}
+                    {flag === 'GROUP' && <span style={{ font:'700 9px Plus Jakarta Sans', color:'#0D9488', background:'#F0FDFA', padding:'2px 5px', borderRadius:4, letterSpacing:'.04em', textTransform:'uppercase' as const }}>guruh</span>}
                   </div>
-                  <div style={{ font:'700 13px JetBrains Mono', color:'#0F172A', textAlign:'right' }}>{hrs}h</div>
-                  <div style={{ font:'500 11px Manrope', color:'#94A3B8', textAlign:'right' }}>haftada</div>
+                  <div style={{ font:'700 13px JetBrains Mono', color:'#0F172A', textAlign:'right' as const }}>{hrs}h</div>
+                  <div style={{ font:'500 11px Manrope', color:'#94A3B8', textAlign:'right' as const }}>haftada</div>
                 </div>
               );
             })}
@@ -1141,15 +1182,15 @@ function TemplatesModal({ onClose, onApply }) {
   );
 }
 
-const ghostBtnL = { font:'600 13px Manrope', color:'#475569', background:'#fff', border:'1px solid #E2E8F0', padding:'8px 14px', borderRadius:8, cursor:'pointer' };
-const primaryBtnL = { font:'700 13px Manrope', color:'#fff', background:'#4F46E5', border:0, padding:'8px 16px', borderRadius:8, cursor:'pointer' };
+const ghostBtnL = { font:'600 13px Manrope', color:'#475569', background:'#fff', border:'1px solid #E2E8F0', padding:'8px 14px', borderRadius:8, cursor:'pointer' as const };
+const primaryBtnL = { font:'700 13px Manrope', color:'#fff', background:'#4F46E5', border:0, padding:'8px 16px', borderRadius:8, cursor:'pointer' as const };
 
 
 
 // --- lessons/SidePanel.jsx ---
 // ─── SidePanel — live validation + teacher load + class hours summary ────────
 
-function SidePanel({ rows, filterClasses }) {
+function SidePanel({ rows, filterClasses }: any) {
   const teacherLoad = computeTeacherLoad(rows);
 
   // Per-class hours (weekly sum)
@@ -1165,7 +1206,7 @@ function SidePanel({ rows, filterClasses }) {
   for (const r of rows) {
     if (!r.classes.length) issues.push({ id:r.id, kind:'err', msg:"Sinfsiz dars qatori" });
     if (!r.subjectId)      issues.push({ id:r.id, kind:'err', msg:"Fan tanlanmagan" });
-    if (!r.teacher || (typeof r.teacher === 'object' && r.teacher.groups?.some(g => !g.tid)))
+    if (!r.teacher || (typeof r.teacher === 'object' && r.teacher.groups?.some((g: any) => !g.tid)))
       issues.push({ id:r.id, kind:'err', msg:"O'qituvchi yetishmaydi" });
   }
   Object.entries(teacherLoad).forEach(([tid, load]) => {
@@ -1176,10 +1217,10 @@ function SidePanel({ rows, filterClasses }) {
   return (
     <aside style={{
       width:300, flexShrink:0, background:'#fff', borderLeft:'1px solid #E2E8F0',
-      display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'Manrope',
+      display:'flex' as const, flexDirection:'column' as const, overflow:'hidden' as const, fontFamily:'Manrope',
     }}>
       <div style={{ padding:'18px 18px 12px' }}>
-        <div style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.12em', textTransform:'uppercase', color:'#4338CA' }}>Tekshiruv</div>
+        <div style={{ font:'700 11px Plus Jakarta Sans', letterSpacing:'.12em', textTransform:'uppercase' as const, color:'#4338CA' }}>Tekshiruv</div>
         <div style={{ font:'800 22px Plus Jakarta Sans', color:'#0F172A', marginTop:4, letterSpacing:'-0.01em' }}>
           {issues.length === 0
             ? <span style={{ color:'#0D9488' }}>Hammasi joyida</span>
@@ -1187,14 +1228,14 @@ function SidePanel({ rows, filterClasses }) {
         </div>
       </div>
 
-      <div style={{ overflowY:'auto', flex:1, padding:'0 14px 18px' }}>
+      <div style={{ overflowY:'auto' as const, flex:1, padding:'0 14px 18px' }}>
         {/* Issues */}
         {issues.length > 0 && (
           <Section title="Muammolar">
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {issues.slice(0,5).map((it,i) => (
+            <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+              {issues.slice(0,5).map((it: any, i: any) => (
                 <div key={i} style={{
-                  display:'flex', alignItems:'flex-start', gap:8,
+                  display:'flex' as const, alignItems:'flex-start' as const, gap:8,
                   padding:'8px 10px', borderRadius:8,
                   background: it.kind === 'err' ? '#FEF2F2' : '#FFFBEB',
                   border: '1px solid ' + (it.kind === 'err' ? '#FECACA' : '#FDE68A'),
@@ -1202,13 +1243,13 @@ function SidePanel({ rows, filterClasses }) {
                   <span style={{
                     width:16, height:16, borderRadius:999, flexShrink:0, marginTop:1,
                     background: it.kind === 'err' ? '#EF4444' : '#F59E0B', color:'#fff',
-                    display:'flex', alignItems:'center', justifyContent:'center', font:'800 10px Plus Jakarta Sans',
+                    display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, font:'800 10px Plus Jakarta Sans',
                   }}>!</span>
                   <span style={{ font:'500 12px Manrope', color:'#0F172A' }}>{it.msg}</span>
                 </div>
               ))}
               {issues.length > 5 && (
-                <div style={{ font:'500 11px Manrope', color:'#94A3B8', textAlign:'center', padding:4 }}>… va {issues.length - 5} tasi yana</div>
+                <div style={{ font:'500 11px Manrope', color:'#94A3B8', textAlign:'center' as const, padding:4 }}>… va {issues.length - 5} tasi yana</div>
               )}
             </div>
           </Section>
@@ -1216,17 +1257,17 @@ function SidePanel({ rows, filterClasses }) {
 
         {/* Class hours */}
         <Section title="Sinflar bo'yicha haftalik soat">
-          <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:5 }}>
             {Object.entries(classHours).slice(0,8).map(([c, h]) => {
               const max = 36;
               const tone = h > max ? '#EF4444' : h > 30 ? '#F59E0B' : '#4F46E5';
               return (
-                <div key={c} style={{ display:'grid', gridTemplateColumns:'48px 1fr 42px', alignItems:'center', gap:8 }}>
+                <div key={c} style={{ display:'grid' as const, gridTemplateColumns:'48px 1fr 42px', alignItems:'center' as const, gap:8 }}>
                   <span style={{ font:'700 11px JetBrains Mono', color:'#475569' }}>{c}</span>
-                  <span style={{ height:6, background:'#F1F5F9', borderRadius:3, overflow:'hidden' }}>
-                    <span style={{ display:'block', height:'100%', width: Math.min(100,(h/max)*100)+'%', background:tone, borderRadius:3 }}/>
+                  <span style={{ height:6, background:'#F1F5F9', borderRadius:3, overflow:'hidden' as const }}>
+                    <span style={{ display:'block' as const, height:'100%', width: Math.min(100,(h/max)*100)+'%', background:tone, borderRadius:3 }}/>
                   </span>
-                  <span style={{ font:'700 12px JetBrains Mono', color:tone, textAlign:'right' }}>{h}h</span>
+                  <span style={{ font:'700 12px JetBrains Mono', color:tone, textAlign:'right' as const }}>{h}h</span>
                 </div>
               );
             })}
@@ -1235,22 +1276,22 @@ function SidePanel({ rows, filterClasses }) {
 
         {/* Teacher load */}
         <Section title="O'qituvchi yuki" subTitle="kiritilgan darslar bo'yicha">
-          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-            {Object.entries(teacherLoad).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([tid, load]) => {
+          <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+            {Object.entries(teacherLoad).sort((a: any, b: any) =>b[1]-a[1]).slice(0,7).map(([tid, load]) => {
               const t = teacherById(tid);
               if (!t) return null;
               const ratio = load / t.cap;
               const tone = ratio > 1 ? '#EF4444' : ratio >= 0.9 ? '#F59E0B' : '#0D9488';
               return (
-                <div key={tid} style={{ display:'grid', gridTemplateColumns:'24px 1fr 50px', alignItems:'center', gap:8 }}>
-                  <span style={{ width:22, height:22, borderRadius:999, background:t.tone, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex', alignItems:'center', justifyContent:'center', letterSpacing:'-0.02em' }}>{t.avatar}</span>
+                <div key={tid} style={{ display:'grid' as const, gridTemplateColumns:'24px 1fr 50px', alignItems:'center' as const, gap:8 }}>
+                  <span style={{ width:22, height:22, borderRadius:999, background:t.tone, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'inline-flex' as const, alignItems:'center' as const, justifyContent:'center' as const, letterSpacing:'-0.02em' }}>{t.avatar}</span>
                   <div style={{ minWidth:0 }}>
-                    <div style={{ font:'600 12px Manrope', color:'#0F172A', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.name}</div>
-                    <span style={{ display:'block', height:4, background:'#F1F5F9', borderRadius:2, overflow:'hidden', marginTop:2 }}>
-                      <span style={{ display:'block', height:'100%', width: Math.min(100,ratio*100)+'%', background:tone, borderRadius:2 }}/>
+                    <div style={{ font:'600 12px Manrope', color:'#0F172A', overflow:'hidden' as const, textOverflow:'ellipsis' as const, whiteSpace:'nowrap' as const }}>{t.name}</div>
+                    <span style={{ display:'block' as const, height:4, background:'#F1F5F9', borderRadius:2, overflow:'hidden' as const, marginTop:2 }}>
+                      <span style={{ display:'block' as const, height:'100%', width: Math.min(100,ratio*100)+'%', background:tone, borderRadius:2 }}/>
                     </span>
                   </div>
-                  <span style={{ font:'700 11px JetBrains Mono', color:tone, textAlign:'right' }}>{load}/{t.cap}</span>
+                  <span style={{ font:'700 11px JetBrains Mono', color:tone, textAlign:'right' as const }}>{load}/{t.cap}</span>
                 </div>
               );
             })}
@@ -1261,11 +1302,11 @@ function SidePanel({ rows, filterClasses }) {
   );
 }
 
-function Section({ title, subTitle, children }) {
+function Section({ title, subTitle, children }: any) {
   return (
     <div style={{ marginBottom:18 }}>
-      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
-        <div style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.12em', textTransform:'uppercase', color:'#64748B' }}>{title}</div>
+      <div style={{ display:'flex' as const, alignItems:'baseline' as const, justifyContent:'space-between' as const, marginBottom:8 }}>
+        <div style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.12em', textTransform:'uppercase' as const, color:'#64748B' }}>{title}</div>
         {subTitle && <div style={{ font:'500 11px Manrope', color:'#94A3B8' }}>{subTitle}</div>}
       </div>
       {children}
@@ -1276,30 +1317,30 @@ function Section({ title, subTitle, children }) {
 // ─── Design notes drawer ─────────────────────────────────────────────────────
 // Slides in from the right; explains the UX logic behind the page so the
 // reviewer (the user) can read your wireframe rationale alongside the design.
-function DesignNotes({ open, onClose }) {
+function DesignNotes({ open, onClose }: any) {
   if (!open) return null;
   return (
     <div onClick={onClose} style={{
-      position:'fixed', inset:0, background:'rgba(15,23,42,0.45)',
-      zIndex:120, display:'flex', justifyContent:'flex-end', animation:'fade 200ms ease',
+      position:'fixed' as const, inset:0, background:'rgba(15,23,42,0.45)',
+      zIndex:120, display:'flex' as const, justifyContent:'flex-end' as const, animation:'fade 200ms ease',
     }}>
       <div onClick={e=>e.stopPropagation()} style={{
         width:480, maxWidth:'90vw', height:'100vh', background:'#fff',
         boxShadow:'-20px 0 40px -12px rgba(15,23,42,0.18)',
-        display:'flex', flexDirection:'column', overflow:'hidden',
+        display:'flex' as const, flexDirection:'column' as const, overflow:'hidden' as const,
         animation:'slideLeft 280ms cubic-bezier(0.22,1,0.36,1)',
         fontFamily:'Manrope',
       }}>
-        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ padding:'20px 24px', borderBottom:'1px solid #E2E8F0', display:'flex' as const, alignItems:'center' as const, justifyContent:'space-between' as const }}>
           <div>
-            <div style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.16em', textTransform:'uppercase', color:'#4F46E5' }}>UX wireframe logikasi</div>
+            <div style={{ font:'700 10px Plus Jakarta Sans', letterSpacing:'.16em', textTransform:'uppercase' as const, color:'#4F46E5' }}>UX wireframe logikasi</div>
             <div style={{ font:'800 20px Plus Jakarta Sans', color:'#0F172A', letterSpacing:'-0.01em', marginTop:3 }}>Darslar reja sahifasi</div>
           </div>
-          <button onClick={onClose} style={{ border:0, background:'transparent', cursor:'pointer', color:'#94A3B8', padding:6 }}>
+          <button onClick={onClose} style={{ border:0, background:'transparent', cursor:'pointer' as const, color:'#94A3B8', padding:6 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
-        <div style={{ flex:1, overflowY:'auto', padding:'18px 24px 60px' }}>
+        <div style={{ flex:1, overflowY:'auto' as const, padding:'18px 24px 60px' }}>
           <Note num="1" h="Asosiy maqsad — minimal klik, maksimal qator">
             Direktor yoki o'quv ishlari bo'yicha mudir sahifaga kelganda, uning vazifasi ~150–300 ta dars yozuvini bir o'tirishda kiritish. Excel-gridning afzalligi — har bir maydon ko'rinib turadi va o'qish tartibida tab bosib tezda to'ldiriladi. Biz Excelga taqlid qildik, ammo har bir katakni "smart"laштirdik.
           </Note>
@@ -1371,12 +1412,12 @@ function DesignNotes({ open, onClose }) {
 
 const iCode = { font:'600 11px JetBrains Mono', background:'#F1F5F9', padding:'1px 5px', borderRadius:4, color:'#0F172A' };
 
-function Note({ num, h, children }) {
+function Note({ num, h, children }: any) {
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'28px 1fr', gap:14, marginBottom:18 }}>
+    <div style={{ display:'grid' as const, gridTemplateColumns:'28px 1fr', gap:14, marginBottom:18 }}>
       <div style={{
         width:24, height:24, borderRadius:7, background:'#EEF2FF', color:'#4338CA',
-        font:'800 12px Plus Jakarta Sans', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+        font:'800 12px Plus Jakarta Sans', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, flexShrink:0,
       }}>{num}</div>
       <div>
         <div style={{ font:'700 14px Plus Jakarta Sans', color:'#0F172A', letterSpacing:'-0.005em', marginBottom:6 }}>{h}</div>
@@ -1386,11 +1427,11 @@ function Note({ num, h, children }) {
   );
 }
 
-function Bullets({ items }) {
+function Bullets({ items }: any) {
   return (
-    <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:6 }}>
-      {items.map((it,i) => (
-        <li key={i} style={{ display:'grid', gridTemplateColumns:'12px 1fr', gap:8, alignItems:'flex-start' }}>
+    <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+      {items.map((it: any, i: any) => (
+        <li key={i} style={{ display:'grid' as const, gridTemplateColumns:'12px 1fr', gap:8, alignItems:'flex-start' as const }}>
           <span style={{ width:5, height:5, borderRadius:999, background:'#4F46E5', marginTop:8 }}/>
           <span>{it}</span>
         </li>
@@ -1413,9 +1454,9 @@ const GROUP_TABS = [
 
 // Compute groups for the active tab.
 // Returns array of { key, title, meta, rows, color, accent }
-function computeGroups(rows, groupBy) {
+function computeGroups(rows: any, groupBy: any) {
   const buckets = {};
-  const push = (key, row, hours) => {
+  const push = (key: any, row: any, hours: any) => {
     if (!buckets[key]) buckets[key] = { key, rows:[], hoursSum:0 };
     buckets[key].rows.push(row);
     buckets[key].hoursSum += hours;
@@ -1443,23 +1484,23 @@ function computeGroups(rows, groupBy) {
   return Object.values(buckets);
 }
 
-function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpdateRow, onDupRow, onDelRow, onEditClass, openCell, onOpen, onClose, query }) {
+function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpdateRow, onDupRow, onDelRow, onEditClass, openCell, onOpen, onClose, query }: any) {
   const groups = computeGroups(rows, groupBy);
 
   // Render group header by type
-  const renderHead = (g) => {
+  const renderHead = (g: any) => {
     const k = g.key;
     const teachers = new Set();
     const subjects = new Set();
     const rooms    = new Set();
     const classes  = new Set();
-    g.rows.forEach(r => {
-      r.classes.forEach(c => classes.add(c));
+    g.rows.forEach((r: any) => {
+      r.classes.forEach((c: any) => classes.add(c));
       r.subjectId && subjects.add(r.subjectId);
       if (typeof r.teacher === 'string') r.teacher && teachers.add(r.teacher);
-      else if (r.teacher?.groups) r.teacher.groups.forEach(gg => gg.tid && teachers.add(gg.tid));
+      else if (r.teacher?.groups) r.teacher.groups.forEach((gg: any) => gg.tid && teachers.add(gg.tid));
       if (typeof r.teacher === 'string') r.room && rooms.add(r.room);
-      else if (r.teacher?.groups) r.teacher.groups.forEach(gg => gg.room && rooms.add(gg.room));
+      else if (r.teacher?.groups) r.teacher.groups.forEach((gg: any) => gg.room && rooms.add(gg.room));
     });
 
     if (k === 'MISC') {
@@ -1515,14 +1556,14 @@ function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpd
 
   // Apply query filter
   const filtGroups = query
-    ? groups.filter(g => {
+    ? groups.filter((g: any) => {
         const h = renderHead(g);
         return (h.title || '').toLowerCase().includes(query.toLowerCase());
       })
     : groups;
 
   // Sort: class natural, subject by SUBJECTS order, teacher by load desc, room by no
-  filtGroups.sort((a,b) => {
+  filtGroups.sort((a: any, b: any) => {
     if (groupBy === 'class') return a.key.localeCompare(b.key, undefined, { numeric:true });
     if (groupBy === 'subject') return LC_SUBJECTS.findIndex(s=>s.id===a.key) - LC_SUBJECTS.findIndex(s=>s.id===b.key);
     if (groupBy === 'teacher') return (teacherById(b.key)?.load||0) - (teacherById(a.key)?.load||0);
@@ -1531,13 +1572,13 @@ function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpd
   });
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+    <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:10 }}>
       {filtGroups.length === 0 && (
-        <div style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, padding:'40px 24px', textAlign:'center', color:'#94A3B8', font:'500 14px Manrope' }}>
+        <div style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, padding:'40px 24px', textAlign:'center' as const, color:'#94A3B8', font:'500 14px Manrope' }}>
           Bu yo'nalish bo'yicha guruhlar topilmadi
         </div>
       )}
-      {filtGroups.map(g => {
+      {filtGroups.map((g: any) => {
         const head = renderHead(g);
         const isOpen = expanded.has(g.key);
         return (
@@ -1552,17 +1593,17 @@ function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpd
           >
             {isOpen && (
               <>
-                <div style={{ display:'grid', gridTemplateColumns: gridCols(groupBy),
+                <div style={{ display:'grid' as const, gridTemplateColumns: gridCols(groupBy),
                   background:'#F8FAFC', borderTop:'1px solid #E2E8F0',
-                  font:'700 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase', color:'#64748B',
+                  font:'700 10px Plus Jakarta Sans', letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#64748B',
                 }}>
-                  {headCells(groupBy).map((h,i)=>(<div key={i} style={{ padding:'9px 14px', borderRight: i===headCells(groupBy).length-1?0:'1px solid #F1F5F9' }}>{h}</div>))}
+                  {headCells(groupBy).map((h: any, i: any) =>(<div key={i} style={{ padding:'9px 14px', borderRight: i===headCells(groupBy).length-1?0:'1px solid #F1F5F9' }}>{h}</div>))}
                 </div>
-                {g.rows.map(r => (
+                {g.rows.map((r: any) => (
                   <LessonRow key={r.id+'-'+g.key} row={r} groupBy={groupBy}
-                    onChange={(p)=>onUpdateRow(r.id, p)}
+                    onChange={(p: any) =>onUpdateRow(r.id, p)}
                     onDup={()=>onDupRow(r.id)} onDelete={()=>onDelRow(r.id)}
-                    openCell={openCell} onOpen={(rid,f)=>onOpen(rid,f)} onClose={onClose}
+                    openCell={openCell} onOpen={(rid: any, f: any) =>onOpen(rid,f)} onClose={onClose}
                   />
                 ))}
               </>
@@ -1574,7 +1615,7 @@ function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpd
   );
 }
 
-function gridCols(g) {
+function gridCols(g: any) {
   // Match LessonRow columns
   const showClass = g !== 'class';
   const showSubj  = g !== 'subject';
@@ -1589,7 +1630,7 @@ function gridCols(g) {
     '88px',
   ].filter(Boolean).join(' ');
 }
-function headCells(g) {
+function headCells(g: any) {
   const out = [];
   if (g !== 'class')   out.push('Sinf');
   if (g !== 'subject') out.push('Fan');
@@ -1601,22 +1642,22 @@ function headCells(g) {
   return out;
 }
 
-function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }) {
+function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: any) {
   const stripe = headStripe(head, groupBy);
   return (
     <section style={{
-      background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden',
+      background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, overflow:'hidden' as const,
       boxShadow: open ? '0 8px 20px -8px rgba(15,23,42,0.08)' : '0 1px 2px rgba(15,23,42,0.04)',
       transition:'box-shadow 200ms ease',
     }}>
       <header style={{
-        display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, alignItems:'center',
-        padding:'14px 16px', cursor:'pointer', userSelect:'none',
+        display:'grid' as const, gridTemplateColumns:'auto 1fr auto', gap:14, alignItems:'center' as const,
+        padding:'14px 16px', cursor:'pointer' as const, userSelect:'none' as const,
       }} onClick={onToggle}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <button onClick={(e)=>{e.stopPropagation(); onToggle();}} style={{
+        <div style={{ display:'flex' as const, alignItems:'center' as const, gap:12 }}>
+          <button onClick={(e: any) =>{e.stopPropagation(); onToggle();}} style={{
             width:28, height:28, border:0, background:'#F1F5F9', borderRadius:7,
-            display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
+            display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, cursor:'pointer' as const,
             transition:'transform 200ms ease', transform: open?'rotate(90deg)':'none',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
@@ -1627,29 +1668,29 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }) {
             {head.sub && <div style={{ font:'500 12px Manrope', color:'#94A3B8', marginTop:1 }}>{head.sub}</div>}
           </div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:18, flexWrap:'wrap' }}>
-          {head.meta.map(([label, val], i) => (
-            <div key={i} style={{ display:'flex', alignItems:'baseline', gap:5 }}>
+        <div style={{ display:'flex' as const, alignItems:'center' as const, gap:18, flexWrap:'wrap' as const }}>
+          {head.meta.map(([label, val]: any, i: number) => (
+            <div key={i} style={{ display:'flex' as const, alignItems:'baseline' as const, gap:5 }}>
               <span style={{ font:'700 16px JetBrains Mono', color:'#0F172A' }}>{val}</span>
               <span style={{ font:'500 12px Manrope', color:'#94A3B8' }}>{label}</span>
             </div>
           ))}
         </div>
-        <div style={{ display:'flex', gap:6 }}>
+        <div style={{ display:'flex' as const, gap:6 }}>
           {onEdit && (
-            <button onClick={(e)=>{e.stopPropagation(); onEdit();}} title="Sinfni tahrirlash" style={{
-              display:'inline-flex', alignItems:'center', gap:6,
+            <button onClick={(e: any) =>{e.stopPropagation(); onEdit();}} title="Sinfni tahrirlash" style={{
+              display:'inline-flex' as const, alignItems:'center' as const, gap:6,
               font:'600 12px Manrope', color:'#475569', background:'#fff',
-              border:'1px solid #E2E8F0', padding:'8px 12px', borderRadius:8, cursor:'pointer',
+              border:'1px solid #E2E8F0', padding:'8px 12px', borderRadius:8, cursor:'pointer' as const,
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Tahrirlash
             </button>
           )}
-          <button onClick={(e)=>{e.stopPropagation(); onAdd();}} style={{
-            display:'inline-flex', alignItems:'center', gap:6,
+          <button onClick={(e: any) =>{e.stopPropagation(); onAdd();}} style={{
+            display:'inline-flex' as const, alignItems:'center' as const, gap:6,
             font:'700 12px Manrope', color:'#fff', background:'#0F172A',
-            border:0, padding:'8px 14px', borderRadius:8, cursor:'pointer',
+            border:0, padding:'8px 14px', borderRadius:8, cursor:'pointer' as const,
           }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Dars qo'shish
@@ -1661,27 +1702,27 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }) {
   );
 }
 
-function headStripe(head, groupBy) {
+function headStripe(head: any, groupBy: any) {
   if (groupBy === 'class') {
     return { avatar: (
-      <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,#4F46E5,#6366F1)', color:'#fff', font:'800 14px Plus Jakarta Sans', display:'flex', alignItems:'center', justifyContent:'center', letterSpacing:'-0.02em' }}>{head.title}</div>
+      <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,#4F46E5,#6366F1)', color:'#fff', font:'800 14px Plus Jakarta Sans', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, letterSpacing:'-0.02em' }}>{head.title}</div>
     )};
   }
   if (groupBy === 'subject' && head.subject) {
     const [bg,fg,bar] = subjColors(head.subject);
     return { avatar: (
-      <div style={{ width:42, height:42, borderRadius:10, background:bg, color:fg, font:'800 16px Plus Jakarta Sans', display:'flex', alignItems:'center', justifyContent:'center' }}>{head.subject.short[0]}</div>
+      <div style={{ width:42, height:42, borderRadius:10, background:bg, color:fg, font:'800 16px Plus Jakarta Sans', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{head.subject.short[0]}</div>
     )};
   }
   if (groupBy === 'teacher' && head.teacher) {
     return { avatar: (
-      <div style={{ width:42, height:42, borderRadius:999, background:head.teacher.tone, color:'#fff', font:'800 14px Plus Jakarta Sans', display:'flex', alignItems:'center', justifyContent:'center', letterSpacing:'-0.02em' }}>{head.teacher.avatar}</div>
+      <div style={{ width:42, height:42, borderRadius:999, background:head.teacher.tone, color:'#fff', font:'800 14px Plus Jakarta Sans', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, letterSpacing:'-0.02em' }}>{head.teacher.avatar}</div>
     )};
   }
   if (groupBy === 'room' && head.room) {
     const icon = head.room.type === 'gym' ? '🏟' : head.room.type === 'lab' ? '🧪' : head.room.type === 'art' ? '✎' : '▢';
     return { avatar: (
-      <div style={{ width:42, height:42, borderRadius:10, background:'#F1F5F9', color:'#334155', font:'700 11px JetBrains Mono', display:'flex', alignItems:'center', justifyContent:'center' }}>{head.title}</div>
+      <div style={{ width:42, height:42, borderRadius:10, background:'#F1F5F9', color:'#334155', font:'700 11px JetBrains Mono', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{head.title}</div>
     )};
   }
   return { avatar:null };
@@ -1692,18 +1733,18 @@ function headStripe(head, groupBy) {
 // --- lessons/LessonsPage.jsx ---
 // ─── LessonsPage — top-level page; tabs + accordion grouped view ────────────
 
-function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms = [], classes = [], initialLessons = [] }) {
+function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms = [], classes = [], initialLessons = [] }: any) {
   // Sync global variables for legacy pickers that still use them
   React.useEffect(() => {
     LC_SUBJECTS = subjects;
-    LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map(s => [s.id, s]));
+    LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map((s: any) => [s.id, s]));
     LC_TEACHERS = teachers;
-    LC_TEACHER_BY_ID = Object.fromEntries(teachers.map(t => [t.id, t]));
+    LC_TEACHER_BY_ID = Object.fromEntries(teachers.map((t: any) => [t.id, t]));
     LC_ROOMS = rooms;
-    LC_CLASSES = classes.map(c => typeof c === 'string' ? { name: c, groups: [] } : c);
+    LC_CLASSES = classes.map((c: any) => typeof c === 'string' ? { name: c, groups: [] } : c);
   }, [subjects, teachers, rooms, classes]);
 
-  const seed = React.useMemo(() => initialLessons.map(r => ({ ...r, dur: r.dur || 1 })), [initialLessons]);
+  const seed = React.useMemo(() => initialLessons.map((r: any) => ({ ...r, dur: r.dur || 1 })), [initialLessons]);
   const [rows, setRows]           = React.useState(seed);
   
   // Update local rows if initialLessons changes
@@ -1722,30 +1763,30 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
   const [showMatrix, setShowMatrix] = React.useState(false);
 
   // Notify parent of row changes
-  const notifyChanges = (newRows) => {
+  const notifyChanges = (newRows: any) => {
     onRowsChange && onRowsChange(newRows);
   };
 
   // ── Row ops ────────────────────────────────────────────────────────────
-  const updateRow = (id, patch) => setRows(rs => {
-    const next = rs.map(r => r.id === id ? { ...r, ...patch } : r);
+  const updateRow = (id: any, patch: any) => setRows((rs: any) => {
+    const next = rs.map((r: any) => r.id === id ? { ...r, ...patch } : r);
     notifyChanges(next);
     return next;
   });
-  const dupRow = (id) => setRows(rs => {
-    const i = rs.findIndex(r => r.id === id);
+  const dupRow = (id: any) => setRows((rs: any) => {
+    const i = rs.findIndex((r: any) => r.id === id);
     const next = [...rs.slice(0,i+1), { ...rs[i], id:'L'+Date.now() }, ...rs.slice(i+1)];
     notifyChanges(next);
     return next;
   });
-  const delRow = (id) => setRows(rs => {
-    const next = rs.filter(r => r.id !== id);
+  const delRow = (id: any) => setRows((rs: any) => {
+    const next = rs.filter((r: any) => r.id !== id);
     notifyChanges(next);
     return next;
   });
 
   // Add lesson contextually — pre-fills group dimension
-  const addToGroup = (gBy, key) => {
+  const addToGroup = (gBy: any, key: any) => {
     const blank = {
       id:'L'+Date.now(),
       classes: [], subjectId:'', teacher:'', room:'', hours:1, dur:1,
@@ -1755,7 +1796,7 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
     if (gBy === 'teacher') blank.teacher = key;
     if (gBy === 'room')    blank.room = key;
     // Insert at TOP for visibility
-    setRows(rs => {
+    setRows((rs: any) => {
       const next = [blank, ...rs];
       notifyChanges(next);
       return next;
@@ -1767,7 +1808,7 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
   };
   const addLooseRow = () => {
     const blank = { id:'L'+Date.now(), classes:[], subjectId:'', teacher:'', room:'', hours:1, dur:1 };
-    setRows(rs => {
+    setRows((rs: any) => {
       const next = [blank, ...rs];
       notifyChanges(next);
       return next;
@@ -1775,11 +1816,11 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
     setTimeout(()=>setOpenCell({ row: blank.id, field:'class' }), 60);
   };
 
-  const applyPaste = (parsed) => {
-    const out = parsed.map((p,i) => {
-      const sub = LC_SUBJECTS.find(s => s.name === p.subject || s.short === p.subject);
-      const tch = LC_TEACHERS.find(t => t.name === p.teacher);
-      const rm  = LC_ROOMS.find(r => r.no === p.room);
+  const applyPaste = (parsed: any) => {
+    const out = parsed.map((p: any, i: any) => {
+      const sub = LC_SUBJECTS.find((s: any) => s.name === p.subject || s.short === p.subject);
+      const tch = LC_TEACHERS.find((t: any) => t.name === p.teacher);
+      const rm  = LC_ROOMS.find((r: any) => r.no === p.room);
       // Map block pattern → dur
       let dur = 1;
       if (p.block === '2') dur = 2;
@@ -1792,10 +1833,10 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
         hours:p.hours, dur,
       };
     });
-    setRows(rs => [...out, ...rs]);
+    setRows((rs: any) => [...out, ...rs]);
   };
-  const applyTemplate = (T, classes) => {
-    const out = T.subs.map(([sid, hrs, blk, flag], i) => {
+  const applyTemplate = (T: any, classes: any) => {
+    const out = T.subs.map(([sid, hrs, blk, flag]: any, i: number) => {
       let dur = 1;
       if (blk === '2') dur = 2; else if (blk === '3') dur = 3;
       else if (blk?.includes('+')) dur = parseInt(blk.split('+')[0],10) || 1;
@@ -1804,13 +1845,13 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
         : '';
       return { id:'L'+Date.now()+'_'+i, classes, subjectId:sid, teacher:teach, room:'', hours:hrs, dur };
     });
-    setRows(rs => [...out, ...rs]);
+    setRows((rs: any) => [...out, ...rs]);
   };
 
   // Click-outside picker close
   React.useEffect(() => {
     if (!openCell) return;
-    const onDoc = (e) => {
+    const onDoc = (e: any) => {
       if (!e.target.closest('[data-row-id]') && !e.target.closest('[role="dialog"]')) setOpenCell(null);
     };
     document.addEventListener('mousedown', onDoc);
@@ -1819,17 +1860,17 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
 
   // Global stats
   const totalLessons = rows.length;
-  const totalHours   = rows.reduce((s,r)=>s+(r.hours||0),0);
-  const totalIncomplete = rows.filter(r => !r.subjectId || (typeof r.teacher === 'string' ? !r.teacher : r.teacher.groups.some(g=>!g.tid || !g.label))).length;
+  const totalHours   = rows.reduce((s: any, r: any) =>s+(r.hours||0),0);
+  const totalIncomplete = rows.filter((r: any) => !r.subjectId || (typeof r.teacher === 'string' ? !r.teacher : r.teacher.groups.some((g: any) => !g.tid || !g.label))).length;
 
   return (
-    <div style={{ display:'flex', height:'100vh', overflow:'hidden' }}>
+    <div style={{ display:'flex' as const, height:'100vh', overflow:'hidden' as const }}>
       
-      <main style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', background:'#F8FAFC' }}>
+      <main style={{ flex:1, minWidth:0, display:'flex' as const, flexDirection:'column' as const, background:'#F8FAFC' }}>
         {/* Topbar */}
         <header style={{
           background:'#fff', borderBottom:'1px solid #E2E8F0', padding:'14px 26px',
-          display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0,
+          display:'flex' as const, alignItems:'center' as const, justifyContent:'space-between' as const, flexShrink:0,
         }}>
           <div>
             <div style={{ font:'500 11px Manrope', color:'#94A3B8', letterSpacing:'.02em' }}>2025–2026 · Kuzgi semestr</div>
@@ -1838,8 +1879,8 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
               Har bir sinf/o'qituvchi uchun fan, soat va davomiyligini kiriting
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ display:'flex', gap:10, alignItems:'center', marginRight:6 }}>
+          <div style={{ display:'flex' as const, alignItems:'center' as const, gap:8 }}>
+            <div style={{ display:'flex' as const, gap:10, alignItems:'center' as const, marginRight:6 }}>
               <Stat label="darslar" val={totalLessons}/>
               <Stat label="haftalik soat" val={totalHours}/>
               <Stat label="tugallanmagan" val={totalIncomplete} warn={totalIncomplete>0}/>
@@ -1869,27 +1910,27 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
         </header>
 
         {/* Body */}
-        <div style={{ flex:1, minHeight:0, overflow:'auto' }}>
+        <div style={{ flex:1, minHeight:0, overflow:'auto' as const }}>
           <div style={{ maxWidth:1380, margin:'0 auto', padding:'22px 26px 80px' }}>
 
             {/* Group-by tabs (segmented) */}
             <div style={{
-              display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:0,
+              display:'grid' as const, gridTemplateColumns:'repeat(4, 1fr)', gap:0,
               background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, padding:4,
               marginBottom:16, boxShadow:'0 1px 2px rgba(15,23,42,0.03)',
             }}>
-              {GROUP_TABS.map(t => {
+              {GROUP_TABS.map((t: any) => {
                 const on = groupBy === t.id;
                 const count = computeGroups(rows, t.id).length;
                 return (
                   <button key={t.id} onClick={()=>{ setGroupBy(t.id); setExpanded(new Set()); }}
                     style={{
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:9,
+                      display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, gap:9,
                       padding:'12px 14px',
                       font:'700 13px Plus Jakarta Sans', letterSpacing:'-0.005em',
                       color: on ? '#0F172A' : '#64748B',
                       background: on ? '#F8FAFC' : 'transparent',
-                      border:0, borderRadius:10, cursor:'pointer',
+                      border:0, borderRadius:10, cursor:'pointer' as const,
                       boxShadow: on ? '0 1px 2px rgba(15,23,42,0.04), inset 0 0 0 1px #E2E8F0' : 'none',
                       transition:'all 140ms ease',
                     }}>
@@ -1907,17 +1948,17 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
             </div>
 
             {/* Action bar */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+            <div style={{ display:'flex' as const, alignItems:'center' as const, gap:10, marginBottom:14 }}>
               <button onClick={addLooseRow} style={{
-                display:'inline-flex', alignItems:'center', gap:7,
+                display:'inline-flex' as const, alignItems:'center' as const, gap:7,
                 font:'700 13px Manrope', color:'#fff', background:'#0F172A',
-                border:0, padding:'10px 16px', borderRadius:10, cursor:'pointer',
+                border:0, padding:'10px 16px', borderRadius:10, cursor:'pointer' as const,
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
                 Yangi dars
               </button>
               <div style={{
-                flex:1, display:'flex', alignItems:'center', gap:8,
+                flex:1, display:'flex' as const, alignItems:'center' as const, gap:8,
                 background:'#fff', border:'1px solid #E2E8F0', borderRadius:10, padding:'0 12px',
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1925,7 +1966,7 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
                   placeholder={`${tabPlaceholder(groupBy)} bo'yicha qidirish...`}
                   style={{ flex:1, border:0, outline:0, padding:'11px 0', font:'500 13px Manrope', color:'#0F172A', background:'transparent' }}/>
                 {query && (
-                  <button onClick={()=>setQuery('')} style={{ width:22, height:22, border:0, background:'#F1F5F9', borderRadius:5, color:'#64748B', cursor:'pointer' }}>×</button>
+                  <button onClick={()=>setQuery('')} style={{ width:22, height:22, border:0, background:'#F1F5F9', borderRadius:5, color:'#64748B', cursor:'pointer' as const }}>×</button>
                 )}
               </div>
               <button onClick={()=>setExpanded(new Set(computeGroups(rows, groupBy).map(g=>g.key)))} style={ghostBtnT}>
@@ -1944,9 +1985,9 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
               expanded={expanded} setExpanded={setExpanded}
               onAddToGroup={addToGroup}
               onUpdateRow={updateRow} onDupRow={dupRow} onDelRow={delRow}
-              onEditClass={(c) => setEditClass(c)}
+              onEditClass={(c: any) => setEditClass(c)}
               openCell={openCell}
-              onOpen={(rid,f)=>setOpenCell({ row:rid, field:f })}
+              onOpen={(rid: any, f: any) =>setOpenCell({ row:rid, field:f })}
               onClose={()=>setOpenCell(null)}
               query={query}
             />
@@ -1963,18 +2004,18 @@ function LessonsPage({ onSave, onRowsChange, subjects = [], teachers = [], rooms
   );
 }
 
-function Stat({ label, val, warn }) {
+function Stat({ label, val, warn }: any) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', lineHeight:1 }}>
+    <div style={{ display:'flex' as const, flexDirection:'column' as const, alignItems:'flex-end' as const, lineHeight:1 }}>
       <span style={{ font:'800 17px JetBrains Mono', color:warn?'#D97706':'#0F172A' }}>{val}</span>
       <span style={{ font:'500 10px Manrope', color:'#94A3B8', marginTop:2, letterSpacing:'.02em' }}>{label}</span>
     </div>
   );
 }
-function tabPlaceholder(g) {
+function tabPlaceholder(g: any) {
   return g==='class'?'Sinf':g==='teacher'?"O'qituvchi":g==='subject'?'Fan':'Xona';
 }
-function tabIcon(id, on) {
+function tabIcon(id: any, on: any) {
   const c = on ? '#4338CA' : '#94A3B8';
   const sw = 1.85;
   const ic = {
@@ -1989,32 +2030,32 @@ function tabIcon(id, on) {
 }
 
 // ─── EditClassDrawer — inline editor for class metadata ──────────────────────
-function EditClassDrawer({ classId, rows, onClose }) {
-  const lessonsOfClass = rows.filter(r => r.classes.includes(classId));
-  const totalHours = lessonsOfClass.reduce((s,r)=>s+(r.hours||0),0);
+function EditClassDrawer({ classId, rows, onClose }: any) {
+  const lessonsOfClass = rows.filter((r: any) => r.classes.includes(classId));
+  const totalHours = lessonsOfClass.reduce((s: any, r: any) =>s+(r.hours||0),0);
   return (
     <div onClick={onClose} style={{
-      position:'fixed', inset:0, background:'rgba(15,23,42,0.32)', zIndex:50,
-      display:'flex', justifyContent:'flex-end',
+      position:'fixed' as const, inset:0, background:'rgba(15,23,42,0.32)', zIndex:50,
+      display:'flex' as const, justifyContent:'flex-end' as const,
     }} role="dialog">
       <aside onClick={e=>e.stopPropagation()} style={{
         width:420, height:'100%', background:'#fff', boxShadow:'-10px 0 30px -10px rgba(15,23,42,0.18)',
-        display:'flex', flexDirection:'column',
+        display:'flex' as const, flexDirection:'column' as const,
       }}>
-        <header style={{ padding:'20px 22px', borderBottom:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <header style={{ padding:'20px 22px', borderBottom:'1px solid #E2E8F0', display:'flex' as const, alignItems:'center' as const, justifyContent:'space-between' as const }}>
           <div>
             <div style={{ font:'500 11px Manrope', color:'#94A3B8' }}>Sinfni tahrirlash</div>
             <div style={{ font:'800 22px Plus Jakarta Sans', color:'#0F172A', marginTop:1 }}>{classId}</div>
           </div>
-          <button onClick={onClose} style={{ width:32, height:32, border:0, background:'#F1F5F9', borderRadius:8, cursor:'pointer', color:'#475569' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ display:'block', margin:'auto' }}><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <button onClick={onClose} style={{ width:32, height:32, border:0, background:'#F1F5F9', borderRadius:8, cursor:'pointer' as const, color:'#475569' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ display:'block' as const, margin:'auto' }}><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </header>
-        <div style={{ flex:1, overflow:'auto', padding:'18px 22px', display:'flex', flexDirection:'column', gap:18 }}>
+        <div style={{ flex:1, overflow:'auto' as const, padding:'18px 22px', display:'flex' as const, flexDirection:'column' as const, gap:18 }}>
           <Field label="Sinf nomi">
             <input defaultValue={classId} style={drawerInp}/>
           </Field>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div style={{ display:'grid' as const, gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <Field label="O'quvchilar"><input defaultValue="28" style={drawerInp}/></Field>
             <Field label="Sinf rahbari"><input defaultValue="" placeholder="Tanlang..." style={drawerInp}/></Field>
           </div>
@@ -2022,27 +2063,27 @@ function EditClassDrawer({ classId, rows, onClose }) {
             <textarea rows="3" placeholder="Maxsus shartlar..." style={{...drawerInp, resize:'vertical', font:'500 13px Manrope', padding:'10px 12px'}}/>
           </Field>
           <div style={{ borderTop:'1px solid #F1F5F9', paddingTop:14 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
+            <div style={{ display:'flex' as const, justifyContent:'space-between' as const, marginBottom:10 }}>
               <div style={{ font:'700 13px Plus Jakarta Sans', color:'#0F172A' }}>Joriy yuk</div>
               <div style={{ font:'700 13px JetBrains Mono', color:'#475569' }}>{lessonsOfClass.length} dars · {totalHours}h</div>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              {lessonsOfClass.slice(0,8).map(r => {
+            <div style={{ display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+              {lessonsOfClass.slice(0,8).map((r: any) => {
                 const s = subjById(r.subjectId);
                 const [bg,fg,bar] = s ? subjColors(s) : ['#F1F5F9','#475569','#94A3B8'];
                 return (
-                  <div key={r.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', background:'#F8FAFC', borderRadius:8 }}>
-                    <span style={{ width:22, height:22, borderRadius:5, background:bar, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'flex', alignItems:'center', justifyContent:'center' }}>{s?.short[0]||'?'}</span>
+                  <div key={r.id} style={{ display:'flex' as const, alignItems:'center' as const, gap:10, padding:'8px 10px', background:'#F8FAFC', borderRadius:8 }}>
+                    <span style={{ width:22, height:22, borderRadius:5, background:bar, color:'#fff', font:'800 10px Plus Jakarta Sans', display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const }}>{s?.short[0]||'?'}</span>
                     <span style={{ flex:1, font:'600 12px Manrope', color:'#0F172A' }}>{s?.name||'Fan yo\'q'}</span>
                     <span style={{ font:'700 11px JetBrains Mono', color:'#64748B' }}>{r.hours}h</span>
-                    <span style={{ font:'600 10px Plus Jakarta Sans', color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.05em' }}>{['','yakka','juftlik','uchlik'][r.dur||1]}</span>
+                    <span style={{ font:'600 10px Plus Jakarta Sans', color:'#94A3B8', textTransform:'uppercase' as const, letterSpacing:'.05em' }}>{['','yakka','juftlik','uchlik'][r.dur||1]}</span>
                   </div>
                 );
               })}
             </div>
           </div>
         </div>
-        <footer style={{ padding:14, borderTop:'1px solid #E2E8F0', display:'flex', gap:8, justifyContent:'flex-end' }}>
+        <footer style={{ padding:14, borderTop:'1px solid #E2E8F0', display:'flex' as const, gap:8, justifyContent:'flex-end' as const }}>
           <button onClick={onClose} style={ghostBtnT}>Bekor</button>
           <button onClick={onClose} style={primaryBtnT}>Saqlash</button>
         </footer>
@@ -2050,10 +2091,10 @@ function EditClassDrawer({ classId, rows, onClose }) {
     </div>
   );
 }
-function Field({ label, children }) {
+function Field({ label, children }: any) {
   return (
-    <label style={{ display:'flex', flexDirection:'column', gap:6 }}>
-      <span style={{ font:'700 10px Plus Jakarta Sans', color:'#64748B', letterSpacing:'.08em', textTransform:'uppercase' }}>{label}</span>
+    <label style={{ display:'flex' as const, flexDirection:'column' as const, gap:6 }}>
+      <span style={{ font:'700 10px Plus Jakarta Sans', color:'#64748B', letterSpacing:'.08em', textTransform:'uppercase' as const }}>{label}</span>
       {children}
     </label>
   );
@@ -2065,22 +2106,22 @@ const drawerInp = {
 };
 
 // ─── MatrixModal — wrap Matrix view in a fullscreen modal ───────────────────
-function MatrixModal({ rows, onClose }) {
+function MatrixModal({ rows, onClose }: any) {
   return (
     <div onClick={onClose} style={{
-      position:'fixed', inset:0, background:'rgba(15,23,42,0.5)', zIndex:50,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:30,
+      position:'fixed' as const, inset:0, background:'rgba(15,23,42,0.5)', zIndex:50,
+      display:'flex' as const, alignItems:'center' as const, justifyContent:'center' as const, padding:30,
     }} role="dialog">
       <div onClick={e=>e.stopPropagation()} style={{
         background:'#fff', borderRadius:16, width:'100%', maxWidth:1280, maxHeight:'92vh',
-        overflow:'auto', boxShadow:'0 24px 60px -16px rgba(15,23,42,0.32)', padding:24,
+        overflow:'auto' as const, boxShadow:'0 24px 60px -16px rgba(15,23,42,0.32)', padding:24,
       }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <div style={{ display:'flex' as const, justifyContent:'space-between' as const, alignItems:'center' as const, marginBottom:16 }}>
           <div>
             <div style={{ font:'500 11px Manrope', color:'#94A3B8' }}>Yagona ko'rinish</div>
             <div style={{ font:'800 20px Plus Jakarta Sans', color:'#0F172A' }}>Matritsa — sinf × fan</div>
           </div>
-          <button onClick={onClose} style={{ width:32, height:32, border:0, background:'#F1F5F9', borderRadius:8, cursor:'pointer' }}>×</button>
+          <button onClick={onClose} style={{ width:32, height:32, border:0, background:'#F1F5F9', borderRadius:8, cursor:'pointer' as const }}>×</button>
         </div>
         <MatrixView rows={rows} classes={LC_CLASSES}/>
       </div>
@@ -2089,38 +2130,43 @@ function MatrixModal({ rows, onClose }) {
 }
 
 const ghostBtnT = {
-  display:'inline-flex', alignItems:'center', gap:6,
+  display:'inline-flex' as const, alignItems:'center' as const, gap:6,
   font:'600 12px Manrope', color:'#475569', background:'#fff',
-  border:'1px solid #E2E8F0', padding:'8px 12px', borderRadius:8, cursor:'pointer',
+  border:'1px solid #E2E8F0', padding:'8px 12px', borderRadius:8, cursor:'pointer' as const,
 };
 const primaryBtnT = {
-  display:'inline-flex', alignItems:'center', gap:6,
+  display:'inline-flex' as const, alignItems:'center' as const, gap:6,
   font:'700 12px Manrope', color:'#fff', background:'#4F46E5',
-  border:0, padding:'8px 14px', borderRadius:8, cursor:'pointer',
+  border:0, padding:'8px 14px', borderRadius:8, cursor:'pointer' as const,
 };
 
 
 
 
 // --- lessons/Groups.jsx ---
-const getGroupsForClasses = (classNames) => {
+const getGroupsForClasses = (classNames: any) => {
   const groups = new Set();
-  classNames.forEach(name => {
-    const c = LC_CLASSES.find(cl => cl.name === name);
+  classNames.forEach((name: any) => {
+    const c = LC_CLASSES.find((cl: any) => cl.name === name);
     if (c && c.groups) {
-      c.groups.forEach(g => groups.add(g.name));
+      c.groups.forEach((g: any) => groups.add(g.name));
     }
   });
   return [...groups];
 };
 
-export function initLessonsData(classes, subjects, teachers, rooms, lessons) {
-  // classes can be objects {id, name, groups: [{id, name}]}
-  LC_CLASSES = classes.map(c => typeof c === 'string' ? { name: c, groups: [] } : c);
+export function initLessonsData(
+  classes: (EtClass | string)[],
+  subjects: EtSubject[],
+  teachers: EtTeacher[],
+  rooms: EtRoom[],
+  lessons: EtLessonRow[],
+): void {
+  LC_CLASSES = classes.map((c) => typeof c === 'string' ? { name: c, groups: [] } : c);
   LC_SUBJECTS = subjects;
-  LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map(s => [s.id, s]));
+  LC_SUBJECT_BY_ID = Object.fromEntries(subjects.map((s) => [s.id, s]));
   LC_TEACHERS = teachers;
-  LC_TEACHER_BY_ID = Object.fromEntries(teachers.map(t => [t.id, t]));
+  LC_TEACHER_BY_ID = Object.fromEntries(teachers.map((t) => [t.id, t]));
   LC_ROOMS = rooms;
   LC_SEED = lessons;
 }

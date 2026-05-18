@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Download, Upload, UserPlus, BookOpen, Clock, LayoutGrid, Search, Plus, Edit, Trash2, X, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useCrudResource } from '@/hooks';
+import { Upload, BookOpen, Clock, LayoutGrid, Plus, Edit, Trash2, X, Loader2 } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, TeacherBulkUpdateRequest } from '@/lib/teachers';
 import { SubjectService, SubjectResponse, TimeSlot } from '@/lib/subjects';
 import { organizationApi } from '@/api/organizationApi';
-import ImportModal from '@/components/shared/ImportModal';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
 
-// ─── Constants & Styles ────────────────────────────────────────────────
+const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
+
+// ─── Constants ─────────────────────────────────────────────────────────
 
 const SX_PALETTE = [
   { id: 'indigo', base: '#4F46E5', tint: '#EEF2FF', ink: '#3730A3' },
@@ -20,30 +23,7 @@ const SX_PALETTE = [
 
 const palOf = (color?: string) => SX_PALETTE.find(p => p.base === color) || SX_PALETTE[0];
 
-const CL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-
-const btnPrimary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#4F46E5', color: '#fff', border: 0,
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  boxShadow: '0 4px 12px -4px rgba(79, 70, 229, 0.4)',
-  transition: 'all 150ms'
-};
-
-const btnSecondary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#fff', color: '#475569', border: '1px solid #E2E8F0',
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  transition: 'all 150ms'
-};
-
-const inp = {
-  width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-  padding: '10px 14px', font: '500 14px Manrope', color: '#0F172A',
-  outline: 0, transition: 'border-color 150ms'
-};
+const CL_DAYS = API_DAYS_OF_WEEK;
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -211,55 +191,42 @@ function TeacherRow({ t, teacher, periods, selected, onSelect, onEdit, onDelete 
 
 export default function TeachersPage() {
   const { t, locale } = useTranslation();
-  const [isLoading, setIsLoading] = useState(true);
-  const [library, setLibrary] = useState<TeacherResponse[]>([]);
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
   const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
-  
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+
   const [editing, setEditing] = useState<TeacherResponse | { new: true } | { bulkTimeoff: true } | null>(null);
   const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const fetchTeachers = useCallback(
+    (page: number, size: number, query: string) => TeacherService.getPaginated(page, size, query),
+    [],
+  );
 
+  const {
+    items: library,
+    isLoading,
+    totalElements,
+    totalPages,
+    page, size, setPage, setSize,
+    query, setQuery,
+    selected, setSelected, toggleSelect, clearSelection,
+    refresh: fetchData,
+  } = useCrudResource<TeacherResponse>(fetchTeachers, {
+    searchDebounceMs: 400,
+    errorMessage: t('teachers.failed_to_load_teachers'),
+  });
+
+  // One-time subjects & periods fetch (independent of teachers pagination)
   useEffect(() => {
-    fetchData();
-  }, [page, size]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (page === 0) fetchData(); else setPage(0);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [teachersPage, subs, org] = await Promise.all([
-        TeacherService.getPaginated(page, size, query),
-        SubjectService.getAll(),
-        organizationApi.get()
-      ]);
-      setLibrary(teachersPage.content);
-      setTotalPages(teachersPage.totalPages);
-      setTotalElements(teachersPage.totalElements);
-      setSubjects(subs);
+    SubjectService.getAll().then(setSubjects).catch(() => {});
+    organizationApi.get().then((org) => {
       if (org?.periods) {
         const nonBreak = org.periods.filter(p => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
-    } catch (error) {
-      toast.error(t('teachers.failed_to_load_teachers'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }).catch(() => {});
+  }, []);
 
   const handleSave = async (data: any) => {
     try {
@@ -268,7 +235,7 @@ export default function TeachersPage() {
           ids: Array.from(selected),
           availabilities: data.availabilities
         });
-        setSelected(new Set());
+        clearSelection();
       } else if (editing && !('new' in editing)) {
         await TeacherService.update((editing as any).id, data);
       } else if (Array.isArray(data)) {
@@ -287,23 +254,17 @@ export default function TeachersPage() {
   const handleBulkDelete = async () => {
     try {
       await TeacherService.bulkDelete(Array.from(selected));
-      toast.success(t('actions.delete_success', 'Muvaffaqiyatli o\'chirildi'));
-      setSelected(new Set());
+      toast.success(t('actions.delete_success', "Muvaffaqiyatli o'chirildi"));
+      clearSelection();
       setConfirmDel(null);
       fetchData();
     } catch (error) {
-      toast.error(t('actions.delete_error', 'O\'chirishda xatolik'));
+      toast.error(t('actions.delete_error', "O'chirishda xatolik"));
     }
   };
 
-  const toggleSelect = (id: number) => {
-    const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelected(next);
-  };
-
   const toggleSelectAll = () => {
-    if (selected.size === library.length) setSelected(new Set());
+    if (selected.size === library.length) clearSelection();
     else setSelected(new Set(library.map(s => s.id)));
   };
 
@@ -317,31 +278,17 @@ export default function TeachersPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Toolbar */}
-      <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', width: 240 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-          <input 
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={t('teachers.search_placeholder', 'O\'qituvchini qidiring...')}
-            style={{ width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 9, padding: '10px 12px 10px 34px', font: '500 13px Manrope', color: '#0F172A', outline: 0 }} 
-          />
-        </div>
-
-        <span style={{ flex: 1 }} />
-        <span style={{ font: '600 12px Manrope', color: '#64748B' }}>{totalElements} {t('teachers.teachers_count', 'ta o\'qituvchi')}</span>
-
-        <button onClick={() => setShowImport(true)} style={btnSecondary}>
-          <Upload size={14} />
-          {t('teachers.import', 'Import')}
-        </button>
-
-        <button onClick={() => setEditing({ new: true })} style={btnPrimary}>
-          <Plus size={14} strokeWidth={2.5} />
-          {t('teachers.add_new', 'Yangi o\'qituvchi')}
-        </button>
-      </div>
+      <CrudPageHeader
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder={t('teachers.search_placeholder', "O'qituvchini qidiring...")}
+        count={totalElements}
+        countLabel={t('teachers.teachers_count', "ta o'qituvchi")}
+        actions={[
+          { id: 'import', label: t('teachers.import', 'Import'), icon: Upload, onClick: () => setShowImport(true) },
+          { id: 'add', label: t('teachers.add_new', "Yangi o'qituvchi"), icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
+        ]}
+      />
 
       {/* List */}
       <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
@@ -405,24 +352,19 @@ export default function TeachersPage() {
         </div>
       </div>
 
-      {/* Bulk actions bar */}
-      {selected.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-          background: '#0F172A', padding: '12px 20px', borderRadius: 16,
-          display: 'flex', alignItems: 'center', gap: 16, zIndex: 100,
-          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
-        }}>
-          <span style={{ font: '700 13px Manrope', color: '#fff' }}>{selected.size} ta tanlandi</span>
-          <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)' }} />
-          <button onClick={() => setEditing({ bulkTimeoff: true })} style={{ background: 'transparent', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Clock size={14} /> Vaqtlarni o'zgartirish
-          </button>
-          <button onClick={() => setConfirmDel({ bulk: true, n: selected.size })} style={{ background: '#F43F5E', border: 0, color: '#fff', font: '700 12px Manrope', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Trash2 size={14} /> O'chirish
-          </button>
-        </div>
-      )}
+      <BulkActionBar
+        count={selected.size}
+        actions={[
+          {
+            id: 'bulk-timeoff',
+            label: "Vaqtlarni o'zgartirish",
+            icon: Clock,
+            onClick: () => setEditing({ bulkTimeoff: true }),
+          },
+        ]}
+        onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
+        onClear={clearSelection}
+      />
 
       {/* Modals */}
       {editing && (
@@ -448,23 +390,25 @@ export default function TeachersPage() {
         />
       )}
       {showImport && (
-        <ImportModal 
-          title={t('teachers.import_teachers', 'O\'qituvchilarni import qilish')}
-          description={t('teachers.import_description', 'Excel yoki CSV fayli orqali o\'qituvchilarni ommaviy qo\'shing')}
-          templateColumns={['Ism', 'Qisqa nom']}
-          mapping={(row: any) => ({
-            fullName: row['Ism'],
-            shortName: row['Qisqa nom'],
-            subjects: [],
-            availabilities: convertToApiFormat(getFullAvail(periods))
-          })}
-          onImport={async (data) => {
-            await TeacherService.bulkAdd(data);
-            toast.success(t('teachers.import_success', 'Ma\'lumotlar muvaffaqiyatli import qilindi'));
-            fetchData();
-          }}
-          onClose={() => setShowImport(false)}
-        />
+        <Suspense fallback={null}>
+          <ImportModal
+            title={t('teachers.import_teachers', "O'qituvchilarni import qilish")}
+            description={t('teachers.import_description', "Excel yoki CSV fayli orqali o'qituvchilarni ommaviy qo'shing")}
+            templateColumns={['Ism', 'Qisqa nom']}
+            mapping={(row: any) => ({
+              fullName: row['Ism'],
+              shortName: row['Qisqa nom'],
+              subjects: [],
+              availabilities: convertToApiFormat(getFullAvail(periods))
+            })}
+            onImport={async (data) => {
+              await TeacherService.bulkAdd(data);
+              toast.success(t('teachers.import_success', "Ma'lumotlar muvaffaqiyatli import qilindi"));
+              fetchData();
+            }}
+            onClose={() => setShowImport(false)}
+          />
+        </Suspense>
       )}
 
 

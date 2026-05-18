@@ -1,0 +1,396 @@
+import React from 'react';
+import { User, DoorOpen } from 'lucide-react';
+import { cn } from '../../ui/utils';
+import { DroppableTimeSlot } from './DroppableTimeSlot';
+import { DAYS, DAY_LABELS } from './constants';
+import { DisplayOptions, Lesson, UnplacedLesson } from './types';
+
+interface ViewGridBaseProps {
+  lessons: Lesson[];
+  onDrop: (lesson: Lesson, day: string, timeSlot: number) => void;
+  onEdit: (lesson: Lesson) => void;
+  onDelete: (lesson: Lesson) => void;
+  onToggleLock: (lesson: Lesson) => void;
+  displayOptions: DisplayOptions;
+  timeSlots: number[];
+  draggedLesson?: Lesson | null;
+  allLessons?: Lesson[];
+  selectedLesson?: Lesson | UnplacedLesson | null;
+  onManualPlace?: (day: string, timeSlot: number) => void;
+}
+
+interface ClassViewGridProps extends ViewGridBaseProps {
+  className: string;
+  onSelectLesson?: (lesson: Lesson | UnplacedLesson) => void;
+}
+
+export const ClassViewGrid = ({
+  className,
+  lessons,
+  onDrop,
+  onEdit,
+  onDelete,
+  onToggleLock,
+  displayOptions,
+  timeSlots,
+  draggedLesson,
+  allLessons,
+  selectedLesson,
+  onManualPlace,
+}: ClassViewGridProps) => {
+  const getLessons = (day: string, timeSlot: number) =>
+    lessons.filter(
+      (lesson) =>
+        lesson.class === className &&
+        lesson.day === day &&
+        lesson.timeSlot === timeSlot,
+    );
+
+  const isTargetClass = draggedLesson?.class === className;
+
+  return (
+    <div
+      className={cn(
+        'bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all',
+        isTargetClass && 'ring-4 ring-green-400 border-green-500 shadow-lg',
+      )}
+    >
+      <div
+        className={cn(
+          'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3',
+          isTargetClass && 'from-green-600 to-green-700',
+        )}
+      >
+        <h3 className="font-semibold">Class {className}</h3>
+      </div>
+
+      <div className="p-4 overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
+              <span className="text-sm font-medium">Time</span>
+            </div>
+            {DAYS.map((day) => (
+              <div
+                key={day}
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+              >
+                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+              </div>
+            ))}
+
+            {timeSlots.map((slotId) => (
+              <React.Fragment key={slotId}>
+                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
+                  <span className="text-xs">Period {slotId}</span>
+                </div>
+                {DAYS.map((day) => (
+                  <DroppableTimeSlot
+                    key={`${className}-${day}-${slotId}`}
+                    day={day}
+                    timeSlot={slotId}
+                    lessons={getLessons(day, slotId)}
+                    onDrop={onDrop}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={true}
+                    draggedLesson={draggedLesson}
+                    allLessons={allLessons}
+                    rowClass={className}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
+                  />
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface TeacherViewGridProps extends ViewGridBaseProps {
+  teacherName: string;
+}
+
+export const TeacherViewGrid = ({
+  teacherName,
+  lessons,
+  onDrop,
+  onEdit,
+  onDelete,
+  onToggleLock,
+  displayOptions,
+  timeSlots,
+  draggedLesson,
+  allLessons,
+  selectedLesson,
+  onManualPlace,
+}: TeacherViewGridProps) => {
+  const getLessons = (day: string, timeSlot: number) =>
+    lessons.filter(
+      (lesson) =>
+        lesson.teacher === teacherName &&
+        lesson.day === day &&
+        lesson.timeSlot === timeSlot,
+    );
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3">
+        <div className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          <h3 className="font-semibold">{teacherName}</h3>
+        </div>
+      </div>
+
+      <div className="p-4 overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
+              <span className="text-sm font-medium">Time</span>
+            </div>
+            {DAYS.map((day) => (
+              <div
+                key={day}
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+              >
+                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+              </div>
+            ))}
+
+            {timeSlots.map((slotId) => (
+              <React.Fragment key={slotId}>
+                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
+                  <span className="text-xs">Period {slotId}</span>
+                </div>
+                {DAYS.map((day) => (
+                  <DroppableTimeSlot
+                    key={`${teacherName}-${day}-${slotId}`}
+                    day={day}
+                    timeSlot={slotId}
+                    lessons={getLessons(day, slotId)}
+                    onDrop={onDrop}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={true}
+                    showClass={true}
+                    draggedLesson={draggedLesson}
+                    allLessons={allLessons}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
+                  />
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface RoomViewGridProps extends ViewGridBaseProps {
+  roomName: string;
+}
+
+export const RoomViewGrid = ({
+  roomName,
+  lessons,
+  onDrop,
+  onEdit,
+  onDelete,
+  onToggleLock,
+  displayOptions,
+  timeSlots,
+  draggedLesson,
+  allLessons,
+  selectedLesson,
+  onManualPlace,
+}: RoomViewGridProps) => {
+  const getLessons = (day: string, timeSlot: number) =>
+    lessons.filter(
+      (lesson) =>
+        lesson.room === roomName &&
+        lesson.day === day &&
+        lesson.timeSlot === timeSlot,
+    );
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+      <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-6 py-3">
+        <div className="flex items-center gap-2">
+          <DoorOpen className="h-5 w-5" />
+          <h3 className="font-semibold">{roomName}</h3>
+        </div>
+      </div>
+
+      <div className="p-4 overflow-x-auto">
+        <div className="min-w-[900px]">
+          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
+              <span className="text-sm font-medium">Time</span>
+            </div>
+            {DAYS.map((day) => (
+              <div
+                key={day}
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+              >
+                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+              </div>
+            ))}
+
+            {timeSlots.map((slotId) => (
+              <React.Fragment key={slotId}>
+                <div className="bg-gray-50 p-2 flex flex-col items-center justify-center border-r border-t border-gray-200">
+                  <span className="text-xs">Period {slotId}</span>
+                </div>
+                {DAYS.map((day) => (
+                  <DroppableTimeSlot
+                    key={`${roomName}-${day}-${slotId}`}
+                    day={day}
+                    timeSlot={slotId}
+                    lessons={getLessons(day, slotId)}
+                    onDrop={onDrop}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onToggleLock={onToggleLock}
+                    displayOptions={displayOptions}
+                    compact={true}
+                    showClass={true}
+                    draggedLesson={draggedLesson}
+                    allLessons={allLessons}
+                    selectedLesson={selectedLesson}
+                    onManualPlace={onManualPlace}
+                  />
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface CompactViewGridProps extends ViewGridBaseProps {
+  classes: string[];
+}
+
+export const CompactViewGrid = ({
+  lessons,
+  classes,
+  onDrop,
+  onEdit,
+  onDelete,
+  onToggleLock,
+  displayOptions,
+  timeSlots,
+  draggedLesson,
+  allLessons,
+  selectedLesson,
+  onManualPlace,
+}: CompactViewGridProps) => {
+  const getLessons = (className: string, day: string, timeSlot: number) =>
+    lessons.filter(
+      (lesson) =>
+        lesson.class === className &&
+        lesson.day === day &&
+        lesson.timeSlot === timeSlot,
+    );
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="p-4 overflow-x-auto">
+        <div className="min-w-max">
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <div
+              className="grid gap-0"
+              style={{
+                gridTemplateColumns: `100px 80px repeat(${classes.length}, 140px)`,
+              }}
+            >
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
+                <span className="text-sm font-medium">Day</span>
+              </div>
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
+                <span className="text-sm font-medium">Period</span>
+              </div>
+              {classes.map((className) => {
+                const isTargetClass = draggedLesson?.class === className;
+                return (
+                  <div
+                    key={className}
+                    className={cn(
+                      'text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors',
+                      isTargetClass
+                        ? 'bg-gradient-to-r from-green-600 to-green-700'
+                        : 'bg-gradient-to-r from-indigo-600 to-indigo-700',
+                    )}
+                  >
+                    <span className="text-sm font-medium">{className}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {DAYS.map((day, dayIndex) => (
+              <div
+                key={day}
+                className={cn(
+                  'flex border-t border-gray-200',
+                  dayIndex > 0 && 'border-t-4 border-indigo-600',
+                )}
+              >
+                <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200 w-[100px] flex-shrink-0">
+                  <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+                </div>
+
+                <div className="flex-1">
+                  {timeSlots.map((slotId) => (
+                    <div
+                      key={`${day}-${slotId}`}
+                      className="grid gap-0 border-t first:border-t-0 border-gray-200"
+                      style={{
+                        gridTemplateColumns: `80px repeat(${classes.length}, 140px)`,
+                      }}
+                    >
+                      <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200">
+                        <span className="text-xs font-medium">Period {slotId}</span>
+                      </div>
+
+                      {classes.map((className) => (
+                        <DroppableTimeSlot
+                          key={`${className}-${day}-${slotId}`}
+                          day={day}
+                          timeSlot={slotId}
+                          lessons={getLessons(className, day, slotId)}
+                          onDrop={onDrop}
+                          onEdit={onEdit}
+                          onDelete={onDelete}
+                          onToggleLock={onToggleLock}
+                          displayOptions={displayOptions}
+                          compact={true}
+                          draggedLesson={draggedLesson}
+                          allLessons={allLessons}
+                          rowClass={className}
+                          selectedLesson={selectedLesson}
+                          onManualPlace={onManualPlace}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

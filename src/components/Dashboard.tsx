@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useTranslation } from '@/i18n/index';
 import {
   BookOpen,
@@ -13,7 +13,8 @@ import {
   Languages,
   Check,
   Building2,
-  DoorOpen
+  DoorOpen,
+  Loader2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
@@ -26,20 +27,30 @@ import {
 } from './ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
-import OrganizationPage from './pages/OrganizationPage';
-import ClassesPage from './pages/ClassesPage';
-import ClassSetupPage from './pages/ClassSetupPage';
-import DocsClassesPage from './pages/DocsClassesPage';
-import TeachersPage from './pages/TeachersPage';
-import SubjectsPage from './pages/SubjectsPage';
-import RoomsPage from './pages/RoomsPage';
-import LessonsPage from './pages/LessonsPage';
-import TimetablesPage from './pages/TimetablesPage';
-import TimetableViewPage from './pages/TimetableViewPage';
-import TimetableViewPageWithAPI from './pages/TimetableViewPageWithAPI';
-import SettingsPage from './pages/SettingsPage';
-import ProfilePage from './pages/ProfilePage';
 import { User } from '@/types/common';
+
+// Lazy-loaded pages — each becomes its own chunk
+const OrganizationPage = lazy(() => import('./pages/OrganizationPage'));
+const ClassesPage = lazy(() => import('./pages/ClassesPage'));
+const ClassSetupPage = lazy(() => import('./pages/ClassSetupPage'));
+const DocsClassesPage = lazy(() => import('./pages/DocsClassesPage'));
+const TeachersPage = lazy(() => import('./pages/TeachersPage'));
+const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
+const RoomsPage = lazy(() => import('./pages/RoomsPage'));
+const LessonsPage = lazy(() => import('./pages/LessonsPage'));
+const TimetablesPage = lazy(() => import('./pages/TimetablesPage'));
+const TimetableViewPage = lazy(() => import('./pages/TimetableViewPage'));
+const TimetableViewPageWithAPI = lazy(() => import('./pages/TimetableViewPageWithAPI'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+    </div>
+  );
+}
 
 interface DashboardProps {
   user: User | null;
@@ -265,7 +276,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-6">
-          {renderPage}
+          <Suspense fallback={<PageLoader />}>
+            {renderPage}
+          </Suspense>
         </main>
       </div>
     </div>

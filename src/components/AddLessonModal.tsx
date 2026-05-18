@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
-import { Checkbox } from './ui/checkbox';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -23,51 +19,22 @@ import {
   SelectValue,
 } from './ui/select';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from './ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './ui/popover';
-import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from './ui/alert';
-import {
-  X,
-  ChevronDown,
-  Check,
-  HelpCircle,
-  AlertTriangle
-} from 'lucide-react';
-import { cn } from './ui/utils';
-import { SubjectService } from '@/lib/subjects';
-import { TeacherService } from '@/lib/teachers';
-import { ClassService } from '@/lib/classes';
-import { RoomService } from '@/lib/rooms';
-import { LessonService } from '@/lib/lessons';
+import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/index';
 import { GroupLessonDetail } from '@/types/api';
-
-interface GroupLessonConfig {
-  groupId: number;
-  groupName: string;
-  isSelected: boolean;
-  teacherId: number | null;
-  teacherName?: string;
-  subjectId: number | null;
-  subjectName?: string;
-  roomIds: number[];
-  roomNames?: string[];
-}
+import {
+  GroupLessonConfig,
+  AddLessonFormData,
+  INITIAL_FORM_DATA,
+} from './add-lesson/types';
+import { useAddLessonData } from './add-lesson/useAddLessonData';
+import { MultiSelectCombobox } from './add-lesson/MultiSelectCombobox';
+import { GroupConfigRow } from './add-lesson/GroupConfigRow';
 
 interface AddLessonModalProps {
   open: boolean;
@@ -83,77 +50,13 @@ export default function AddLessonModal({
   editingLesson,
 }: AddLessonModalProps) {
   const { t } = useTranslation();
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [classes, setClasses] = useState<any[]>([]);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { teachers, subjects, classes, rooms } = useAddLessonData(open);
 
-  const [formData, setFormData] = useState({
-    subject: '',
-    selectedClasses: [] as number[],
-    selectedTeacher: '',
-    selectedTeacherId: null as number | null,
-    lessonsPerWeek: 1,
-    lessonSequence: 'single',
-    scheduleType: 'weekly',
-    enableFixedPlacement: false,
-    dayOfWeek: 'MONDAY',
-    hour: 1,
-    roomIds: [] as number[],
-    period: 1, // Default period
-    frequency: 'WEEKLY' as 'WEEKLY' | 'BI_WEEKLY' | 'TRI_WEEKLY',
-    formats: [{ timesPerWeek: 1, duration: '45' }]
-  });
+  const [formData, setFormData] = useState<AddLessonFormData>(INITIAL_FORM_DATA);
 
   const [isGroupMode, setIsGroupMode] = useState(false);
   const [groupLessonConfigs, setGroupLessonConfigs] = useState<GroupLessonConfig[]>([]);
   const [conflicts, setConflicts] = useState<any[]>([]);
-  const [classesOpen, setClassesOpen] = useState(false);
-  const [classSearch, setClassSearch] = useState('');
-  const [roomsOpen, setRoomsOpen] = useState(false);
-  const [roomSearch, setRoomSearch] = useState('');
-
-  // Fetch data from API on component mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [teachersData, subjectsData, classesData, roomsData] = await Promise.all([
-          TeacherService.getAll().catch(e => {
-            console.error('Failed to fetch modal teachers:', e);
-            return [];
-          }),
-          SubjectService.getAll().catch(e => {
-            console.error('Failed to fetch modal subjects:', e);
-            return [];
-          }),
-          ClassService.getAll().catch(e => {
-            console.error('Failed to fetch modal classes:', e);
-            return [];
-          }),
-          RoomService.getAll().catch(e => {
-            console.error('Failed to fetch modal rooms:', e);
-            return [];
-          })
-        ]);
-
-        setTeachers(teachersData || []);
-        setSubjects(subjectsData || []);
-        setClasses(classesData || []);
-        setRooms(roomsData || []);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-        toast.error('Ma\'lumotlarni yuklashda xatolik yuz berdi');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (open) {
-      fetchData();
-    }
-  }, [open]);
 
   // Initialization Effect
   useEffect(() => {
@@ -235,22 +138,7 @@ export default function AddLessonModal({
 
       } else {
         // Add Mode Reset
-        setFormData({
-          subject: '',
-          selectedClasses: [] as number[],
-          selectedTeacher: '',
-          selectedTeacherId: null as number | null,
-          lessonsPerWeek: 1,
-          lessonSequence: 'single',
-          scheduleType: 'weekly',
-          enableFixedPlacement: false,
-          dayOfWeek: 'MONDAY',
-          hour: 1,
-          roomIds: [] as number[],
-          period: 1,
-          frequency: 'WEEKLY',
-          formats: [{ timesPerWeek: 1, duration: '45' }]
-        });
+        setFormData(INITIAL_FORM_DATA);
         setIsGroupMode(false);
         setGroupLessonConfigs([]);
         setConflicts([]);
@@ -258,63 +146,9 @@ export default function AddLessonModal({
     }
   }, [open, editingLesson, classes, teachers]); // Depend on classes/teachers to ensure we can map IDs
 
-  // Update group configurations when classes change
-  // This logic ensures that when I select a class, its groups appear in the config list.
-  // It preserves any existing config (Selection, Teacher, etc.) if the group was already there.
-  useEffect(() => {
-    if (classes.length === 0) return;
-
-    const newConfigs: GroupLessonConfig[] = [];
-
-    formData.selectedClasses.forEach(classId => {
-      const selectedClass = classes.find(c => c.id === classId);
-
-      if (selectedClass && selectedClass.groups) {
-        selectedClass.groups.forEach((group: any) => {
-          // Check if we already have this group in state (e.g. from initialization or previous interaction)
-          const existing = groupLessonConfigs.find(g => g.groupId === group.id);
-
-          if (existing) {
-            newConfigs.push(existing);
-          } else {
-            // New default config
-            newConfigs.push({
-              groupId: group.id,
-              groupName: group.name,
-              isSelected: false,
-              teacherId: null, // Default to null, user must select
-              teacherName: '',
-              subjectId: null,
-              subjectName: '',
-              roomIds: [],
-              roomNames: []
-            });
-          }
-        });
-      }
-    });
-
-    // Only update if length or content different to avoid infinite loops if strict equality fails?
-    // JSON stringify comparison is cheap enough for small arrays
-    if (JSON.stringify(newConfigs) !== JSON.stringify(groupLessonConfigs)) {
-      setGroupLessonConfigs(newConfigs);
-    }
-  }, [formData.selectedClasses, classes]);
-  // removed groupLessonConfigs from deps to avoid loop, but we need it. 
-  // To solve this: use functional state update or refs. 
-  // But strictly, we want to REBUILD the list based on selectedClasses.
-  // The logic "find existing" relies on the CURRENT state.
-  // If I don't include it in deps, it uses stale state.
-  // Correct pattern: use functional update for setGroupLessonConfigs?
-  // No, because we need to calculate `newConfigs` completely.
-  // Let's rely on the fact that `groupLessonConfigs` is updated via initialization.
-  // If user adds a class, reference `groupLessonConfigs` from REF or just include in deps but add guard?
-
-  // Actually, the best way for the "sync" effect:
-  // It runs when `selectedClasses` changes.
-  // It needs access to the *latest* `groupLessonConfigs` to preserve data.
-  // We can use a ref to track the latest configs to read from, to avoid dependency loop.
-
+  // Sync group configurations whenever selected classes change.
+  // Uses a ref to read the latest configs without triggering the effect on every config edit
+  // (which would create an infinite loop).
   const groupsRef = React.useRef(groupLessonConfigs);
   useEffect(() => {
     groupsRef.current = groupLessonConfigs;
@@ -416,6 +250,22 @@ export default function AddLessonModal({
     }));
   };
 
+  const removeRoom = (roomId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      roomIds: prev.roomIds.filter(r => r !== roomId)
+    }));
+  };
+
+  const toggleRoom = (roomId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      roomIds: prev.roomIds.includes(roomId)
+        ? prev.roomIds.filter(r => r !== roomId)
+        : [...prev.roomIds, roomId]
+    }));
+  };
+
   const removeGroupRoom = (groupId: number, roomId: number) => {
     setGroupLessonConfigs(prev =>
       prev.map(g => {
@@ -499,14 +349,6 @@ export default function AddLessonModal({
     onSubmit(lessonData);
   };
 
-  const filteredClasses = classes.filter((cls: any) =>
-    cls.name.toLowerCase().includes(classSearch.toLowerCase())
-  );
-
-  const filteredRooms = rooms.filter((room: any) =>
-    room.name.toLowerCase().includes(roomSearch.toLowerCase())
-  );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-11/12 max-h-[90vh] overflow-y-auto">
@@ -545,72 +387,20 @@ export default function AddLessonModal({
               <p className="text-sm text-muted-foreground">
                 Select which classes this lesson applies to
               </p>
-
-              {/* Selected Classes Chips */}
-              {formData.selectedClasses.length > 0 && (
-                <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
-                  {formData.selectedClasses.map((classId) => {
-                    const cls = classes.find(c => c.id === classId);
-                    return (
-                      <Badge key={classId} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                        {cls?.name}
-                        <button
-                          type="button"
-                          onClick={() => removeClass(classId)}
-                          className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    );
-                  })}
-                </div>
-              )}
-
-              <Popover open={classesOpen} onOpenChange={setClassesOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={classesOpen}
-                    className="w-full justify-between"
-                  >
-                    {formData.selectedClasses.length > 0
-                      ? `${formData.selectedClasses.length} class${formData.selectedClasses.length !== 1 ? 'es' : ''} selected`
-                      : "Select classes..."}
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput
-                      placeholder="Search classes..."
-                      value={classSearch}
-                      onValueChange={setClassSearch}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No classes found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredClasses.map((cls: any) => (
-                          <CommandItem
-                            key={cls.id}
-                            onSelect={() => handleClassToggle(cls.id)}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.selectedClasses.includes(cls.id)
-                                  ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {cls.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <MultiSelectCombobox
+                items={classes}
+                selectedIds={formData.selectedClasses}
+                onToggle={handleClassToggle}
+                onRemove={removeClass}
+                placeholder="Select classes..."
+                triggerLabel={(count) =>
+                  count > 0
+                    ? `${count} class${count !== 1 ? 'es' : ''} selected`
+                    : 'Select classes...'
+                }
+                searchPlaceholder="Search classes..."
+                emptyMessage="No classes found."
+              />
             </div>
 
             {/* Group Mode Toggle */}
@@ -713,80 +503,20 @@ export default function AddLessonModal({
                 <p className="text-sm text-muted-foreground">
                   Select rooms for the main lesson (optional - can be overridden per group)
                 </p>
-
-                {formData.roomIds.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/30">
-                    {formData.roomIds.map((roomId) => {
-                      const room = rooms.find(r => r.id === roomId);
-                      return (
-                        <Badge key={roomId} variant="secondary" className="flex items-center gap-1 px-2 py-1">
-                          {room?.name}
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({
-                              ...prev,
-                              roomIds: prev.roomIds.filter(r => r !== roomId)
-                            }))}
-                            className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <Popover open={roomsOpen} onOpenChange={setRoomsOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={roomsOpen}
-                      className="w-full justify-between"
-                    >
-                      {formData.roomIds.length > 0
-                        ? `${formData.roomIds.length} room${formData.roomIds.length !== 1 ? 's' : ''} selected`
-                        : "Select rooms..."}
-                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
-                    <Command>
-                      <CommandInput
-                        placeholder="Search rooms..."
-                        value={roomSearch}
-                        onValueChange={setRoomSearch}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No rooms found.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredRooms.map((room: any) => (
-                            <CommandItem
-                              key={room.id}
-                              onSelect={() => {
-                                const newRoomIds = formData.roomIds.includes(room.id)
-                                  ? formData.roomIds.filter(r => r !== room.id)
-                                  : [...formData.roomIds, room.id];
-                                setFormData(prev => ({ ...prev, roomIds: newRoomIds }));
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.roomIds.includes(room.id)
-                                    ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {room.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <MultiSelectCombobox
+                  items={rooms}
+                  selectedIds={formData.roomIds}
+                  onToggle={toggleRoom}
+                  onRemove={removeRoom}
+                  placeholder="Select rooms..."
+                  triggerLabel={(count) =>
+                    count > 0
+                      ? `${count} room${count !== 1 ? 's' : ''} selected`
+                      : 'Select rooms...'
+                  }
+                  searchPlaceholder="Search rooms..."
+                  emptyMessage="No rooms found."
+                />
               </div>
             )}
 
@@ -811,132 +541,18 @@ export default function AddLessonModal({
 
                 <div className="space-y-3">
                   {groupLessonConfigs.map((groupConfig) => (
-                    <div key={groupConfig.groupId} className="p-3 border rounded-lg bg-white dark:bg-slate-900">
-                      {/* Group Checkbox */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <Checkbox
-                          id={`group-${groupConfig.groupId}`}
-                          checked={groupConfig.isSelected}
-                          onCheckedChange={() => handleGroupToggle(groupConfig.groupId)}
-                        />
-                        <Label htmlFor={`group-${groupConfig.groupId}`} className="font-semibold cursor-pointer">
-                          {groupConfig.groupName}
-                        </Label>
-                      </div>
-
-                      {/* Group Details - Only show if selected */}
-                      {groupConfig.isSelected && (
-                        <div className="ml-6 space-y-3">
-                          {/* Teacher Selection for Group */}
-                          <div className="space-y-1">
-                            <Label htmlFor={`group-teacher-${groupConfig.groupId}`} className="text-sm">
-                              Teacher
-                            </Label>
-                            <Select
-                              value={groupConfig.teacherId?.toString() || ''}
-                              onValueChange={(value) => {
-                                const teacherId = parseInt(value);
-                                const teacher = teachers.find(t => t.id === teacherId);
-                                handleGroupTeacherChange(groupConfig.groupId, teacherId, teacher?.fullName);
-                              }}
-                            >
-                              <SelectTrigger id={`group-teacher-${groupConfig.groupId}`} className="text-sm">
-                                <SelectValue placeholder="Select teacher" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {teachers.map((teacher: any) => (
-                                  <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                    {teacher.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Subject Selection for Group */}
-                          <div className="space-y-1">
-                            <Label htmlFor={`group-subject-${groupConfig.groupId}`} className="text-sm">
-                              Subject
-                            </Label>
-                            <Select
-                              value={groupConfig.subjectId?.toString() || ''}
-                              onValueChange={(value) => {
-                                const subjectId = parseInt(value);
-                                const subject = subjects.find(s => s.id === subjectId);
-                                handleGroupSubjectChange(groupConfig.groupId, subjectId, subject?.name);
-                              }}
-                            >
-                              <SelectTrigger id={`group-subject-${groupConfig.groupId}`} className="text-sm">
-                                <SelectValue placeholder="Select subject" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {subjects.map((subject: any) => (
-                                  <SelectItem key={subject.id} value={subject.id.toString()}>
-                                    {subject.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Rooms Selection for Group */}
-                          <div className="space-y-1">
-                            <Label className="text-sm">Rooms</Label>
-                            {groupConfig.roomIds.length > 0 && (
-                              <div className="flex flex-wrap gap-2 p-2 border rounded bg-muted/50">
-                                {groupConfig.roomIds.map((roomId) => {
-                                  const room = rooms.find(r => r.id === roomId);
-                                  return (
-                                    <Badge key={roomId} variant="secondary" className="flex items-center gap-1 px-2 py-0.5 text-xs">
-                                      {room?.name}
-                                      <button
-                                        type="button"
-                                        onClick={() => removeGroupRoom(groupConfig.groupId, roomId)}
-                                        className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0"
-                                      >
-                                        <X className="h-2.5 w-2.5" />
-                                      </button>
-                                    </Badge>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button type="button" variant="outline" size="sm" className="w-full text-xs">
-                                  {groupConfig.roomIds.length > 0 ? 'Edit rooms' : 'Add rooms'}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-48 p-0" align="start">
-                                <Command>
-                                  <CommandInput placeholder="Search rooms..." />
-                                  <CommandList>
-                                    <CommandEmpty>No rooms found.</CommandEmpty>
-                                    <CommandGroup>
-                                      {rooms.map((room: any) => (
-                                        <CommandItem
-                                          key={room.id}
-                                          onSelect={() => handleGroupRoomToggle(groupConfig.groupId, room.id)}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              groupConfig.roomIds.includes(room.id)
-                                                ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          {room.name}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <GroupConfigRow
+                      key={groupConfig.groupId}
+                      config={groupConfig}
+                      teachers={teachers}
+                      subjects={subjects}
+                      rooms={rooms}
+                      onToggle={handleGroupToggle}
+                      onTeacherChange={handleGroupTeacherChange}
+                      onSubjectChange={handleGroupSubjectChange}
+                      onRoomToggle={handleGroupRoomToggle}
+                      onRoomRemove={removeGroupRoom}
+                    />
                   ))}
                 </div>
               </div>

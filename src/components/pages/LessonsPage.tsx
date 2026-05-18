@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import EtLessonsPage, { initLessonsData } from './EtLessonsPage';
 import { LessonService } from '@/lib/lessons';
 import { ClassService } from '@/lib/classes';
@@ -7,9 +7,10 @@ import { TeacherService } from '@/lib/teachers';
 import { RoomService } from '@/lib/rooms';
 import { toast } from 'sonner';
 import { LessonsWithMetadataResponse, LessonRequest, GroupLessonDetail } from '@/types/api';
-import AddLessonModal from '../AddLessonModal';
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
+
+const AddLessonModal = lazy(() => import('../AddLessonModal'));
 
 export default function LessonsPage() {
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -349,11 +350,15 @@ export default function LessonsPage() {
         {...dataProps} 
       />
 
-      <AddLessonModal 
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSubmit={handleModalSubmit}
-      />
+      {isModalOpen && (
+        <Suspense fallback={null}>
+          <AddLessonModal
+            open={isModalOpen}
+            onOpenChange={setIsModalOpen}
+            onSubmit={handleModalSubmit}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

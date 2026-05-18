@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Download, Upload, Plus, Edit, Trash2, X, Loader2, Search, Check, Layers, Users, DoorOpen, Calendar, LayoutGrid } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useCrudResource } from '@/hooks';
+import { Upload, Plus, Edit, Trash2, X, Loader2, Layers, Users, LayoutGrid } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
-import { ClassService, ClassResponse, ClassRequest } from '@/lib/classes';
+import { ClassService, ClassResponse } from '@/lib/classes';
 import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import ImportModal from '@/components/shared/ImportModal';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
 
-// ─── Constants & Styles ────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────
 
 const SX_PALETTE = [
   { id: 'indigo', base: '#4F46E5', tint: '#EEF2FF', ink: '#3730A3' },
@@ -21,30 +22,7 @@ const SX_PALETTE = [
 
 const palOf = (id: number) => SX_PALETTE[id % SX_PALETTE.length];
 
-const CL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-
-const btnPrimary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#4F46E5', color: '#fff', border: 0,
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  boxShadow: '0 4px 12px -4px rgba(79, 70, 229, 0.4)',
-  transition: 'all 150ms'
-};
-
-const btnSecondary = {
-  display: 'inline-flex', alignItems: 'center', gap: 8,
-  background: '#fff', color: '#475569', border: '1px solid #E2E8F0',
-  padding: '10px 18px', borderRadius: 10,
-  font: '700 13px Manrope', cursor: 'pointer',
-  transition: 'all 150ms'
-};
-
-const inp = {
-  width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 10,
-  padding: '10px 14px', font: '500 14px Manrope', color: '#0F172A',
-  outline: 0, transition: 'border-color 150ms'
-};
+const CL_DAYS = API_DAYS_OF_WEEK;
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -195,50 +173,42 @@ function ClassRow({ t, cls, periods, selected, onSelect, onEdit, onDelete }: any
 
 export default function ClassesPage() {
   const { t } = useTranslation();
-  const [library, setLibrary] = useState<ClassResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
   const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
 
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<ClassResponse | { new: true } | { bulkTimeoff: true } | null>(null);
   const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showBatch, setShowBatch] = useState(false);
 
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
-  const [totalElements, setTotalElements] = useState(0);
+  // Classes search is client-side: server endpoint ignores the query string.
+  const fetchClasses = useCallback(
+    (page: number, size: number) => ClassService.getPaginated(page, size),
+    [],
+  );
 
+  const {
+    items: library,
+    isLoading,
+    totalElements,
+    page, size, setPage, setSize,
+    query, setQuery,
+    selected, toggleSelect, clearSelection,
+    refresh: fetchData,
+  } = useCrudResource<ClassResponse>(fetchClasses);
+
+  // One-time related data (teachers, rooms, periods)
   useEffect(() => {
-    fetchData();
-  }, [page, size]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [clsPage, tchs, rms, org] = await Promise.all([
-        ClassService.getPaginated(page, size),
-        TeacherService.getAll(),
-        RoomService.getAll(),
-        organizationApi.get()
-      ]);
-      setLibrary(clsPage.content);
-      setTotalElements(clsPage.totalElements);
-      setTeachers(tchs);
-      setRooms(rms);
+    TeacherService.getAll().then(setTeachers).catch(() => {});
+    RoomService.getAll().then(setRooms).catch(() => {});
+    organizationApi.get().then((org) => {
       if (org?.periods) {
         const nonBreak = org.periods.filter((p: any) => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
-    } catch (error) {
-      toast.error("Ma'lumotlarni yuklashda xatolik");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    }).catch(() => {});
+  }, []);
 
   const handleSave = async (data: any) => {
     try {
@@ -247,7 +217,7 @@ export default function ClassesPage() {
           applyTo: Array.from(selected),
           timeOff: data.availabilities
         });
-        setSelected(new Set());
+        clearSelection();
       } else if (editing && !('new' in editing)) {
         await ClassService.update((editing as any).id, data);
       } else if (Array.isArray(data)) {
@@ -268,7 +238,7 @@ export default function ClassesPage() {
       if (confirmDel?.bulk) {
         await ClassService.deleteBulk(Array.from(selected));
         toast.success("Sinflar o'chirildi");
-        setSelected(new Set());
+        clearSelection();
       } else if (id) {
         await ClassService.delete(id);
         toast.success("Sinf o'chirildi");
@@ -278,14 +248,6 @@ export default function ClassesPage() {
     } catch (error) {
       toast.error("O'chirishda xatolik");
     }
-  };
-
-  const toggleSelect = (id: number) => {
-    setSelected(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
   };
 
   const filtered = useMemo(() => {
@@ -303,36 +265,18 @@ export default function ClassesPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
-      {/* Toolbar */}
-      <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', width: 240 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-          <input 
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Sinfni qidiring..."
-            style={{ width: '100%', border: '1.5px solid #E2E8F0', borderRadius: 9, padding: '10px 12px 10px 34px', font: '500 13px Manrope', color: '#0F172A', outline: 0 }} 
-          />
-        </div>
-
-        <span style={{ flex: 1 }} />
-        <span style={{ font: '600 12px Manrope', color: '#64748B' }}>{totalElements} ta sinf</span>
-
-        <button onClick={() => setShowImport(true)} style={btnSecondary}>
-          <Upload size={14} />
-          Import
-        </button>
-
-        <button onClick={() => setShowBatch(true)} style={btnSecondary}>
-          <Layers size={14} />
-          Guruhli yaratish
-        </button>
-
-        <button onClick={() => setEditing({ new: true })} style={btnPrimary}>
-          <Plus size={14} strokeWidth={2.5} />
-          Yangi sinf
-        </button>
-      </div>
+      <CrudPageHeader
+        searchValue={query}
+        onSearchChange={setQuery}
+        searchPlaceholder="Sinfni qidiring..."
+        count={totalElements}
+        countLabel="ta sinf"
+        actions={[
+          { id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImport(true) },
+          { id: 'batch', label: 'Guruhli yaratish', icon: Layers, onClick: () => setShowBatch(true) },
+          { id: 'add', label: 'Yangi sinf', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
+        ]}
+      />
 
       {/* Table */}
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.05)' }}>
@@ -375,43 +319,19 @@ export default function ClassesPage() {
         </div>
       </div>
 
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: '#0F172A', color: '#fff', borderRadius: 12, padding: '10px 14px',
-          display: 'flex', alignItems: 'center', gap: 12, zIndex: 55,
-          boxShadow: '0 24px 60px -16px rgba(15,23,42,0.4)',
-        }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, font: '800 13px JetBrains Mono' }}>
-            <span style={{ width: 22, height: 22, borderRadius: 6, background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 10px JetBrains Mono' }}>{selected.size}</span>
-            ta tanlandi
-          </span>
-          <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.18)' }} />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => setEditing({ bulkTimeoff: true })} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              font: '700 12px Manrope', color: '#fff', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-              padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
-            }}>
-              <LayoutGrid size={13} />
-              Vaqtlarni o'zgartirish
-            </button>
-          </div>
-          <button onClick={() => setConfirmDel({ bulk: true, n: selected.size })} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            font: '700 12px Manrope', color: '#fff', background: '#DC2626', border: 0,
-            padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
-          }}>
-            <Trash2 size={13} />
-            O'chirish
-          </button>
-          <button onClick={() => setSelected(new Set())} style={{
-            font: '700 12px Manrope', color: 'rgba(255,255,255,0.7)', background: 'transparent',
-            border: 0, padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
-          }}>Bekor</button>
-        </div>
-      )}
+      <BulkActionBar
+        count={selected.size}
+        actions={[
+          {
+            id: 'bulk-timeoff',
+            label: "Vaqtlarni o'zgartirish",
+            icon: LayoutGrid,
+            onClick: () => setEditing({ bulkTimeoff: true }),
+          },
+        ]}
+        onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
+        onClear={clearSelection}
+      />
 
       {/* Modals */}
       {editing && (
