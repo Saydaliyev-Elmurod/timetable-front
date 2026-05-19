@@ -325,7 +325,7 @@ export function DroppableTimeSlot({
 
     return (
         <div
-            ref={drop}
+            ref={drop as any}
             className={getSlotStyle()}
             onClick={() => {
                 if (selectedLesson && onManualPlace) {

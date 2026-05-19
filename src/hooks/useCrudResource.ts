@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 export interface PagedResult<T> {
   content: T[];
@@ -85,7 +86,7 @@ export function useCrudResource<T>(
       setTotalElements(result.totalElements);
       setTotalPages(result.totalPages);
     } catch (e) {
-      console.error('useCrudResource fetch failed:', e);
+      logger.error('useCrudResource fetch failed:', e);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

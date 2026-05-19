@@ -1,9 +1,15 @@
 import { InternalLesson } from '@/types/lessons';
-import { LessonResponse, LessonRequest, LessonUpdateRequest } from '@/types/api';
+import {
+  LessonResponse,
+  LessonRequest,
+  LessonUpdateRequest,
+  isFullLesson,
+} from '@/types/api';
+import { logger } from '../lib/logger';
 
 export function mapApiLessonToInternal(apiLesson: LessonResponse | null): InternalLesson | null {
-  if (!apiLesson || !apiLesson.subject || !apiLesson.teacher || !apiLesson.class) {
-    console.warn('Invalid lesson data received:', apiLesson);
+  if (!apiLesson || !isFullLesson(apiLesson)) {
+    logger.warn('Invalid lesson data received:', apiLesson);
     return null;
   }
 
@@ -16,33 +22,33 @@ export function mapApiLessonToInternal(apiLesson: LessonResponse | null): Intern
     classId: apiLesson.class.id,
     class: apiLesson.class.name || 'Unknown Class',
     day: apiLesson.dayOfWeek || 'MONDAY',
-    startTime: '09:00', // This would come from hour + period calculation
-    endTime: '10:00',   // This would come from hour + period + duration
+    startTime: '09:00',
+    endTime: '10:00',
     period: apiLesson.period || 1,
     frequency: `${apiLesson.lessonCount || 1}x/week`,
     lessonCount: apiLesson.lessonCount || 1,
-    roomIds: (apiLesson.rooms || []).map(r => r.id),
-    room: (apiLesson.rooms || []).map(r => r?.name || 'Unknown Room').join(', ') || 'No Room',
-    duration: '45 min'  // This could be calculated from period
+    roomIds: (apiLesson.rooms || []).map((r) => r.id),
+    room: (apiLesson.rooms || []).map((r) => r?.name || 'Unknown Room').join(', ') || 'No Room',
+    duration: '45 min',
   };
 }
 
 export function mapInternalLessonToApiRequest(lesson: InternalLesson): LessonRequest {
   return {
-    classId: lesson.classId,
+    classId: [lesson.classId],
     teacherId: lesson.teacherId,
     roomIds: lesson.roomIds,
     subjectId: lesson.subjectId,
     lessonCount: lesson.lessonCount,
     dayOfWeek: lesson.day.toUpperCase(),
     hour: parseInt(lesson.startTime.split(':')[0]),
-    period: lesson.period
+    period: lesson.period,
   };
 }
 
 export function mapInternalLessonToApiUpdateRequest(lesson: InternalLesson): LessonUpdateRequest {
   return {
     id: lesson.id,
-    ...mapInternalLessonToApiRequest(lesson)
+    ...mapInternalLessonToApiRequest(lesson),
   };
 }

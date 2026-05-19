@@ -14,21 +14,22 @@ import {
 } from '../ui/card';
 import { Checkbox } from '../ui/checkbox';
 import { Skeleton } from '../ui/skeleton';
-import { 
-  Plus, 
-  Clock, 
-  Coffee, 
-  Trash2, 
-  GripVertical, 
+import {
+  Plus,
+  Clock,
+  Coffee,
+  Trash2,
+  GripVertical,
   Save,
   Building2,
   Calendar
 } from 'lucide-react';
+import { PageContainer } from '../shared/PageContainer';
 
 const LoadingSkeleton = () => {
   const { t } = useTranslation();
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <div className="flex justify-between items-center">
         <div>
           <Skeleton className="h-8 w-64 mb-2" />
@@ -86,7 +87,7 @@ const LoadingSkeleton = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
 
@@ -97,7 +98,7 @@ export default function OrganizationPage() {
     description: '',
   });
 
-  const [workingDays, setWorkingDays] = useState({
+  const [workingDays, setWorkingDays] = useState<Record<string, boolean>>({
     monday: false,
     tuesday: false,
     wednesday: false,
@@ -123,7 +124,7 @@ export default function OrganizationPage() {
           description: data.description || '' 
         });
 
-        const initialWorkingDays = {
+        const initialWorkingDays: Record<string, boolean> = {
           monday: false,
           tuesday: false,
           wednesday: false,
@@ -132,12 +133,12 @@ export default function OrganizationPage() {
           saturday: false,
           sunday: false,
         };
-        data.daysOfWeek.forEach(day => {
+        data.daysOfWeek.forEach((day: string) => {
           initialWorkingDays[day.toLowerCase()] = true;
         });
         setWorkingDays(initialWorkingDays);
 
-        const newPeriods = data.periods.map((p, index) => ({
+        const newPeriods = data.periods.map((p: any, index: number) => ({
           id: index + 1,
           type: p.isBreak ? 'break' : 'period',
           name: p.name,
@@ -288,7 +289,7 @@ export default function OrganizationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <div className="flex justify-between items-center">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold">
@@ -544,6 +545,6 @@ export default function OrganizationPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

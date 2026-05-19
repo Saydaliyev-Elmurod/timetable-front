@@ -8,8 +8,8 @@ vi.mock('../../lib/api', () => ({
 }));
 
 test('renders ClassesPage', () => {
-  (apiCall as jest.Mock).mockResolvedValue({ data: { content: [] } });
-  render(<ClassesPage onNavigate={() => {}} />);
+  (apiCall as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { content: [] } });
+  render(<ClassesPage />);
   const addButton = screen.getByText(/Add Class/i);
-  expect(addButton).toBeInTheDocument();
+  expect(addButton).toBeTruthy();
 });

@@ -1,5 +1,6 @@
 import API, { PaginatedResponse } from './api';
 import { TimeSlot } from './teachers';
+import type { RoomResponse } from '@/types/api';
 
 export interface ClassResponse {
   id: number;
@@ -14,10 +15,7 @@ export interface ClassResponse {
     id: number;
     name: string;
   }>;
-  rooms?: Array<{
-    id: number;
-    name: string;
-  }>;
+  rooms?: RoomResponse[];
   createdDate?: string;
   updatedDate?: string;
 }

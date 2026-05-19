@@ -10,7 +10,9 @@ import { toast } from 'sonner';
 import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { TimeSlot } from '@/lib/teachers';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, btnSecondaryCls, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { PageContainer } from '@/components/shared/PageContainer';
+import { cn } from '@/components/ui/utils';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
 
@@ -54,13 +56,12 @@ const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]):
 
 // ─── Components ────────────────────────────────────────────────────────
 
-function Badge({ children, color, tint, ink }: any) {
+function Badge({ children, color: _color, tint, ink }: any) {
   return (
-    <span style={{ 
-      padding: '4px 10px', borderRadius: 8, font: '700 11px Inter', 
-      background: tint || '#F1F5F9', color: ink || '#475569', 
-      display: 'inline-flex', alignItems: 'center', gap: 4 
-    }}>
+    <span
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-[11px] font-inter"
+      style={{ background: tint || '#F1F5F9', color: ink || '#475569' }}
+    >
       {children}
     </span>
   );
@@ -140,8 +141,12 @@ export default function RoomsPage() {
     }
   };
 
+  const thCls = 'px-5 py-3.5 text-left font-bold text-[12px] uppercase text-slate-500 font-manrope';
+  const tdCls = 'px-5 py-3';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 20 }}>
+    <PageContainer fullHeight noGap>
+      <div className="flex flex-col h-full gap-5">
       <CrudPageHeader
         searchValue={query}
         onSearchChange={setQuery}
@@ -154,56 +159,69 @@ export default function RoomsPage() {
       />
 
       {/* Table Card */}
-      <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ overflow: 'auto', flex: 1 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="flex-1 flex flex-col bg-white rounded-[20px] border border-slate-200 overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <th style={{ padding: '14px 20px', width: 40 }}>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-5 py-3.5 w-10">
                   <input type="checkbox" checked={selected.size === library.length && library.length > 0} onChange={() => {
                     if (selected.size === library.length) setSelected(new Set());
                     else setSelected(new Set(library.map(r => r.id)));
                   }} />
                 </th>
-                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_name', 'Xona nomi')}</th>
-                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_short', 'Qisqa nomi')}</th>
-                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_type', 'Turi')}</th>
-                <th style={{ padding: '14px 20px', textAlign: 'left', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('rooms.table_timeoff', 'Mavjudlik')}</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right', font: '700 12px Manrope', color: '#64748B', textTransform: 'uppercase' }}>{t('common.actions', 'Amallar')}</th>
+                <th className={thCls}>{t('rooms.table_name', 'Xona nomi')}</th>
+                <th className={thCls}>{t('rooms.table_short', 'Qisqa nomi')}</th>
+                <th className={thCls}>{t('rooms.table_type', 'Turi')}</th>
+                <th className={thCls}>{t('rooms.table_timeoff', 'Mavjudlik')}</th>
+                <th className={cn(thCls, 'text-right')}>{t('common.actions', 'Amallar')}</th>
               </tr>
             </thead>
             <tbody>
               {library.map(room => (
-                <tr key={room.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                  <td style={{ padding: '12px 20px' }}>
+                <tr key={room.id} className="border-b border-slate-100">
+                  <td className={tdCls}>
                     <input type="checkbox" checked={selected.has(room.id)} onChange={() => toggleSelect(room.id)} />
                   </td>
-                  <td style={{ padding: '12px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <td className={tdCls}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-[10px] bg-indigo-50 text-indigo-600">
                         <Building2 size={18} />
                       </div>
-                      <span style={{ font: '700 14px Manrope', color: '#0F172A' }}>{room.name}</span>
+                      <span className="font-bold text-[14px] text-slate-900 font-manrope">{room.name}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 20px' }}>
+                  <td className={tdCls}>
                     <Badge>{room.shortName}</Badge>
                   </td>
-                  <td style={{ padding: '12px 20px' }}>
+                  <td className={tdCls}>
                     <Badge tint={room.type === RoomType.SPECIAL ? '#F5F3FF' : '#F0F9FF'} ink={room.type === RoomType.SPECIAL ? '#7C3AED' : '#0369A1'}>
                       {t(ROOM_TYPE_DEFINITIONS[room.type].labelKey)}
                     </Badge>
                   </td>
-                  <td style={{ padding: '12px 20px' }}>
-                    <button onClick={() => setEditing(room)} style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, font: '600 13px Inter', color: '#64748B' }}>
-                      <Clock size={14} color="#4F46E5" />
+                  <td className={tdCls}>
+                    <button
+                      onClick={() => setEditing(room)}
+                      className="flex items-center gap-1.5 bg-transparent border-0 p-0 cursor-pointer font-semibold text-[13px] text-slate-500 font-inter hover:text-slate-700"
+                    >
+                      <Clock size={14} className="text-indigo-600" />
                       {room.availabilities.reduce((acc, s) => acc + s.lessons.length, 0)} {t('rooms.slots', 'soat')}
                     </button>
                   </td>
-                  <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
-                      <button onClick={() => setEditing(room)} style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: 'transparent', color: '#64748B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="hover-bg"><Edit size={14} /></button>
-                      <button onClick={() => setConfirmDel({ id: room.id, name: room.name })} style={{ width: 32, height: 32, borderRadius: 8, border: 0, background: 'transparent', color: '#F43F5E', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="hover-bg-rose"><Trash2 size={14} /></button>
+                  <td className={cn(tdCls, 'text-right')}>
+                    <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => setEditing(room)}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg border-0 bg-transparent text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDel({ id: room.id, name: room.name })}
+                        className="flex items-center justify-center w-8 h-8 rounded-lg border-0 bg-transparent text-rose-500 cursor-pointer hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -211,19 +229,31 @@ export default function RoomsPage() {
             </tbody>
           </table>
           {library.length === 0 && !isLoading && (
-            <div style={{ padding: 60, textAlign: 'center' }}>
-              <School size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
-              <div style={{ font: '700 16px Manrope', color: '#475569' }}>{t('rooms.no_data', 'Xonalar topilmadi')}</div>
+            <div className="p-[60px] text-center">
+              <School size={48} className="mx-auto mb-4 opacity-20" />
+              <div className="font-bold text-[16px] text-slate-600 font-manrope">{t('rooms.no_data', 'Xonalar topilmadi')}</div>
             </div>
           )}
         </div>
 
         {/* Footer / Pagination */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ font: '600 13px Inter', color: '#94A3B8' }}>{totalElements} {t('rooms.count', 'ta xona')}</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button disabled={page === 0} onClick={() => setPage(p => p - 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === 0 ? 0.5 : 1 }}>{t('common.prev', 'Oldingi')}</button>
-            <button disabled={page === totalPages - 1} onClick={() => setPage(p => p + 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === totalPages - 1 ? 0.5 : 1 }}>{t('common.next', 'Keyingi')}</button>
+        <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
+          <span className="font-semibold text-[13px] text-slate-400 font-inter">{totalElements} {t('rooms.count', 'ta xona')}</span>
+          <div className="flex gap-2">
+            <button
+              disabled={page === 0}
+              onClick={() => setPage(p => p - 1)}
+              className={cn(btnSecondaryCls, 'px-3 py-1.5')}
+            >
+              {t('common.prev', 'Oldingi')}
+            </button>
+            <button
+              disabled={page === totalPages - 1}
+              onClick={() => setPage(p => p + 1)}
+              className={cn(btnSecondaryCls, 'px-3 py-1.5')}
+            >
+              {t('common.next', 'Keyingi')}
+            </button>
           </div>
         </div>
       </div>
@@ -283,7 +313,8 @@ export default function RoomsPage() {
           />
         </Suspense>
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }
 
@@ -407,11 +438,11 @@ function AvailGrid({ avail, periods, onChange }: any) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + periods.length + ', 1fr)', gap: 4 }}>
       <div />
-      {periods.map(p => <div key={p} style={{ font: '700 10px Inter', color: '#94A3B8', textAlign: 'center' }}>{p}</div>)}
-      {CL_DAYS.map((d, i) => (
+      {periods.map((p: number) => <div key={p} style={{ font: '700 10px Inter', color: '#94A3B8', textAlign: 'center' }}>{p}</div>)}
+      {CL_DAYS.map((d: string, i: number) => (
         <React.Fragment key={d}>
           <div style={{ font: '700 11px Inter', color: '#64748B', display: 'flex', alignItems: 'center' }}>{CL_DAYS_SHORT[i]}</div>
-          {periods.map(p => (
+          {periods.map((p: number) => (
             <button key={p} onClick={() => toggle(d, p)} style={{
               height: 24, borderRadius: 6, border: 0, cursor: 'pointer',
               background: avail[d]?.[p] ? '#4F46E5' : '#E2E8F0',

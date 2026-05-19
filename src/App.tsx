@@ -6,6 +6,7 @@ import { Toaster } from './components/ui/sonner';
 import { getToken, removeToken } from './lib/auth';
 import { User } from './types/common';
 import { useTranslation } from './i18n/index';
+import { logger } from './lib/logger';
 
 type AppView = 'landing' | 'login' | 'dashboard';
 
@@ -27,7 +28,7 @@ export default function App() {
         setIsAuthenticated(true);
         setCurrentView('dashboard');
       } catch (error) {
-        console.error('Failed to parse user data:', error);
+        logger.error('Failed to parse user data:', error);
         localStorage.removeItem('user');
         removeToken();
       }

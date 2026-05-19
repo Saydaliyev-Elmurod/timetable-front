@@ -144,7 +144,7 @@ const checkRoomAvailability = (roomId: number, day: string, hour: number, exclud
 };
 
 // Helper: Calculate soft constraint impact (simplified)
-const calculateSoftConstraintImpact = (affectedLessonIds: string[]): SoftConstraintImpact => {
+const calculateSoftConstraintImpact = (_affectedLessonIds: string[]): SoftConstraintImpact => {
   // This is a simplified version. Real implementation would analyze:
   // - Gaps in schedule
   // - Daily load balance

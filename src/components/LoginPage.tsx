@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { useTranslation } from '@/i18n/index';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -6,9 +6,16 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ArrowLeft, BookOpen, Eye, EyeOff } from 'lucide-react';
-import { getCode, login, saveToken, verify } from '../lib/auth'; // Make sure to create this file
+import { getCode, login, saveToken, verify } from '../lib/auth';
+import { User } from '@/types/common';
+import { logger } from '../lib/logger';
 
-export default function LoginPage({ onLogin, onBackToLanding }) {
+interface LoginPageProps {
+  onLogin: (user: User) => void;
+  onBackToLanding: () => void;
+}
+
+export default function LoginPage({ onLogin, onBackToLanding }: LoginPageProps) {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -21,7 +28,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLoginSubmit = async (e) => {
+  const handleLoginSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -32,8 +39,9 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
       } else {
         saveToken(result.response.token);
         onLogin({
+          id: loginEmail,
           email: loginEmail,
-          name: loginEmail.split('@')[0], // Placeholder, ideally from token/API
+          name: loginEmail.split('@')[0],
           avatar: `https://ui-avatars.com/api/?name=${loginEmail.split('@')[0]}&background=random`
         });
       }
@@ -44,7 +52,7 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
     }
   };
 
-  const handleGetCodeSubmit = async (e) => {
+  const handleGetCodeSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -56,14 +64,14 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
         setIsVerificationStep(true);
       }
     } catch (err) {
-      console.error(err); // Log the full error
+      logger.error(err); // Log the full error
       setError('An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifySubmit = async (e) => {
+  const handleVerifySubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -84,13 +92,14 @@ export default function LoginPage({ onLogin, onBackToLanding }) {
       } else {
         saveToken(result.response.token);
         onLogin({
+          id: signupEmail,
           email: signupEmail,
           name: signupName,
           avatar: `https://ui-avatars.com/api/?name=${signupName}&background=random`
         });
       }
     } catch (err) {
-      console.error(err); // Log the full error
+      logger.error(err); // Log the full error
       setError('An unexpected error occurred.');
     } finally {
       setLoading(false);

@@ -10,7 +10,7 @@ interface ImportModalProps {
   onClose: () => void;
   templateName?: string;
   templateColumns: string[];
-  mapping: (row: any) => any;
+  mapping?: (row: any) => any;
 }
 
 export default function ImportModal({ 
@@ -66,7 +66,7 @@ export default function ImportModal({
     if (!data) return;
     try {
       setIsLoading(true);
-      const mapped = data.map(mapping);
+      const mapped = mapping ? data.map(mapping) : data;
       await onImport(mapped);
       onClose();
     } catch (err) {

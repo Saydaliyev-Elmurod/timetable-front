@@ -5,7 +5,7 @@
  */
 
 import { Availability } from '@/utils/timeSlots';
-import { TimeSlot } from '@/lib/rooms';
+import { TimeSlot } from '@/lib/teachers';
 
 // ============================================================================
 // ROOM FORM DATA

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Block commits that introduce TypeScript errors. Catches stale types after
+# refactors / merge conflicts before they reach CI.
+npm run typecheck

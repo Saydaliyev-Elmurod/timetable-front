@@ -38,6 +38,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
+import { PageContainer } from '../shared/PageContainer';
+import { logger } from '../../lib/logger';
 
 // API Types
 interface TimetableEntity {
@@ -140,7 +142,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       setTimetables(prev => prev.filter((t) => t.id !== id));
       toast.success("Jadval muvaffaqiyatli o'chirildi");
     } catch (err) {
-      console.error('Delete error:', err);
+      logger.error('Delete error:', err);
       toast.error("Jadvalni o'chirishda xatolik");
     }
   };
@@ -165,7 +167,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       document.body.removeChild(a);
       toast.success(`"${timetable.name}" Excel formatda yuklandi!`);
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       toast.error('Excel eksport xatolik');
     }
   };
@@ -190,13 +192,13 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       document.body.removeChild(a);
       toast.success(`"${timetable.name}" PDF formatda yuklandi!`);
     } catch (error) {
-      console.error('PDF export error:', error);
+      logger.error('PDF export error:', error);
       toast.error('PDF eksport xatolik');
     }
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       {/* Page Header — clean, no gradients */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -459,7 +461,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       await fetchTimetables();
                     }
                   } catch (err) {
-                    console.error('Generate error', err);
+                    logger.error('Generate error', err);
                     toast.error('Jadval yaratishda xatolik');
                   } finally {
                     setIsGenerating(false);
@@ -481,6 +483,6 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

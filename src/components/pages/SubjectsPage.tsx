@@ -7,6 +7,7 @@ import { organizationApi } from '@/api/organizationApi';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
 import { CrudPageHeader, BulkActionBar } from '@/components/shared';
+import { PageContainer } from '@/components/shared/PageContainer';
 import { CL_DAYS, palOf } from './subjects-page/constants';
 import {
   AvailState,
@@ -184,7 +185,7 @@ export default function SubjectsPage() {
   };
 
   const applyTemplates = async (selectedTemplates: SubjectResponse[]) => {
-    const requests: SubjectRequest[] = selectedTemplates.map(t => ({
+    const requests: SubjectRequest[] = selectedTemplates.map((t: any) => ({
       name: t.name,
       nameUz: t.nameUz,
       nameRu: t.nameRu,
@@ -208,14 +209,17 @@ export default function SubjectsPage() {
 
   if (isLoading && library.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-        <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-      </div>
+      <PageContainer fullHeight noGap>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <PageContainer fullHeight noGap>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CrudPageHeader
         searchValue={query}
         onSearchChange={setQuery}
@@ -234,8 +238,8 @@ export default function SubjectsPage() {
         count={totalElements}
         countLabel="ta fan"
         actions={[
-          { id: 'templates', label: "To'plamlar", icon: LayoutGrid, onClick: () => setShowTmpl(true), style: btnSecondary },
-          { id: 'add', label: 'Yangi fan', icon: Plus, onClick: () => setEditing({ new: true }), style: btnPrimary },
+          { id: 'templates', label: "To'plamlar", icon: LayoutGrid, onClick: () => setShowTmpl(true), variant: 'secondary' },
+          { id: 'add', label: 'Yangi fan', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
         ]}
       />
 
@@ -345,7 +349,7 @@ export default function SubjectsPage() {
       {/* Modals */}
       {editing && (
         <SubjectEditor
-          initial={editing === true || (editing as any).new ? null : editing}
+          initial={(editing as any).new ? null : editing}
           periods={periods}
           onClose={() => setEditing(null)}
           onSave={handleSave} />
@@ -367,7 +371,8 @@ export default function SubjectsPage() {
             else if (confirmDel.id) handleDelete(confirmDel.id);
           }} />
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }
 

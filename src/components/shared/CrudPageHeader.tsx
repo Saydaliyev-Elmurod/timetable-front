@@ -1,6 +1,13 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import { btnPrimary, btnSecondary, btnDanger, inpSearch, countText } from './crudStyles';
+import { cn } from '@/components/ui/utils';
+import {
+  btnDangerCls,
+  btnPrimaryCls,
+  btnSecondaryCls,
+  countTextCls,
+  inpSearchCls,
+} from './crudStyles';
 
 export type CrudActionVariant = 'primary' | 'secondary' | 'danger';
 
@@ -13,7 +20,7 @@ export interface CrudAction {
   iconSize?: number;
   iconStrokeWidth?: number;
   disabled?: boolean;
-  style?: React.CSSProperties;
+  className?: string;
 }
 
 export interface CrudPageHeaderProps {
@@ -28,10 +35,10 @@ export interface CrudPageHeaderProps {
   className?: string;
 }
 
-const variantStyle: Record<CrudActionVariant, React.CSSProperties> = {
-  primary: btnPrimary,
-  secondary: btnSecondary,
-  danger: btnDanger,
+const variantClass: Record<CrudActionVariant, string> = {
+  primary: btnPrimaryCls,
+  secondary: btnSecondaryCls,
+  danger: btnDangerCls,
 };
 
 export function CrudPageHeader({
@@ -47,41 +54,27 @@ export function CrudPageHeader({
 }: CrudPageHeaderProps) {
   return (
     <div
-      className={className}
-      style={{
-        padding: '12px 0',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        flexShrink: 0,
-        flexWrap: 'wrap',
-      }}
+      className={cn('flex flex-wrap items-center gap-2.5 py-3 shrink-0', className)}
     >
-      <div style={{ position: 'relative', width: searchWidth }}>
+      <div className="relative" style={{ width: searchWidth }}>
         <Search
           size={14}
-          style={{
-            position: 'absolute',
-            left: 12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#94A3B8',
-          }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
         />
         <input
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder}
-          style={inpSearch}
+          className={inpSearchCls}
         />
       </div>
 
       {leftExtras}
 
-      <span style={{ flex: 1 }} />
+      <span className="flex-1" />
 
       {typeof count === 'number' && (
-        <span style={countText}>
+        <span className={countTextCls}>
           {count}
           {countLabel ? ` ${countLabel}` : ''}
         </span>
@@ -89,13 +82,13 @@ export function CrudPageHeader({
 
       {actions.map((action) => {
         const Icon = action.icon;
-        const baseStyle = action.style ?? variantStyle[action.variant ?? 'secondary'];
+        const cls = action.className ?? variantClass[action.variant ?? 'secondary'];
         return (
           <button
             key={action.id}
             onClick={action.onClick}
             disabled={action.disabled}
-            style={{ ...baseStyle, opacity: action.disabled ? 0.5 : 1 }}
+            className={cls}
           >
             {Icon && (
               <Icon

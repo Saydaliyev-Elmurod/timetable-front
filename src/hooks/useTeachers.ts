@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiCall, getApiUrl } from '@/lib/api';
 import { TeacherResponse } from '@/lib/teachers';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 interface SimpleTeacher {
     id: number;
@@ -83,7 +84,7 @@ export function useTeachers(options: UseTeachersOptions = {}): UseTeachersReturn
 
             if (!isMountedRef.current) return;
 
-            console.error('Error fetching teachers:', err);
+            logger.error('Error fetching teachers:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch teachers'));
             toast.error('Failed to load teachers');
         } finally {

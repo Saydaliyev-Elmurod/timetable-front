@@ -85,7 +85,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       case 'organization':
         return <OrganizationPage />;
       case 'classes':
-        return <ClassesPage onNavigate={setCurrentPage} />;
+        return <ClassesPage />;
       case 'class-setup':
         return <ClassSetupPage onNavigate={setCurrentPage} />;
       case 'docs-classes':
@@ -274,8 +274,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-auto p-6">
+        {/* Page Content — PageContainer (in each page) owns its padding/max-width */}
+        <main className="flex-1 overflow-auto">
           <Suspense fallback={<PageLoader />}>
             {renderPage}
           </Suspense>

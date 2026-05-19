@@ -4,9 +4,11 @@ import { Upload, BookOpen, Clock, LayoutGrid, Plus, Edit, Trash2, X, Loader2 } f
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, TeacherBulkUpdateRequest } from '@/lib/teachers';
-import { SubjectService, SubjectResponse, TimeSlot } from '@/lib/subjects';
+import { SubjectService, SubjectResponse } from '@/lib/subjects';
+import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
 import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { PageContainer } from '@/components/shared/PageContainer';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
 
@@ -53,7 +55,7 @@ const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]):
   if (slots) {
     slots.forEach(s => {
       if (res[s.dayOfWeek]) {
-        s.lessons.forEach(l => res[s.dayOfWeek][l] = true);
+        s.lessons.forEach((l: number) => res[s.dayOfWeek][l] = true);
       }
     });
   }
@@ -132,7 +134,7 @@ function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: n
   );
 }
 
-function TeacherRow({ t, teacher, periods, selected, onSelect, onEdit, onDelete }: any) {
+function TeacherRow({ t: _t, teacher, periods, selected, onSelect, onEdit, onDelete }: any) {
   const avail = useMemo(() => convertFromApiFormat(teacher.availabilities, periods), [teacher, periods]);
   const totalHours = teacher.availabilities?.reduce((acc: number, s: any) => acc + s.lessons.length, 0) || 0;
 
@@ -270,14 +272,17 @@ export default function TeachersPage() {
 
   if (isLoading && library.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-        <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-      </div>
+      <PageContainer fullHeight noGap>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <PageContainer fullHeight noGap>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <CrudPageHeader
         searchValue={query}
         onSearchChange={setQuery}
@@ -412,13 +417,14 @@ export default function TeachersPage() {
       )}
 
 
-    </div>
+      </div>
+    </PageContainer>
   );
 }
 
 // ─── Teacher Editor Modal ───────────────────────────────────────────────
 
-function TeacherEditor({ initial, periods, subjects, t, onClose, onSave }: any) {
+function TeacherEditor({ initial, periods, subjects, t: _t, onClose, onSave }: any) {
   const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulk = !!initial && 'bulkTimeoff' in initial;
   const isNew = !!initial && 'new' in initial;
@@ -447,16 +453,16 @@ function TeacherEditor({ initial, periods, subjects, t, onClose, onSave }: any) 
       const e = filled[0];
       const data: any = {
         fullName: e.fullName.trim(),
-        shortName: e.shortName.trim() || e.fullName.trim().split(' ').map(s => s[0]).join('').toUpperCase(),
+        shortName: e.shortName.trim() || e.fullName.trim().split(' ').map((s: string) => s[0]).join('').toUpperCase(),
         subjects: selectedSubs,
         availabilities: convertToApiFormat(avail),
         deletedSubjects: (initial.subjects || []).map((s: any) => s.id).filter((id: number) => !selectedSubs.includes(id))
       };
       onSave(data);
     } else {
-      const requests = filled.map(e => ({
+      const requests = filled.map((e: any) => ({
         fullName: e.fullName.trim(),
-        shortName: e.shortName.trim() || e.fullName.trim().split(' ').map(s => s[0]).join('').toUpperCase(),
+        shortName: e.shortName.trim() || e.fullName.trim().split(' ').map((s: string) => s[0]).join('').toUpperCase(),
         subjects: selectedSubs,
         availabilities: convertToApiFormat(avail)
       }));

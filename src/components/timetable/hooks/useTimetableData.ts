@@ -17,6 +17,7 @@ import {
     UnplacedLesson,
 } from '../types';
 import { DEFAULT_TIME_SLOTS } from '../constants';
+import { logger } from '../../../lib/logger';
 
 export interface UseTimetableDataReturn {
     // Data
@@ -70,7 +71,7 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
                     const classInfo = detail.originalLessonData?.class;
 
                     if (!classInfo && !entry.classId) {
-                        console.warn('Missing class info for scheduled lesson', entry);
+                        logger.warn('Missing class info for scheduled lesson', entry);
                         return;
                     }
 
@@ -175,7 +176,7 @@ export function useTimetableData(timetableId?: string): UseTimetableDataReturn {
                     }
                 }
             } catch (error) {
-                console.error('Failed to fetch organization settings:', error);
+                logger.error('Failed to fetch organization settings:', error);
             }
         };
         fetchOrganizationSettings();

@@ -12,6 +12,7 @@ import { apiCall, getApiUrl } from '@/lib/api';
 import { Room, RoomSimple, RoomType } from '@/types/entities';
 import { convertFromTimeSlots, Availability } from '@/utils/timeSlots';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 // ============================================================================
 // TYPES
@@ -115,7 +116,7 @@ export function useRooms(options: UseRoomsOptions = {}): UseRoomsReturn {
 
             if (!isMountedRef.current) return;
 
-            console.error('Error fetching rooms:', err);
+            logger.error('Error fetching rooms:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch rooms'));
             toast.error('Failed to load rooms');
         } finally {

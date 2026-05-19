@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { User, DoorOpen } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import { DroppableTimeSlot } from './DroppableTimeSlot';
 import { DAYS, DAY_LABELS } from './constants';
 import { DisplayOptions, Lesson, UnplacedLesson } from './types';
+
+// Helpers — build a `${day}-${period}` (or `${className}-${day}-${period}`) →
+// Lesson[] index in one pass, so each grid cell does an O(1) lookup instead of
+// `lessons.filter(...)` per cell. With 56 cells per class × 10 classes, this
+// cuts 560 filter passes per render down to a single map build.
+
+const cellKey = (day: string, period: number) => `${day}-${period}`;
+
+function indexLessonsByCell(
+  lessons: Lesson[],
+  filter: (l: Lesson) => boolean,
+): Map<string, Lesson[]> {
+  const idx = new Map<string, Lesson[]>();
+  for (const l of lessons) {
+    if (!l.day || !l.timeSlot || !filter(l)) continue;
+    const k = cellKey(l.day, l.timeSlot);
+    const bucket = idx.get(k);
+    if (bucket) bucket.push(l);
+    else idx.set(k, [l]);
+  }
+  return idx;
+}
+
+const EMPTY_LESSONS: Lesson[] = [];
 
 interface ViewGridBaseProps {
   lessons: Lesson[];
@@ -38,13 +62,12 @@ export const ClassViewGrid = ({
   selectedLesson,
   onManualPlace,
 }: ClassViewGridProps) => {
+  const cellIndex = useMemo(
+    () => indexLessonsByCell(lessons, (l) => l.class === className),
+    [lessons, className],
+  );
   const getLessons = (day: string, timeSlot: number) =>
-    lessons.filter(
-      (lesson) =>
-        lesson.class === className &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
+    cellIndex.get(cellKey(day, timeSlot)) ?? EMPTY_LESSONS;
 
   const isTargetClass = draggedLesson?.class === className;
 
@@ -130,13 +153,12 @@ export const TeacherViewGrid = ({
   selectedLesson,
   onManualPlace,
 }: TeacherViewGridProps) => {
+  const cellIndex = useMemo(
+    () => indexLessonsByCell(lessons, (l) => l.teacher === teacherName),
+    [lessons, teacherName],
+  );
   const getLessons = (day: string, timeSlot: number) =>
-    lessons.filter(
-      (lesson) =>
-        lesson.teacher === teacherName &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
+    cellIndex.get(cellKey(day, timeSlot)) ?? EMPTY_LESSONS;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
@@ -213,13 +235,12 @@ export const RoomViewGrid = ({
   selectedLesson,
   onManualPlace,
 }: RoomViewGridProps) => {
+  const cellIndex = useMemo(
+    () => indexLessonsByCell(lessons, (l) => l.room === roomName),
+    [lessons, roomName],
+  );
   const getLessons = (day: string, timeSlot: number) =>
-    lessons.filter(
-      (lesson) =>
-        lesson.room === roomName &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
+    cellIndex.get(cellKey(day, timeSlot)) ?? EMPTY_LESSONS;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
@@ -296,13 +317,20 @@ export const CompactViewGrid = ({
   selectedLesson,
   onManualPlace,
 }: CompactViewGridProps) => {
+  // Compact view needs a class-aware key: `${className}-${day}-${period}`.
+  const cellIndex = useMemo(() => {
+    const idx = new Map<string, Lesson[]>();
+    for (const l of lessons) {
+      if (!l.day || !l.timeSlot) continue;
+      const k = `${l.class}-${l.day}-${l.timeSlot}`;
+      const bucket = idx.get(k);
+      if (bucket) bucket.push(l);
+      else idx.set(k, [l]);
+    }
+    return idx;
+  }, [lessons]);
   const getLessons = (className: string, day: string, timeSlot: number) =>
-    lessons.filter(
-      (lesson) =>
-        lesson.class === className &&
-        lesson.day === day &&
-        lesson.timeSlot === timeSlot,
-    );
+    cellIndex.get(`${className}-${day}-${timeSlot}`) ?? EMPTY_LESSONS;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">

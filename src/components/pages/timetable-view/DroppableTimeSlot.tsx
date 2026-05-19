@@ -4,6 +4,9 @@ import { cn } from '../../ui/utils';
 import { DraggableLessonCard } from './DraggableLessonCard';
 import { DisplayOptions, Lesson, UnplacedLesson } from './types';
 
+// Stable empty handler — passing `() => {}` inline busts DraggableLessonCard's memo.
+const noopSelect = (_lesson: Lesson | UnplacedLesson) => {};
+
 interface DroppableTimeSlotProps {
   day: string;
   timeSlot: number;
@@ -22,7 +25,7 @@ interface DroppableTimeSlotProps {
   onManualPlace?: (day: string, timeSlot: number) => void;
 }
 
-export const DroppableTimeSlot = ({
+const DroppableTimeSlotImpl = ({
   day,
   timeSlot,
   lessons = [],
@@ -181,7 +184,7 @@ export const DroppableTimeSlot = ({
 
   return (
     <div
-      ref={drop}
+      ref={drop as any}
       className={getSlotStyle()}
       onClick={() => {
         if (selectedLesson && onManualPlace) {
@@ -224,7 +227,7 @@ export const DroppableTimeSlot = ({
                         : false
                     }
                     isSelected={selectedLesson?.id === weekALesson!.id}
-                    onSelect={() => {}}
+                    onSelect={noopSelect}
                   />
                 </div>
               </div>
@@ -256,7 +259,7 @@ export const DroppableTimeSlot = ({
                         : false
                     }
                     isSelected={selectedLesson?.id === weekBLesson!.id}
-                    onSelect={() => {}}
+                    onSelect={noopSelect}
                   />
                 </div>
               </div>
@@ -296,7 +299,7 @@ export const DroppableTimeSlot = ({
                     showClass={showClass}
                     hasConflict={lessonConflict}
                     isSelected={selectedLesson?.id === lesson.id}
-                    onSelect={() => {}}
+                    onSelect={noopSelect}
                   />
                 </div>
               );
@@ -307,3 +310,5 @@ export const DroppableTimeSlot = ({
     </div>
   );
 };
+
+export const DroppableTimeSlot = React.memo(DroppableTimeSlotImpl);

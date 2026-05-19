@@ -7,6 +7,8 @@
 // Components
 export { DataTable, createEditAction, createDeleteAction, createCloneAction, createViewAction } from './DataTable';
 export { PageHeader } from './PageHeader';
+export { PageContainer } from './PageContainer';
+export type { PageContainerSize } from './PageContainer';
 export { SearchBar } from './SearchBar';
 export { DeleteConfirmDialog } from './DeleteConfirmDialog';
 export { TablePagination } from './TablePagination';
@@ -15,6 +17,7 @@ export type { CrudAction, CrudPageHeaderProps } from './CrudPageHeader';
 export { BulkActionBar } from './BulkActionBar';
 export type { BulkAction, BulkActionBarProps } from './BulkActionBar';
 export { btnPrimary, btnSecondary, btnDanger, inp, inpSearch, countText } from './crudStyles';
+export { btnPrimaryCls, btnSecondaryCls, btnDangerCls, inpCls, inpSearchCls, countTextCls } from './crudStyles';
 
 // Types
 export * from './types';

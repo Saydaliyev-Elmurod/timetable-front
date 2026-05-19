@@ -1,3 +1,4 @@
+import { logger } from '../lib/logger';
 // Unified API Configuration - Single source of truth
 
 function getBaseUrl(): string {
@@ -57,7 +58,7 @@ export async function safeApiCall<T>(
   try {
     return await apiCall();
   } catch (error) {
-    console.error(`${errorMessage}:`, error);
+    logger.error(`${errorMessage}:`, error);
     throw new Error(errorMessage);
   }
 }

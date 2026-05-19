@@ -20,16 +20,17 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { PageContainer } from '../shared/PageContainer';
 
-export default function SettingsPage({ user }) {
+export default function SettingsPage() {
   const { t } = useTranslation();
   const [schoolName, setSchoolName] = useState('Springfield High School');
   const [academicYear, setAcademicYear] = useState('2024-2025');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [theme, setTheme] = useState('light');
-  const [workingDays, setWorkingDays] = useState({
+  const [workingDays, setWorkingDays] = useState<Record<string, boolean>>({
     monday: true,
     tuesday: true,
     wednesday: true,
@@ -49,12 +50,12 @@ export default function SettingsPage({ user }) {
     }
   }, [theme]);
 
-  const handleThemeChange = (newTheme) => {
+  const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
     toast(`Theme changed to ${newTheme}`);
   };
 
-  const toggleWorkingDay = (day) => {
+  const toggleWorkingDay = (day: string) => {
     setWorkingDays({ ...workingDays, [day]: !workingDays[day] });
   };
 
@@ -63,10 +64,10 @@ export default function SettingsPage({ user }) {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <PageContainer size="narrow">
       <div>
-        <h2>{t('dashboard.settings')}</h2>
-        <p className="text-muted-foreground">{t('settings.description')}</p>
+        <h2 className="text-2xl font-semibold tracking-tight">{t('dashboard.settings')}</h2>
+        <p className="text-sm text-muted-foreground mt-1">{t('settings.description')}</p>
       </div>
 
       <Card>
@@ -269,6 +270,6 @@ export default function SettingsPage({ user }) {
       <div className="flex justify-end">
         <Button onClick={handleSaveSettings}>Save Settings</Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

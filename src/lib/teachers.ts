@@ -144,8 +144,8 @@ export const TeacherService = {
   },
 
   getTemplates: async (): Promise<TeacherResponse[]> => {
-    const response = await API.call(`${API.url('TEACHERS')}/templates`);
+    const response = await API.call<TeacherResponse[]>(`${API.url('TEACHERS')}/templates`);
     if (response.error) throw response.error;
-    return response.data;
+    return response.data!;
   }
 };

@@ -21,7 +21,7 @@ interface DraggableLessonCardProps {
   onSelect?: (lesson: Lesson | UnplacedLesson) => void;
 }
 
-export const DraggableLessonCard = ({
+const DraggableLessonCardImpl = ({
   lesson,
   onEdit,
   onDelete,
@@ -56,7 +56,7 @@ export const DraggableLessonCard = ({
   if (isUnplaced) {
     return (
       <div
-        ref={drag}
+        ref={drag as any}
         style={{ opacity }}
         className={cn(
           'p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden',
@@ -95,7 +95,7 @@ export const DraggableLessonCard = ({
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <div
-          ref={drag}
+          ref={drag as any}
           style={{ opacity }}
           className={cn(
             'p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden',
@@ -221,3 +221,8 @@ export const DraggableLessonCard = ({
     </Popover>
   );
 };
+
+// React.memo with shallow comparison — assumes callbacks (onEdit/onDelete/...)
+// and displayOptions are stable references from the parent. The parent grid
+// uses module-scope handlers from hooks, so this holds.
+export const DraggableLessonCard = React.memo(DraggableLessonCardImpl);

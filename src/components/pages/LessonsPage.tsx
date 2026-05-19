@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { LessonsWithMetadataResponse, LessonRequest, GroupLessonDetail } from '@/types/api';
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
+import { PageContainer } from '../shared/PageContainer';
+import { logger } from '../../lib/logger';
 
 const AddLessonModal = lazy(() => import('../AddLessonModal'));
 
@@ -47,23 +49,23 @@ export default function LessonsPage() {
     try {
       const [lessonsData, classesData, subjectsData, teachersData, roomsData] = await Promise.all([
         LessonService.getPaginated(0, 1000).then(res => res.content).catch(e => {
-          console.error('Failed to fetch lessons', e);
+          logger.error('Failed to fetch lessons', e);
           return [];
         }),
         ClassService.getAll().catch(e => {
-          console.error('Failed to fetch classes', e);
+          logger.error('Failed to fetch classes', e);
           return [];
         }),
         SubjectService.getAll().catch(e => {
-          console.error('Failed to fetch subjects', e);
+          logger.error('Failed to fetch subjects', e);
           return [];
         }),
         TeacherService.getAll().catch(e => {
-          console.error('Failed to fetch teachers', e);
+          logger.error('Failed to fetch teachers', e);
           return [];
         }),
         RoomService.getAll().catch(e => {
-          console.error('Failed to fetch rooms', e);
+          logger.error('Failed to fetch rooms', e);
           return [];
         })
       ]);
@@ -149,7 +151,7 @@ export default function LessonsPage() {
       setDataLoaded(true);
       return { classes, subjects, teachers, rooms, lessonsList };
     } catch (err) {
-      console.error("Failed to load lessons data", err);
+      logger.error("Failed to load lessons data", err);
       toast.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
       return null;
     }
@@ -164,8 +166,8 @@ export default function LessonsPage() {
       groups: c.groups || []
     }));
     
-    const subjects = metadata.subjects.map(s => {
-      const baseColor = s.color || '#4F46E5';
+    const subjects = metadata.subjects.map((s) => {
+      const baseColor = (s as any).color || '#4F46E5';
       return {
         id: s.id.toString(),
         name: s.name,
@@ -287,7 +289,7 @@ export default function LessonsPage() {
         loadData();
       }
     } catch (err) {
-      console.error("Failed to save lessons", err);
+      logger.error("Failed to save lessons", err);
       if (!silent) toast.error("Saqlashda xatolik yuz berdi");
     } finally {
       if (!silent) setIsSaving(false);
@@ -302,7 +304,7 @@ export default function LessonsPage() {
       setIsModalOpen(false);
       loadData();
     } catch (error) {
-      console.error("Failed to create lesson", error);
+      logger.error("Failed to create lesson", error);
       toast.error("Dars qo'shishda xatolik");
     } finally {
       setIsSaving(false);
@@ -323,10 +325,17 @@ export default function LessonsPage() {
     };
   };
 
-  if (!dataLoaded || !dataProps) return <div className="flex items-center justify-center h-full">Yuklanmoqda...</div>;
+  if (!dataLoaded || !dataProps) {
+    return (
+      <PageContainer fullHeight noGap>
+        <div className="flex items-center justify-center h-full">Yuklanmoqda...</div>
+      </PageContainer>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <PageContainer fullHeight noGap className="relative">
+      <div className="flex flex-col h-full relative">
       {isSaving && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[200] bg-white px-4 py-2 rounded-full shadow-md border border-indigo-100 flex items-center gap-2 animate-pulse">
           <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
@@ -344,10 +353,10 @@ export default function LessonsPage() {
         </Button>
       </div>
       
-      <EtLessonsPage 
-        onSave={(rows) => handleSave(rows)}
-        onRowsChange={(rows) => setCurrentRows(rows)}
-        {...dataProps} 
+      <EtLessonsPage
+        onSave={(rows: any) => handleSave(rows)}
+        onRowsChange={(rows: any) => setCurrentRows(rows)}
+        {...dataProps}
       />
 
       {isModalOpen && (
@@ -359,6 +368,7 @@ export default function LessonsPage() {
           />
         </Suspense>
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from '@/i18n/index';
 import { Button } from "../ui/button";
+import { PageContainer } from "../shared/PageContainer";
 import { Badge } from "../ui/badge";
 import {
   Card,
@@ -49,6 +50,7 @@ import {
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { cn } from "../ui/utils";
+import { logger } from '../../lib/logger';
 
 // Mock data
 const DAYS = [
@@ -170,7 +172,7 @@ const DraggableLessonCard = ({
   if (isUnplaced) {
     return (
       <div
-        ref={drag}
+        ref={drag as any}
         style={{ opacity }}
         className={cn(
           "p-3 rounded-lg border-2 cursor-move hover:shadow-md transition-shadow",
@@ -209,7 +211,7 @@ const DraggableLessonCard = ({
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <div
-          ref={drag}
+          ref={drag as any}
           style={{ opacity }}
           className={cn(
             "p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full",
@@ -361,7 +363,7 @@ const DroppableTimeSlot = ({
 
   return (
     <div
-      ref={drop}
+      ref={drop as any}
       className={cn(
         "border border-gray-200 p-1 transition-colors",
         compact ? "min-h-[60px]" : "min-h-[70px]",
@@ -973,7 +975,7 @@ export default function TimetableViewPage({
   };
 
   const handleEdit = (lesson: Lesson) => {
-    console.log("Edit lesson:", lesson);
+    logger.log("Edit lesson:", lesson);
   };
 
   const handleDelete = (lesson: Lesson) => {
@@ -1001,13 +1003,13 @@ export default function TimetableViewPage({
 
   const handleOptimize = async () => {
     if (!timetableId) {
-      console.log('No timetableId provided for optimize');
+      logger.log('No timetableId provided for optimize');
       return;
     }
 
     setIsOptimizing(true);
     // lightweight notification (this file doesn't import toast)
-    console.log('Optimizing timetable...', timetableId);
+    logger.log('Optimizing timetable...', timetableId);
 
     const body = {
       applySoftConstraint: true,
@@ -1025,19 +1027,19 @@ export default function TimetableViewPage({
       });
 
       if (res.error) {
-        console.error('Optimize failed', res.error);
+        logger.error('Optimize failed', res.error);
       } else {
-        console.log('Optimize request sent');
+        logger.log('Optimize request sent');
       }
     } catch (err) {
-      console.error('Optimize request error', err);
+      logger.error('Optimize request error', err);
     } finally {
       setIsOptimizing(false);
     }
   };
 
   const handleExport = () => {
-    console.log("Export to PDF");
+    logger.log("Export to PDF");
   };
 
   const getFilteredLessons = () => {
@@ -1129,8 +1131,7 @@ export default function TimetableViewPage({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="container mx-auto p-6 max-w-[1800px]">
+      <PageContainer size="wide" noGap>
           {/* Redesigned Header - Single Line, Persistent */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-6 py-4 mb-6 sticky top-0 z-10">
             <div className="flex items-center justify-between gap-6">
@@ -1371,7 +1372,7 @@ export default function TimetableViewPage({
                         <h4 className="text-xs font-medium text-muted-foreground">
                           Statistics
                         </h4>
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 space-y-2">
+                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs">
                               Schedule Integrity
@@ -1421,7 +1422,7 @@ export default function TimetableViewPage({
                 <Button
                   onClick={handleOptimize}
                   size="sm"
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                 >
                   <Zap className="mr-2 h-4 w-4" />
                   Optimize
@@ -1430,6 +1431,7 @@ export default function TimetableViewPage({
                   variant="outline"
                   onClick={handleExport}
                   size="sm"
+                  className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                 >
                   <FileDown className="mr-2 h-4 w-4" />
                   Print / PDF
@@ -1534,7 +1536,7 @@ export default function TimetableViewPage({
 
             {/* Unplaced Lessons Sidebar */}
             <Card className="w-80 flex-shrink-0 shadow-sm h-fit sticky top-32">
-              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 border-b p-4">
+              <CardHeader className="bg-orange-50 border-b border-orange-100 p-4">
                 <CardTitle className="flex items-center gap-2 text-orange-900 text-base">
                   <AlertCircle className="h-5 w-5" />
                   Unplaced Lessons
@@ -1576,8 +1578,7 @@ export default function TimetableViewPage({
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
+      </PageContainer>
     </DndProvider>
   );
 }

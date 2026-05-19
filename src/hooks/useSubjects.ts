@@ -12,6 +12,7 @@ import { apiCall, getApiUrl } from '@/lib/api';
 import { Subject } from '@/types/entities';
 import { convertFromTimeSlots, Availability } from '@/utils/timeSlots';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 // ============================================================================
 // TYPES
@@ -124,7 +125,7 @@ export function useSubjects(options: UseSubjectsOptions = {}): UseSubjectsReturn
 
             if (!isMountedRef.current) return;
 
-            console.error('Error fetching subjects:', err);
+            logger.error('Error fetching subjects:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch subjects'));
             toast.error('Failed to load subjects');
         } finally {

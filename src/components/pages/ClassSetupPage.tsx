@@ -28,6 +28,8 @@ import {
   TooltipTrigger,
 } from '../ui/tooltip';
 import { organizationApi } from '../../api/organizationApi';
+import { PageContainer } from '../shared/PageContainer';
+import { logger } from '../../lib/logger';
 interface ClassRow {
   id: string;
   name: string;
@@ -54,7 +56,7 @@ export default function ClassSetupPage({ onNavigate }: { onNavigate?: (page: str
           }
         }
       } catch (error) {
-        console.error('Failed to fetch organization settings:', error);
+        logger.error('Failed to fetch organization settings:', error);
       }
     };
     fetchOrganizationSettings();
@@ -174,7 +176,8 @@ export default function ClassSetupPage({ onNavigate }: { onNavigate?: (page: str
   };
 
   return (
-    <div className="flex gap-6 h-full">
+    <PageContainer fullHeight noGap>
+      <div className="flex gap-6 h-full">
       {/* Main Content */}
       <div className="flex-1 space-y-6">
         <Card>
@@ -539,6 +542,7 @@ export default function ClassSetupPage({ onNavigate }: { onNavigate?: (page: str
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

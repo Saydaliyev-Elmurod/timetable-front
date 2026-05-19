@@ -14,6 +14,7 @@ import { SubjectService } from '@/lib/subjects';
 import { apiCall, getApiUrl } from '@/lib/api';
 import { convertFromTimeSlots, convertToTimeSlots } from '@/utils/timeSlots';
 import { EntityType, EntityEditData, DAYS, DEFAULT_PERIODS } from '../types';
+import { logger } from '../../../lib/logger';
 
 export interface UseEntityEditorReturn {
     // State
@@ -93,7 +94,7 @@ export function useEntityEditor(onSaveSuccess?: () => void): UseEntityEditorRetu
                     selectedSubjectIds: Array.isArray(teacherData.subjects)
                         ? teacherData.subjects.map((s: any) => s.id)
                         : [],
-                    availability: convertFromTimeSlots(teacherData.availabilities),
+                    availability: { ...convertFromTimeSlots(teacherData.availabilities) },
                     isActive: (teacherData as any).isActive ?? true,
                     raw: teacherData,
                 });
@@ -132,13 +133,13 @@ export function useEntityEditor(onSaveSuccess?: () => void): UseEntityEditorRetu
                     shortName: cls.shortName,
                     classTeacher: cls.teacher?.id ? String(cls.teacher.id) : '',
                     roomIds: Array.isArray(cls.rooms) ? cls.rooms.map((r: any) => String(r.id)) : [],
-                    availability: convertFromTimeSlots(cls?.availabilities),
+                    availability: { ...convertFromTimeSlots(cls?.availabilities) },
                     isActive: cls.isActive ?? true,
                     raw: cls,
                 });
             }
         } catch (err) {
-            console.error('Failed to load entity for edit', err);
+            logger.error('Failed to load entity for edit', err);
             toast.error(t('lessons.failed_to_load_entity'));
             closeEditor();
         } finally {
@@ -206,7 +207,7 @@ export function useEntityEditor(onSaveSuccess?: () => void): UseEntityEditorRetu
             closeEditor();
             onSaveSuccess?.();
         } catch (err) {
-            console.error('Failed to save entity', err);
+            logger.error('Failed to save entity', err);
             toast.error(t('lessons.failed_to_save'));
         } finally {
             setSaving(false);

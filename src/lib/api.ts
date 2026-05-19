@@ -1,6 +1,7 @@
 import { getToken } from './auth';
 import { toast } from 'sonner';
 import { API_CONFIG, getApiUrl, ApiEndpoint } from '@/config/api';
+import { logger } from '../lib/logger';
 
 // Re-export for convenience
 export { API_CONFIG, getApiUrl, type ApiEndpoint };
@@ -90,7 +91,7 @@ export async function apiCall<T>(
       status: response.status
     };
   } catch (error) {
-    console.error('API call failed:', error);
+    logger.error('API call failed:', error);
     // Show a generic toast if the error has a message
     try {
       const msg = (error as ApiError)?.message || 'Request failed';

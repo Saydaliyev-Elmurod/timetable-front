@@ -1,3 +1,4 @@
+import { logger } from '../../lib/logger';
 // Mock API utilities to simulate backend responses
 // This allows the UI to work without a real backend server
 
@@ -314,7 +315,7 @@ export async function safeApiCall<T>(
     try {
       return await apiCall();
     } catch (error) {
-      console.warn('Real API failed, using mock data:', error);
+      logger.warn('Real API failed, using mock data:', error);
       throw error;
     }
   }

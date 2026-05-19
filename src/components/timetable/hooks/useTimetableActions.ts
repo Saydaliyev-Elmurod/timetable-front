@@ -17,6 +17,7 @@ import {
 } from '@/components/api/timetableActionApi';
 import { Lesson, UnplacedLesson } from '../types';
 import { DAY_LABELS } from '../constants';
+import { logger } from '../../../lib/logger';
 
 export interface UseTimetableActionsProps {
     timetableId?: string;
@@ -233,7 +234,7 @@ export function useTimetableActions({
                 }, 500);
             }
         } catch (error) {
-            console.error('Action error:', error);
+            logger.error('Action error:', error);
             toast.error('Failed to process action', {
                 description: error instanceof Error ? error.message : 'Unknown error occurred',
             });
@@ -250,7 +251,7 @@ export function useTimetableActions({
     );
 
     const handleEdit = useCallback((lesson: Lesson | UnplacedLesson) => {
-        console.log('Edit lesson:', lesson);
+        logger.log('Edit lesson:', lesson);
     }, []);
 
     const handleDelete = useCallback(
@@ -303,7 +304,7 @@ export function useTimetableActions({
                 await fetchTimetableData(timetableId);
             }
         } catch (err) {
-            console.error('Optimize error:', err);
+            logger.error('Optimize error:', err);
             toast.error('Optimization request failed');
         } finally {
             setIsProcessingAction(false);
@@ -311,7 +312,7 @@ export function useTimetableActions({
     }, [timetableId, fetchTimetableData]);
 
     const handleExport = useCallback(() => {
-        console.log('Export to PDF');
+        logger.log('Export to PDF');
         toast.info('Exporting to PDF...');
     }, []);
 

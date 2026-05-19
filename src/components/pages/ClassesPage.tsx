@@ -8,6 +8,7 @@ import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { PageContainer } from '@/components/shared/PageContainer';
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: n
   );
 }
 
-function ClassRow({ t, cls, periods, selected, onSelect, onEdit, onDelete }: any) {
+function ClassRow({ t: _t, cls, periods, selected, onSelect, onEdit, onDelete }: any) {
   const pal = palOf(cls.id);
   const avail = useMemo(() => convertFromApiFormat(cls.availabilities, periods), [cls, periods]);
   const totalHours = cls.availabilities?.reduce((acc: number, s: any) => acc + s.lessons.length, 0) || 0;
@@ -257,14 +258,17 @@ export default function ClassesPage() {
 
   if (isLoading && library.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-        <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-      </div>
+      <PageContainer fullHeight noGap>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
+        </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+    <PageContainer fullHeight noGap>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
       <CrudPageHeader
         searchValue={query}
         onSearchChange={setQuery}
@@ -336,7 +340,7 @@ export default function ClassesPage() {
       {/* Modals */}
       {editing && (
         <ClassEditor 
-          initial={editing === true || (editing as any).new ? null : editing} 
+          initial={(editing as any).new ? null : editing}
           periods={periods} teachers={teachers} rooms={rooms}
           onClose={() => setEditing(null)}
           onSave={handleSave} 
@@ -369,7 +373,8 @@ export default function ClassesPage() {
           onSave={handleSave}
         />
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 }
 
@@ -488,7 +493,7 @@ function BatchCreateModal({ library, periods, onClose, onSave }: any) {
 
 // ─── Class Editor Modal ───────────────────────────────────────────────
 
-function ClassEditor({ initial, periods, teachers, rooms, onClose, onSave }: any) {
+function ClassEditor({ initial, periods, teachers, rooms: _rooms, onClose, onSave }: any) {
   const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulk = !!initial && 'bulkTimeoff' in initial;
   const isNew = !!initial && 'new' in initial;
@@ -586,7 +591,7 @@ function ClassEditor({ initial, periods, teachers, rooms, onClose, onSave }: any
                   style={{ ...inp, appearance: 'none', background: '#fff' }}
                 >
                   <option value="">Tanlanmagan</option>
-                  {teachers.map(t => (
+                  {teachers.map((t: any) => (
                     <option key={t.id} value={t.id}>{t.fullName}</option>
                   ))}
                 </select>

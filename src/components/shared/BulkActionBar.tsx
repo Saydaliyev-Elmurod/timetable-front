@@ -30,43 +30,9 @@ export function BulkActionBar({
   if (count <= 0) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        background: '#0F172A',
-        color: '#fff',
-        borderRadius: 12,
-        padding: '10px 14px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        zIndex: 55,
-        boxShadow: '0 24px 60px -16px rgba(15,23,42,0.4)',
-      }}
-    >
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          font: '800 13px JetBrains Mono',
-        }}
-      >
-        <span
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 6,
-            background: '#4F46E5',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            font: '800 10px JetBrains Mono',
-          }}
-        >
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[55] flex items-center gap-3 px-[14px] py-[10px] rounded-xl bg-slate-900 text-white shadow-[0_24px_60px_-16px_rgba(15,23,42,0.4)]">
+      <span className="inline-flex items-center gap-2 font-extrabold text-[13px] font-mono">
+        <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-md bg-indigo-600 font-extrabold text-[10px] font-mono">
           {count}
         </span>
         {countLabel}
@@ -74,26 +40,15 @@ export function BulkActionBar({
 
       {actions.length > 0 && (
         <>
-          <span style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.18)' }} />
-          <div style={{ display: 'flex', gap: 6 }}>
+          <span className="w-px h-[22px] bg-white/20" />
+          <div className="flex gap-1.5">
             {actions.map((action) => {
               const Icon = action.icon;
               return (
                 <button
                   key={action.id}
                   onClick={action.onClick}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    font: '700 12px Manrope',
-                    color: '#fff',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    padding: '8px 12px',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md font-bold text-xs text-white bg-white/10 border border-white/15 hover:bg-white/20 transition-colors"
                 >
                   {Icon && <Icon size={13} />}
                   {action.label}
@@ -107,18 +62,7 @@ export function BulkActionBar({
       {onDelete && (
         <button
           onClick={onDelete}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            font: '700 12px Manrope',
-            color: '#fff',
-            background: '#DC2626',
-            border: 0,
-            padding: '8px 12px',
-            borderRadius: 7,
-            cursor: 'pointer',
-          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md font-bold text-xs text-white bg-red-600 border-0 hover:bg-red-700 transition-colors"
         >
           <Trash2 size={13} />
           {deleteLabel}
@@ -127,15 +71,7 @@ export function BulkActionBar({
 
       <button
         onClick={onClear}
-        style={{
-          font: '700 12px Manrope',
-          color: 'rgba(255,255,255,0.7)',
-          background: 'transparent',
-          border: 0,
-          padding: '7px 10px',
-          borderRadius: 7,
-          cursor: 'pointer',
-        }}
+        className="px-2.5 py-1.5 rounded-md font-bold text-xs text-white/70 bg-transparent border-0 hover:text-white transition-colors"
       >
         {clearLabel}
       </button>

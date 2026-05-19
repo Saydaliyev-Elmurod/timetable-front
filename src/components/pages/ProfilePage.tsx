@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { toast } from 'sonner';
 import { User } from '@/types/common';
+import { PageContainer } from '../shared/PageContainer';
 
 interface ProfilePageProps {
   user: User | null;
@@ -30,10 +31,10 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <PageContainer size="narrow">
       <div>
-        <h2>{t('dashboard.profile')}</h2>
-        <p className="text-muted-foreground">{t('profile.description')}</p>
+        <h2 className="text-2xl font-semibold tracking-tight">{t('dashboard.profile')}</h2>
+        <p className="text-sm text-muted-foreground mt-1">{t('profile.description')}</p>
       </div>
 
       <Card>
@@ -135,6 +136,6 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         <Button variant="outline">Cancel</Button>
         <Button onClick={handleSaveProfile}>Save Changes</Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

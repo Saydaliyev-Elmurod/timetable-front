@@ -4,6 +4,7 @@ import { apiCall, getApiUrl } from '@/lib/api';
 import { ClassResponse } from '@/lib/classes';
 import { convertFromTimeSlots, Availability } from '@/utils/timeSlots';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 export interface ClassWithAvailability {
     id: number;
@@ -122,7 +123,7 @@ export function useClasses(options: UseClassesOptions = {}): UseClassesReturn {
 
             if (!isMountedRef.current) return;
 
-            console.error('Error fetching classes:', err);
+            logger.error('Error fetching classes:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch classes'));
             toast.error('Failed to load classes');
         } finally {
@@ -144,7 +145,7 @@ export function useClasses(options: UseClassesOptions = {}): UseClassesReturn {
             return data.map(convertClassResponse);
 
         } catch (err) {
-            console.error('Error fetching all classes:', err);
+            logger.error('Error fetching all classes:', err);
             toast.error('Failed to load all classes');
             return [];
         }

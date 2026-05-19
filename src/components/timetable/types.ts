@@ -217,10 +217,10 @@ export interface TimetableToolbarProps {
 
 export interface UnplacedSidebarProps {
     lessons: UnplacedLesson[];
-    onEdit: (lesson: UnplacedLesson) => void;
-    onDelete: (lesson: UnplacedLesson) => void;
-    onToggleLock: (lesson: UnplacedLesson) => void;
+    onEdit: (lesson: Lesson | UnplacedLesson) => void;
+    onDelete: (lesson: Lesson | UnplacedLesson) => void;
+    onToggleLock: (lesson: Lesson | UnplacedLesson) => void;
     displayOptions: DisplayOptions;
     selectedLesson?: Lesson | UnplacedLesson | null;
-    onSelectLesson: (lesson: UnplacedLesson) => void;
+    onSelectLesson: (lesson: Lesson | UnplacedLesson) => void;
 }

@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { ArrowLeft, BookOpen, Lightbulb, Calendar, Users, CheckCircle, Info } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import { PageContainer } from '../shared/PageContainer';
 
-export default function DocsClassesPage({ onNavigate }) {
+export default function DocsClassesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   return (
-    <div className="space-y-6 p-6 max-w-5xl mx-auto">
+    <PageContainer size="narrow">
       {/* Header */}
       <div className="space-y-4">
         <Button
@@ -277,6 +278,6 @@ export default function DocsClassesPage({ onNavigate }) {
           Back to Classes
         </Button>
       </div>
-    </div>
+    </PageContainer>
   );
 }

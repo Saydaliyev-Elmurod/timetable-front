@@ -20,6 +20,7 @@ import {
     LessonsWithMetadataResponse
 } from '@/types/entities';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 // ============================================================================
 // TYPES
@@ -106,7 +107,7 @@ export function useLessons(options: UseLessonsOptions = {}): UseLessonsReturn {
             .filter((r): r is Room => r !== undefined);
 
         if (!cls || !teacher || !subject) {
-            console.warn('Missing metadata for lesson expansion', {
+            logger.warn('Missing metadata for lesson expansion', {
                 lessonId: lesson.id,
                 hasClass: !!cls,
                 hasTeacher: !!teacher,
@@ -191,7 +192,7 @@ export function useLessons(options: UseLessonsOptions = {}): UseLessonsReturn {
 
             if (!isMountedRef.current) return;
 
-            console.error('Error fetching lessons:', err);
+            logger.error('Error fetching lessons:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch lessons'));
             toast.error('Failed to load lessons');
         } finally {

@@ -4,6 +4,7 @@ import {
   LessonRequest,
   LessonUpdateRequest,
   LessonResponse,
+  LessonResponseFull,
   PageResponse,
   GroupLessonDetailResponse
 } from '@/types/api';
@@ -12,7 +13,7 @@ const USE_MOCK_API = API_CONFIG.USE_MOCK;
 const LESSONS_ENDPOINT = API_CONFIG.ENDPOINTS.LESSONS;
 
 // Mock data for development
-const mockLessons: LessonResponse[] = [
+const mockLessons: LessonResponseFull[] = [
   {
     id: 1,
     class: { id: 1, name: "9A", shortName: "9A", availabilities: [], teacher: { id: 1, fullName: "Main Teacher" }, rooms: [], groups: [], createdDate: "", updatedDate: "" },
@@ -82,7 +83,7 @@ export const lessonsApi = USE_MOCK_API ? {
 
   updateLesson: async (lesson: LessonUpdateRequest): Promise<LessonResponse> => {
     const existingLesson = mockLessons.find(l => l.id === lesson.id);
-    const updated: LessonResponse = {
+    const updated: LessonResponseFull = {
       id: lesson.id,
       class: existingLesson?.class || { 
         id: lesson.classId[0], 
@@ -156,8 +157,8 @@ export const lessonsApi = USE_MOCK_API ? {
 };
 
 // Helper function to format rooms display
-export const formatRooms = (rooms: LessonResponse['rooms']): string => {
+export const formatRooms = (rooms: LessonResponseFull['rooms']): string => {
   return rooms
-    .map(room => `${room.name} (${room.type})`)
+    .map((room) => `${room.name} (${room.type})`)
     .join(', ');
 };
