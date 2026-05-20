@@ -78,7 +78,7 @@ export function TimetableHeader({
 }: Props) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 px-6 py-4 mb-6 sticky top-0 z-10">
-      <div className="flex items-center justify-between gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         {/* Left: title + badges */}
         <div className="flex items-center gap-4">
           {onNavigate && (

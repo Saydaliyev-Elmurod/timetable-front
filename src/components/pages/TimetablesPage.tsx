@@ -333,9 +333,9 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                         </span>
                       </TableCell>
 
-                      {/* Actions — icon buttons */}
+                      {/* Actions — icon buttons (always visible; emphasised on row hover) */}
                       <TableCell className="text-right pr-6">
-                        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 justify-end opacity-70 group-hover:opacity-100 transition-opacity">
                           {/* View */}
                           <button
                             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
