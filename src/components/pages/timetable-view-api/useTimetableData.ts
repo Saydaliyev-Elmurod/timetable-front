@@ -22,6 +22,8 @@ interface UseTimetableDataResult {
   isLoading: boolean;
   error: string | null;
 
+  /** Joriy (eng katta) versiya — optimistik concurrency uchun (backend in-place yangilaydi). */
+  version: number;
   timetableData: TimetableDataEntity[];
   timetableMeta: TimetableMeta | null;
   apiTeachers: TeacherResponse[];
@@ -211,9 +213,12 @@ export function useTimetableData(timetableId: string | undefined): UseTimetableD
   useEffect(() => { refetchMeta(); }, [refetchMeta]);
   useEffect(() => { refetchData(); }, [refetchData]);
 
+  const version = timetableData.reduce((m, e) => Math.max(m, e.version ?? 1), 1);
+
   return {
     isLoading,
     error,
+    version,
     timetableData,
     timetableMeta,
     apiTeachers,

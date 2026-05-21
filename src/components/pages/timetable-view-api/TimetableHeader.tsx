@@ -6,6 +6,10 @@ import {
   DoorOpen,
   FileDown,
   Grid3x3,
+  Loader2,
+  Redo2,
+  Save,
+  Undo2,
   User,
   Users,
   Zap,
@@ -50,6 +54,14 @@ interface Props {
   // Actions
   onOptimize: () => void;
   onExport: () => void;
+  // Tahrirlash (undo/redo/save)
+  onUndo: () => void;
+  onRedo: () => void;
+  onSave: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  isDirty: boolean;
+  isSaving: boolean;
 }
 
 export function TimetableHeader({
@@ -75,6 +87,13 @@ export function TimetableHeader({
   unplacedCount,
   onOptimize,
   onExport,
+  onUndo,
+  onRedo,
+  onSave,
+  canUndo,
+  canRedo,
+  isDirty,
+  isSaving,
 }: Props) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 px-6 py-4 mb-6 sticky top-0 z-10">
@@ -171,6 +190,50 @@ export function TimetableHeader({
             conflicts={conflicts}
             unplacedCount={unplacedCount}
           />
+
+          <Separator orientation="vertical" className="h-8" />
+
+          {/* Undo / Redo / Save */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onUndo}
+              disabled={!canUndo || isSaving}
+              title="Bekor qilish (Undo)"
+              className="h-9 w-9 rounded-lg border-gray-200"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onRedo}
+              disabled={!canRedo || isSaving}
+              title="Qaytarish (Redo)"
+              className="h-9 w-9 rounded-lg border-gray-200"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={onSave}
+              size="sm"
+              disabled={!isDirty || isSaving}
+              title="Saqlash"
+              className={
+                isDirty
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-500'
+              }
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isSaving ? 'Saqlanmoqda' : isDirty ? 'Saqlash *' : 'Saqlangan'}
+            </Button>
+          </div>
 
           <Separator orientation="vertical" className="h-8" />
 

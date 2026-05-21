@@ -13,6 +13,7 @@ import { DisplayOptions, Lesson, UnplacedLesson } from './timetable-view/types';
 
 import { useTimetableData } from './timetable-view-api/useTimetableData';
 import { useTimetableActions } from './timetable-view-api/useTimetableActions';
+import { useTimetableEditor } from './timetable-view-api/useTimetableEditor';
 import { TimetableHeader, ViewMode } from './timetable-view-api/TimetableHeader';
 import { FilterBy } from './timetable-view-api/FiltersPopover';
 import { MainGrid } from './timetable-view-api/MainGrid';
@@ -40,6 +41,7 @@ const TimetableContent = ({
   const {
     isLoading,
     error,
+    version,
     timetableMeta,
     apiTeachers,
     apiClasses,
@@ -53,12 +55,10 @@ const TimetableContent = ({
     refetchMeta,
   } = useTimetableData(timetableId);
 
+  // Optimize / export / edit / lock — DnD'ga aloqasiz amallar.
   const {
-    timetableVersion,
     isProcessingAction,
-    handleDrop,
     handleEdit,
-    handleDelete,
     handleToggleLock,
     handleOptimize,
     handleExport,
@@ -72,6 +72,34 @@ const TimetableContent = ({
     refetchData,
     refetchMeta,
   });
+
+  // Drag-and-drop tahrirlash: undo/redo + net-diff autosave.
+  const {
+    handleDrop,
+    unscheduleLesson,
+    undo,
+    redo,
+    save,
+    canUndo,
+    canRedo,
+    isDirty,
+    isSaving,
+  } = useTimetableEditor({
+    timetableId,
+    version,
+    scheduledLessons,
+    unplacedLessons,
+    setScheduledLessons,
+    setUnplacedLessons,
+    apiTeachers,
+    apiClasses,
+    apiSubjects,
+    isLoading,
+    refetchData,
+  });
+
+  // O'chirish = darsni unscheduled qilish (undo qilinadi, save bo'ladi).
+  const handleDelete = (lesson: Lesson | UnplacedLesson) => unscheduleLesson(lesson);
 
   // Track the currently dragged item globally for highlighting.
   const { isDragging, draggedLesson } = useDragLayer((monitor) => ({
@@ -217,11 +245,11 @@ const TimetableContent = ({
           </Alert>
         )}
 
-        {isProcessingAction && (
+        {(isProcessingAction || isSaving) && (
           <Alert className="mb-6 bg-blue-50 border-blue-300">
             <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
             <AlertDescription className="text-blue-800">
-              Amal bajarilmoqda... Iltimos kuting.
+              {isSaving ? 'Saqlanmoqda...' : 'Amal bajarilmoqda...'} Iltimos kuting.
             </AlertDescription>
           </Alert>
         )}
@@ -243,12 +271,19 @@ const TimetableContent = ({
           allClasses={allClasses}
           allTeachers={allTeachers}
           allRooms={allRooms}
-          timetableVersion={timetableVersion}
+          timetableVersion={version}
           scheduleIntegrity={scheduleIntegrity}
           conflicts={conflicts}
           unplacedCount={unplacedLessons.length}
           onOptimize={handleOptimize}
           onExport={handleExport}
+          onUndo={undo}
+          onRedo={redo}
+          onSave={save}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          isDirty={isDirty}
+          isSaving={isSaving}
         />
 
         <div className="flex gap-6">
