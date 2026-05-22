@@ -65,7 +65,13 @@ function processAPIData(
       entry.slotDetails.forEach((detail, index) => {
         const className = classInfo?.shortName || `Class ${entry.classId}`;
         const classId = classInfo?.id || entry.classId;
-        const lessonId = detail.lessonId ? `${detail.lessonId}` : `${entry.id}-${index}`;
+        // Karta id'si HAR doim slot+detal bo'yicha noyob bo'lishi shart — u React key
+        // hamda editor'dagi Map kaliti (useTimetableEditor.applyChanges/computeDiff/undo).
+        // `detail.lessonId` bir nechta slotda takrorlanishi mumkin (ko'p soatli dars yoki
+        // bir katakdagi guruh bo'linishi) → uni yolg'iz ishlatib bo'lmaydi, aks holda
+        // bir xil id'li kartalar Map'da ustma-ust tushib, biri yo'qoladi. Haqiqiy
+        // lessonId backend sinxron uchun `rawDetails` da saqlanadi (qarang: numericLessonId).
+        const cardId = `${entry.id}-${index}`;
 
         const subj = subjectMap.get(detail.subjectId);
         const tch = teacherMap.get(detail.teacherId);
@@ -73,7 +79,7 @@ function processAPIData(
         const grp = detail.groupId ? groupMap.get(detail.groupId) : null;
 
         scheduled.push({
-          id: lessonId,
+          id: cardId,
           subject: subj?.name || 'Unknown Subject',
           subjectId: detail.subjectId || 0,
           teacher: tch?.fullName || 'No Teacher',

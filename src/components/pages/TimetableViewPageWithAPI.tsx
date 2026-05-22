@@ -65,10 +65,7 @@ const TimetableContent = ({
   } = useTimetableActions({
     timetableId,
     timetableMeta,
-    scheduledLessons,
-    unplacedLessons,
     setScheduledLessons,
-    setUnplacedLessons,
     refetchData,
     refetchMeta,
   });

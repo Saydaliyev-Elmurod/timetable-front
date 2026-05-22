@@ -26,10 +26,7 @@ export {
 // Hooks
 export {
     useTimetableData,
-    useTimetableActions,
 } from './hooks';
 export type {
     UseTimetableDataReturn,
-    UseTimetableActionsReturn,
-    UseTimetableActionsProps,
 } from './hooks';
