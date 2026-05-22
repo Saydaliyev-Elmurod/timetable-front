@@ -5,6 +5,10 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // sockjs-client references the Node `global` symbol; map it to globalThis in the browser.
+  define: {
+    global: 'globalThis',
+  },
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {

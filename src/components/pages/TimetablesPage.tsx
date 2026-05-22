@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
 import { PageContainer } from '../shared/PageContainer';
 import { logger } from '../../lib/logger';
+import { useGeneration } from '@/context/GenerationNotifier';
 
 // API Types
 interface TimetableEntity {
@@ -73,6 +74,7 @@ const formatDate = (dateString: string) => {
 
 export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation();
+  const { watch } = useGeneration();
   const [timetables, setTimetables] = useState<TimetableEntity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -442,23 +444,30 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
               </Button>
               <Button
                 onClick={async () => {
-                  if (!generateName.trim()) {
+                  const name = generateName.trim();
+                  if (!name) {
                     toast.error('Jadval nomini kiriting');
                     return;
                   }
                   setIsGenerating(true);
                   try {
-                    const res = await apiCall<any>('http://localhost:8080/api/timetable/v1/timetable/generate', {
+                    const res = await apiCall<{ taskId: string }>('http://localhost:8080/api/timetable/v1/timetable/generate', {
                       method: 'POST',
-                      body: JSON.stringify({ name: generateName.trim() }),
+                      body: JSON.stringify({ name }),
                     });
-                    if (res.error) {
-                      toast.error(res.error.message || "Jadval yaratib bo'lmadi");
+                    if (res.error || !res.data?.taskId) {
+                      toast.error(res.error?.message || "Jadval yaratib bo'lmadi");
                     } else {
-                      toast.success('Jadval muvaffaqiyatli yaratildi!');
+                      // Generation is async: the backend only enqueues here and
+                      // returns a taskId. The real result arrives over STOMP, so
+                      // we subscribe and let GenerationProvider alert + navigate.
+                      watch(res.data.taskId, {
+                        name,
+                        onComplete: () => fetchTimetables(),
+                      });
+                      toast.info(`"${name}" generatsiyasi boshlandi. Tayyor bo'lganda xabar beramiz…`);
                       setIsGenerateOpen(false);
                       setGenerateName('');
-                      await fetchTimetables();
                     }
                   } catch (err) {
                     logger.error('Generate error', err);

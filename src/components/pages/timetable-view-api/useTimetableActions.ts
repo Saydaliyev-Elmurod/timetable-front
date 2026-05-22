@@ -10,6 +10,7 @@ import { apiCall } from '@/lib/api';
 import { DAY_LABELS } from '../timetable-view/constants';
 import { Lesson, TimetableMeta, UnplacedLesson } from '../timetable-view/types';
 import { logger } from '../../../lib/logger';
+import { useGeneration } from '@/context/GenerationNotifier';
 
 const BASE = 'http://localhost:8080/api/timetable/v1/timetable';
 
@@ -34,6 +35,7 @@ export function useTimetableActions({
   refetchData,
   refetchMeta,
 }: UseTimetableActionsArgs) {
+  const { watch } = useGeneration();
   const [timetableVersion, setTimetableVersion] = useState(1);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
@@ -233,24 +235,34 @@ export function useTimetableActions({
     };
 
     try {
-      const res = await apiCall<any>(`${BASE}/optimize/${timetableId}`, {
+      const res = await apiCall<{ taskId: string }>(`${BASE}/optimize/${timetableId}`, {
         method: 'POST',
         body: JSON.stringify(body),
       });
-      if (res.error) {
-        toast.error('Optimallashtirish xatolik', { description: res.error.message });
-      } else {
-        toast.success('Optimallashtirish muvaffaqiyatli!');
-        try {
-          await Promise.all([refetchData(), refetchMeta()]);
-        } catch {
-          // ignore refresh errors
-        }
+      if (res.error || !res.data?.taskId) {
+        toast.error('Optimallashtirish xatolik', { description: res.error?.message });
+        setIsProcessingAction(false);
+        return;
       }
+      // Optimize is async: the backend returns a taskId and runs on the solver
+      // thread pool. The real SUCCESS/ERROR arrives over STOMP — keep the
+      // spinner on and let GenerationProvider surface the result.
+      watch(res.data.taskId, {
+        successMessage: 'Optimallashtirish yakunlandi',
+        showViewAction: false, // already on this timetable's page
+        onComplete: async () => {
+          try {
+            await Promise.all([refetchData(), refetchMeta()]); // re-GET + redraw
+          } catch {
+            // ignore refresh errors
+          }
+          setIsProcessingAction(false);
+        },
+        onError: () => setIsProcessingAction(false),
+      });
     } catch (err) {
       logger.error('Optimize error:', err);
       toast.error("Optimallashtirish so'rovi amalga oshmadi");
-    } finally {
       setIsProcessingAction(false);
     }
   };

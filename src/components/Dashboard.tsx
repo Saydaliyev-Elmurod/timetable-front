@@ -28,6 +28,7 @@ import {
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { User } from '@/types/common';
+import { GenerationProvider } from '@/context/GenerationNotifier';
 
 // Lazy-loaded pages — each becomes its own chunk
 const OrganizationPage = lazy(() => import('./pages/OrganizationPage'));
@@ -117,6 +118,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   }, [currentPage, user]);
 
   return (
+    <GenerationProvider onNavigate={setCurrentPage}>
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
@@ -282,5 +284,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         </main>
       </div>
     </div>
+    </GenerationProvider>
   );
 }
