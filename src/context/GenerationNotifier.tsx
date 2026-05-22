@@ -1,7 +1,13 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { generationSocket, type GenerationStatusMessage } from '@/lib/generationSocket';
+import {
+  generationSocket,
+  type GenerationStatusMessage,
+  type PreflightReport,
+} from '@/lib/generationSocket';
 import { logger } from '@/lib/logger';
+import { getOrgIdFromToken } from '@/lib/token';
+import { PreflightReportDialog } from '@/components/PreflightReportDialog';
 
 interface WatchOptions {
   /** Human-readable timetable name, used in the default success toast text. */
@@ -38,8 +44,12 @@ export function GenerationProvider({
   onNavigate?: (page: string) => void;
   children: React.ReactNode;
 }) {
-  // Track live subscriptions so we can tear them down if the provider unmounts.
-  const unsubsRef = useRef<Set<() => void>>(new Set());
+  // taskId -> handler for generations/optimizations this client is awaiting.
+  // The org topic is the transport; we correlate events back to a watch by taskId.
+  const watchersRef = useRef<Map<string, (msg: GenerationStatusMessage) => void>>(new Map());
+
+  // Currently displayed pre-flight rejection report (structured, ordered).
+  const [preflight, setPreflight] = useState<{ report: PreflightReport; name: string } | null>(null);
 
   // Keep the latest navigate fn in a ref so watchers created earlier still use it.
   const navigateRef = useRef(onNavigate);
@@ -47,18 +57,29 @@ export function GenerationProvider({
     navigateRef.current = onNavigate;
   }, [onNavigate]);
 
+  // Connect eagerly and subscribe to the per-org topic ON MOUNT (login), so we're
+  // listening before any generation can finish — no subscribe-after-publish race.
   useEffect(() => {
-    const unsubs = unsubsRef.current;
-    return () => {
-      unsubs.forEach((u) => u());
-      unsubs.clear();
-    };
+    const orgId = getOrgIdFromToken();
+    if (!orgId) {
+      logger.warn('[generation] tokenda orgId yo‘q — generatsiya bildirishnomalari o‘chirildi');
+      return;
+    }
+    generationSocket.connect();
+    const watchers = watchersRef.current;
+    const unsub = generationSocket.subscribe(`/topic/generation/org/${orgId}`, (msg) => {
+      const handler = watchers.get(msg.taskId);
+      if (handler) handler(msg);
+      // else: event for a task this client isn't awaiting (other user, or after a
+      // page reload that dropped the in-memory watch) — ignore.
+    });
+    return () => unsub();
   }, []);
 
   const watch = useCallback((taskId: string, opts: WatchOptions = {}) => {
     const label = opts.name?.trim() || 'Jadval';
 
-    const unsub = generationSocket.watchGeneration(taskId, (msg) => {
+    watchersRef.current.set(taskId, (msg) => {
       logger.info('[generation] event', taskId, msg.status);
 
       if (msg.status === 'SUCCESS' && msg.timetableId) {
@@ -77,7 +98,18 @@ export function GenerationProvider({
         });
         opts.onComplete?.(timetableId, msg);
       } else if (msg.status === 'ERROR') {
-        toast.error(`"${label}" generatsiyasi muvaffaqiyatsiz: ${msg.message || 'xatolik'}`);
+        if (msg.preflight) {
+          // Structured pre-flight rejection — open the ordered report dialog and
+          // show a concise toast (with a way to re-open the details).
+          const report = msg.preflight;
+          setPreflight({ report, name: label });
+          toast.error(
+            `"${label}" yaratib bo'lmadi: ${report.criticalCount} ta kritik muammo`,
+            { action: { label: 'Batafsil', onClick: () => setPreflight({ report, name: label }) } },
+          );
+        } else {
+          toast.error(`"${label}" generatsiyasi muvaffaqiyatsiz: ${msg.message || 'xatolik'}`);
+        }
         opts.onError?.(msg.message);
       } else {
         // PROCESSING or unknown — keep watching, no terminal action.
@@ -85,17 +117,23 @@ export function GenerationProvider({
       }
 
       // Terminal event handled — stop watching this task.
-      cleanup();
+      watchersRef.current.delete(taskId);
     });
-
-    const cleanup = () => {
-      unsub();
-      unsubsRef.current.delete(cleanup);
-    };
-    unsubsRef.current.add(cleanup);
   }, []);
 
-  return <GenerationContext.Provider value={{ watch }}>{children}</GenerationContext.Provider>;
+  return (
+    <GenerationContext.Provider value={{ watch }}>
+      {children}
+      <PreflightReportDialog
+        report={preflight?.report ?? null}
+        timetableName={preflight?.name}
+        open={!!preflight}
+        onOpenChange={(o) => {
+          if (!o) setPreflight(null);
+        }}
+      />
+    </GenerationContext.Provider>
+  );
 }
 
 export function useGeneration(): GenerationContextValue {
