@@ -43,30 +43,34 @@ const SLOT_STYLES: Record<SlotStatus, {
         label: 'O\'qituvchi band',
     },
     'room-conflict': {
-        border: 'border-blue-400',
-        bg: 'bg-blue-50',
+        // Xona band — qora/quyuq rang
+        border: 'border-slate-900',
+        bg: 'bg-slate-800',
         cursor: 'cursor-not-allowed',
         label: 'Xona band',
     },
     'teacher-timeoff': {
-        border: 'border-amber-400',
-        bg: 'bg-amber-50/80',
+        // Vaqt chegarasi — disable (kulrang)
+        border: 'border-gray-300',
+        bg: 'bg-gray-100',
         cursor: 'cursor-not-allowed',
-        opacity: 'opacity-70',
+        opacity: 'opacity-50',
         label: 'O\'qituvchi vaqt chegarasi',
     },
     'class-timeoff': {
-        border: 'border-purple-400',
-        bg: 'bg-purple-50/80',
+        // Sinf availability'dan tashqarida — disable (kulrang)
+        border: 'border-gray-300',
+        bg: 'bg-gray-100',
         cursor: 'cursor-not-allowed',
-        opacity: 'opacity-70',
+        opacity: 'opacity-50',
         label: 'Sinf vaqt chegarasi',
     },
     'subject-timeoff': {
-        border: 'border-orange-400',
-        bg: 'bg-orange-50/80',
+        // Fan vaqt chegarasi — disable (kulrang)
+        border: 'border-gray-300',
+        bg: 'bg-gray-100',
         cursor: 'cursor-not-allowed',
-        opacity: 'opacity-70',
+        opacity: 'opacity-50',
         label: 'Fan vaqt chegarasi',
     },
     'occupied-swap': {
@@ -102,10 +106,10 @@ function SlotStatusIndicator({ status }: { status: SlotStatus }) {
     const dotColors: Record<SlotStatus, string> = {
         available: 'bg-green-500',
         'teacher-conflict': 'bg-red-500',
-        'room-conflict': 'bg-blue-500',
-        'teacher-timeoff': 'bg-amber-500',
-        'class-timeoff': 'bg-purple-500',
-        'subject-timeoff': 'bg-orange-500',
+        'room-conflict': 'bg-slate-900',
+        'teacher-timeoff': 'bg-gray-400',
+        'class-timeoff': 'bg-gray-400',
+        'subject-timeoff': 'bg-gray-400',
         'occupied-swap': 'bg-yellow-500',
         invalid: 'bg-gray-400',
         neutral: '',
@@ -226,7 +230,7 @@ export function DroppableTimeSlot({
             }
             if (manualPlacementStatus === 'room-conflict') {
                 return cn(
-                    'border border-blue-300 p-1 transition-colors bg-blue-50 relative cursor-pointer hover:bg-blue-100',
+                    'border border-slate-900 p-1 transition-colors bg-slate-800 text-white relative cursor-not-allowed',
                     compact ? 'min-h-[60px]' : 'min-h-[70px]'
                 );
             }
@@ -301,7 +305,7 @@ export function DroppableTimeSlot({
                 );
                 if (roomConflict) {
                     return cn(
-                        'border border-blue-300 p-1 transition-colors bg-blue-100 relative',
+                        'border border-slate-900 p-1 transition-colors bg-slate-800 text-white relative',
                         compact ? 'min-h-[60px]' : 'min-h-[70px]'
                     );
                 }

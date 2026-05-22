@@ -15,10 +15,8 @@ const LEGEND_ITEMS = [
     { color: 'bg-green-400', label: "Bo'sh — joylashtirish mumkin" },
     { color: 'bg-yellow-400', label: 'Band — almashtirish mumkin' },
     { color: 'bg-red-400', label: "O'qituvchi band" },
-    { color: 'bg-blue-400', label: 'Xona band' },
-    { color: 'bg-amber-400', label: "O'qituvchi vaqt chegarasi" },
-    { color: 'bg-purple-400', label: 'Sinf vaqt chegarasi' },
-    { color: 'bg-orange-400', label: 'Fan vaqt chegarasi' },
+    { color: 'bg-slate-800', label: 'Xona band' },
+    { color: 'bg-gray-300', label: 'Vaqt chegarasi — o\'chirilgan' },
     { color: 'bg-gray-300', label: 'Boshqa sinf' },
 ];
 

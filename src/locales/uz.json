@@ -377,84 +377,209 @@
     "cancel": "Bekor qilish"
   },
   "landing": {
+    "nav": {
+      "features": "Afzalliklar",
+      "constraints": "Cheklovlar",
+      "capabilities": "Imkoniyatlar",
+      "how": "Qanday ishlaydi",
+      "pricing": "Tariflar",
+      "signIn": "Tizimga kirish",
+      "start": "Boshlash"
+    },
     "hero": {
-      "badge": "🎓 Dunyo bo'ylab 500+ maktab ishonadi",
-      "titlePrefix": "Maktabingiz jadvalini soddalashtiring",
-      "titleHighlight": "Timetable.uz",
-      "subtitle": "Sinflaringizni, o'qituvchilarni va xonalarni bitta aqlli platformada boshqaring. Ideal jadvalni daqiqalarda yarating.",
-      "start": "Bepul boshlash",
-      "demo": "Demonsterni ko'rish"
+      "badge": "emaktab.uz bilan integratsiya",
+      "h1a": "Maktab dars jadvalini tuzish",
+      "h1b": "endi muammo emas.",
+      "sub": "Google OR-Tools optimizatsiya algoritmlari yordamida bir necha haftalik mehnatingizni soniyalarda bajaring. E-maktab.uz bilan to'liq integratsiya qilingan tizim.",
+      "cta1": "Bepul sinab ko'rish",
+      "cta2": "Demo ko'rish",
+      "stat1": "maktab",
+      "stat2": "dars taqsimlangan",
+      "stat3": "konflikt",
+      "toastLessons": "ta dars",
+      "toastTime": "2.3 soniyada",
+      "mtTitle": "10-\"A\" sinfi",
+      "mtSub": "Haftalik jadval · Shanba 18 Apr",
+      "mtConflictFree": "Konfliktsiz"
     },
     "features": {
-      "smart": {
-        "title": "Aqlli sinf boshqaruvi",
-        "description": "Sinflarni qo'shing, tahrir qiling va kuzatib boring. Talabalar, fanlar va jadval bir joyda."
-      },
-      "automatic": {
-        "title": "Avtomatik rejalashtirish",
-        "description": "Tizim o'qituvchi va xona mavjudligiga qarab eng yaxshi jadvalni taklif qiladi va konfliktlarni bartaraf etadi."
-      },
-      "availability": {
-        "title": "Xona va o'qituvchi mavjudligi",
-        "description": "Vizual mavjudlik taqvimlari bilan konfliktlardan qoching. Kim va qachon bo'sh ekanligini ko'ring."
-      },
-      "notifications": {
-        "title": "Real vaqtda bildirishnomalar",
-        "description": "Dars o'zgartirilganida, ko'chirilganda yoki bekor qilinganda darhol xabar oling."
-      }
+      "eyebrow": "Afzalliklari",
+      "h2": "Nega direktorlar E-timetable ni tanlaydi?",
+      "lead": "Uch soha: ma'lumot, algoritm, tezlik. Hammasi bir joyda.",
+      "f1t": "E-maktab.uz integratsiyasi",
+      "f1b": "O'qituvchilar, sinflar va fanlarni qo'lda kiritishga hojat yo'q. Bir marta bosish orqali emaktab.uz tizimidan barcha ma'lumotlarni tortib oling.",
+      "f2t": "Google OR-Tools algoritmi",
+      "f2b": "Darslarning ustma-ust tushib qolishi nolga teng. Matematik optimizatsiya o'qituvchilarning 'oynalarini' minimallashtiradi.",
+      "f3t": "Tezlik va moslashuvchanlik",
+      "f3b": "A/B haftalik jadvallar, murakkab guruhlar (1-guruh/2-guruh) va xonalar yetishmovchiligini inobatga olgan holda 1000+ darslarni soniyalarda taqsimlaydi."
     },
-    "userTypes": {
-      "schools": {
-        "title": "Maktablar",
-        "description": "Ma'muriy vositalar bilan jadval va sinflarni boshqaring."
-      },
-      "teachers": {
-        "title": "O'qituvchilar",
-        "description": "Ajoyib interfeyslar bilan dars va fanlarni samarali boshqaring."
-      },
-      "students": {
-        "title": "O'quvchilar",
-        "description": "Yangi jadvalni istalgan vaqtda mobil qurilmadan ko'ring."
-      }
+    "constraints": {
+      "eyebrow": "Cheklovlar",
+      "h2": "Jadval tuzishda inobatga olinadigan har bir nuqta",
+      "lead": "Algoritm ikki qatlamda ishlaydi: xatolarning oldini olish va ta'lim sifatini oshirish.",
+      "hardTag": "A · Qat'iy",
+      "hardTitle": "Xatoliklarga chek qo'yamiz",
+      "hardSub": "Asosiy mantiqiy qoidalar — algoritm hech qachon buzmaydi.",
+      "smartTag": "B · Aqlli",
+      "smartTitle": "Ta'lim sifatini oshiramiz",
+      "smartSub": "Pedagogik cheklovlar — o'quvchi va o'qituvchi qulayligi uchun.",
+      "h1t": "Ziddiyatlarsiz taqsimot",
+      "h1b": "Bir o'qituvchi bir vaqtda ikkita darsda yoki bitta xonada ikkita sinf — mutlaqo imkonsiz.",
+      "h2t": "Xona sig'imi va turi",
+      "h2b": "30 kishilik sinf 20 o'rinli xonaga tushmaydi. Informatika va kimyo — faqat ixtisoslashgan laboratoriyaga.",
+      "h3t": "O'qituvchining ish vaqti",
+      "h3b": "Har bir o'qituvchining mavjud kunlari va soatlari qat'iy hurmat qilinadi — bir daqiqa ham chetga chiqilmaydi.",
+      "s1t": "Kognitiv yuk boshqaruvi",
+      "s1b": "Matematika, fizika kabi og'ir fanlar ertalabki soatlarga; yengilroq fanlar tushdan keyinga taqsimlanadi.",
+      "s2t": "O'qituvchi charchog'idan himoya",
+      "s2b": "Hafta davomida muvozanatli yuklama. Bir kunda 8 soat, ertasiga bo'sh — bunday nomutanosiblik bartaraf etiladi.",
+      "s3t": "\"Oyna\"larni minimallashtirish",
+      "s3b": "O'qituvchining darslari orasida bo'sh soatlar (oynalar) qoldirilmaydi — darslar ixcham joylashtiriladi.",
+      "s4t": "Fanlar oraliqlari (Spacing)",
+      "s4b": "Haftada 2 marta o'tiladigan fan dushanba va payshanba kunlariga taqsimlanadi — ketma-ket kunlarga emas."
+    },
+    "capabilities": {
+      "eyebrow": "Imkoniyatlar",
+      "h2": "Oddiy jadval emas — to'liq ish jarayoni",
+      "lead": "Ma'lumot tekshiruvidan eksportgacha — har bir bosqichda yordamchi.",
+      "c1tag": "01 · PREFLIGHT",
+      "c1t": "Oldindan diagnostika",
+      "c1b": "Tizim avval ma'lumotlaringizni tekshiradi. O'qituvchi soatlari yetmasa yoki xona yetishmasa, jadval tuzilishidan oldin sizga aniq maslahatlar beradi.",
+      "c2tag": "02 · DIAGNOSTIKA",
+      "c2t": "Generatsiya qilingan jadval diagnostikasi",
+      "c2b": "Tayyor jadval bo'yicha to'liq hisobot: konfliktlar, oynalar, og'ir fanlarning joylashuvi va xonalardan foydalanish darajasi — hammasi bir ko'rinishda.",
+      "c3tag": "03 · IMPORT / EXPORT",
+      "c3t": "Excel'dan import, PDF'ga eksport",
+      "c3b": "O'qituvchilar va sinflarni Excel'dan bir bosishda yuklang. Tayyor jadvalni chiroyli PDF formatida olib, chop eting yoki tarqating.",
+      "c4tag": "04 · MURAKKAB FORMATLAR",
+      "c4t": "Juft, triple va A/B haftalik darslar",
+      "c4b": "Ketma-ket ikki yoki uch soatlik darslar (juft/triple) va hafta turiga qarab almashinadigan A/B jadvallar — algoritm hammasini bir vaqtda bajaradi.",
+      "pf1t": "O'qituvchilar soni",
+      "pf1d": "yetarli",
+      "pf2t": "Sinflar va xonalar",
+      "pf2d": "mavjud",
+      "pf3t": "Kimyo o'qituvchisi",
+      "pf3d": "Soatlar yetishmaydi",
+      "pf4t": "Maxsus xonalar",
+      "pf4d": "Lab, IT — mavjud",
+      "pfWarn": "1 ogohlantirish",
+      "diagTitle": "Yakuniy hisobot",
+      "diagOk": "Tekshiruvdan o'tdi",
+      "diagConflicts": "Konfliktlar",
+      "diagGaps": "O'qituvchi oynalari",
+      "diagMorning": "Og'ir fanlar ertalab",
+      "diagRooms": "Xonalardan foydalanish",
+      "lfTitle": "Format namunalari",
+      "lfPair": "Juft (2 soat)",
+      "lfTriple": "Triple (3 soat)",
+      "lfAB": "A / B hafta",
+      "lfWeekA": "A hafta",
+      "lfWeekB": "B hafta"
+    },
+    "how": {
+      "eyebrow": "Qanday ishlaydi",
+      "h2": "Besh bosqich. Soniyalar.",
+      "s1t": "Ro'yxatdan o'ting",
+      "s1b": "Platformada 30 soniyada tezkor ro'yxatdan o'ting.",
+      "s2t": "Ma'lumotlarni import qiling",
+      "s2b": "O'qituvchilar, sinflar va fanlar bir bosishda tortiladi.",
+      "s3t": "Cheklovlarni sozlang",
+      "s3b": "Xonalar, guruhlar, A/B hafta — ularning hammasi.",
+      "s4t": "Jadvalni yuklab oling",
+      "s4b": "PDF yoki Excel formatda saqlang.",
+      "s5t": "e-maktab.uz ga yuklang",
+      "s5b": "Tayyor jadvalni e-maktab.uz tizimiga bir bosishda joylang."
     },
     "pricing": {
-      "free": {
-        "name": "Bepul",
-        "period": "abadiy",
-        "description": "Kichik maktablar uchun ajoyib boshlanish",
-        "features": {
-          "1": "5 gacha sinf",
-          "2": "Asosiy rejalashtirish",
-          "3": "Email bilan qo'llab-quvvatlash",
-          "4": "Standart shablonlar"
-        }
-      },
-      "pro": {
-        "name": "Pro",
-        "period": "oyiga",
-        "description": "O'sayotgan maktablar uchun rivojlangan funksiyalar",
-        "features": {
-          "1": "Cheksiz sinflar",
-          "2": "Rivojlangan rejalashtirish",
-          "3": "Ustuvor qo'llab-quvvatlash",
-          "4": "Moslashtirilgan shablonlar",
-          "5": "Konflikt aniqlash",
-          "6": "Eksport qilish imkoniyatlari"
-        }
-      },
-      "enterprise": {
-        "name": "Enterprise",
-        "period": "oyiga",
-        "description": "Katta muassasalar uchun to'liq yechim",
-        "features": {
-          "1": "Pro dagi hamma narsalar",
-          "2": "Bir nechta kampuslar",
-          "3": "Rivojlangan tahlillar",
-          "4": "24/7 telefon qo'llab-quvvatlash",
-          "5": "Moslashtirilgan integratsiyalar",
-          "6": "Ajratilgan menejer"
-        }
-      }
+      "eyebrow": "Tariflar",
+      "h2": "O'quv dargohingizga mos tarif",
+      "lead": "Bepul tarifda boshlang. Xohlagan paytda kattaroq rejaga o'ting.",
+      "popular": "⭐ Ommabop",
+      "perMonth": "so'm/oy",
+      "free": "Bepul",
+      "freeT": "Free",
+      "freeD": "Kichik o'quv markazlari uchun.",
+      "freePerks": [
+        "15 ta o'qituvchi",
+        "20 ta fan",
+        "10 ta sinf",
+        "Asosiy funksiyalar"
+      ],
+      "freeCta": "Hozir boshlang",
+      "miniT": "Mini",
+      "miniD": "O'rta maktablar uchun.",
+      "miniPerks": [
+        "50 ta o'qituvchi",
+        "50 ta fan",
+        "50 ta sinf",
+        "emaktab.uz importi",
+        "Prioritet qo'llab-quvvatlash"
+      ],
+      "miniCta": "Mini tarifni tanlash",
+      "maxT": "Max",
+      "maxD": "Katta maktab va kollejlar uchun.",
+      "maxPerks": [
+        "200 ta o'qituvchi",
+        "200 ta fan",
+        "200 ta sinf",
+        "Premium algoritm",
+        "PDF / Excel eksport",
+        "Shaxsiy menejer"
+      ],
+      "maxCta": "Max tarifga o'tish"
+    },
+    "feedback": {
+      "eyebrow": "Fikr-mulohaza",
+      "h2a": "Sizning fikringiz",
+      "h2b": "bizga muhim.",
+      "lead": "Taklif yoki xatolik — hammasini yozing. Aloqa ma'lumotlari ixtiyoriy; agar javob kutsangiz qoldiring.",
+      "trust1t": "Anonim",
+      "trust1b": "Ism shart emas",
+      "trust2t": "24 soat",
+      "trust2b": "O'rtacha javob vaqti",
+      "cTaklif": "Taklif",
+      "cXato": "Xatolik",
+      "cBoshqa": "Boshqa",
+      "labelMsg": "Fikringiz",
+      "placeMsg": "Nimani yaxshilash kerak deb hisoblaysiz? Bemalol yozing…",
+      "labelContact": "Aloqa",
+      "optional": "ixtiyoriy",
+      "placeContact": "Email yoki telefon raqam",
+      "privacy": "Yuborilgan ma'lumotlar faqat mahsulotni yaxshilash uchun ishlatiladi.",
+      "send": "Yuborish",
+      "okTitle": "Rahmat!",
+      "okBody": "Fikringiz bizga yetib bordi. Har bir taklifni jamoamiz ko'rib chiqadi."
+    },
+    "cta": {
+      "h2a": "Jadval tuzishga haftalar emas,",
+      "h2b": "soniyalar sarflang.",
+      "sub": "14 kun bepul. Karta kerak emas.",
+      "btn1": "Bepul sinab ko'rish",
+      "btn2": "Demo buyurtma qilish"
+    },
+    "footer": {
+      "tag": "Google OR-Tools optimizatsiya tizimi asosida ishlaydigan O'zbekiston maktablari dars jadvali platformasi.",
+      "c1h": "Mahsulot",
+      "c1": [
+        "Afzalliklar",
+        "Imkoniyatlar",
+        "Qanday ishlaydi",
+        "Tariflar"
+      ],
+      "c2h": "Kompaniya",
+      "c2": [
+        "Biz haqimizda",
+        "Mijozlar",
+        "Blog",
+        "Aloqa"
+      ],
+      "c3h": "Huquqiy",
+      "c3": [
+        "Maxfiylik",
+        "Shartlar",
+        "Oferta"
+      ],
+      "copyright": "E-timetable.uz © 2026. Barcha huquqlar himoyalangan."
     }
   }
 }

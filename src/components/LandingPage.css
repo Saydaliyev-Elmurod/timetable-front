@@ -59,15 +59,15 @@
   --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --font-accent:  'Titillium Web', 'Plus Jakarta Sans', Georgia, serif;
 
-  --text-micro:  12px;   --lh-micro:  18px;
-  --text-small:  14px;   --lh-small:  22px;
-  --text-body:   16px;   --lh-body:   26px;
-  --text-lg:     18px;   --lh-lg:     28px;
-  --text-h4:     22px;   --lh-h4:     30px;
-  --text-h3:     28px;   --lh-h3:     36px;
-  --text-h2:     40px;   --lh-h2:     48px;
-  --text-h1:     56px;   --lh-h1:     64px;
-  --text-display: 72px;  --lh-display: 78px;
+  --text-micro:  13px;   --lh-micro:  20px;
+  --text-small:  15px;   --lh-small:  24px;
+  --text-body:   18px;   --lh-body:   29px;
+  --text-lg:     20px;   --lh-lg:     31px;
+  --text-h4:     24px;   --lh-h4:     33px;
+  --text-h3:     31px;   --lh-h3:     40px;
+  --text-h2:     44px;   --lh-h2:     53px;
+  --text-h1:     62px;   --lh-h1:     70px;
+  --text-display: 80px;  --lh-display: 86px;
 
   --weight-regular: 400;
   --weight-medium:  500;
@@ -77,21 +77,21 @@
 
   --space-0: 0;
   --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-  --space-9: 96px;
-  --space-10: 128px;
+  --space-2: 9px;
+  --space-3: 13px;
+  --space-4: 18px;
+  --space-5: 26px;
+  --space-6: 35px;
+  --space-7: 53px;
+  --space-8: 70px;
+  --space-9: 106px;
+  --space-10: 140px;
 
-  --radius-xs:   6px;
-  --radius-sm:  10px;
-  --radius-md:  14px;
-  --radius-lg:  20px;
-  --radius-xl:  28px;
+  --radius-xs:   7px;
+  --radius-sm:  11px;
+  --radius-md:  15px;
+  --radius-lg:  22px;
+  --radius-xl:  31px;
   --radius-full: 999px;
 
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
@@ -207,10 +207,17 @@
 .et-landing-page .et-hero-grid {
   display: grid; grid-template-columns: 1.1fr 1fr; gap: 64px;
 }
-.et-landing-page .et-hero-h1 { font-size: 58px; }
-.et-landing-page .et-h2 { font-size: 42px; }
-.et-landing-page .et-cta-h2 { font-size: 44px; }
+.et-landing-page .et-hero-h1 { font-size: 64px; }
+.et-landing-page .et-h2 { font-size: 46px; }
+.et-landing-page .et-cta-h2 { font-size: 48px; }
 .et-landing-page .et-cta-band { padding: 64px 48px; }
+
+/* How it works grid */
+.et-landing-page .et-how-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 18px;
+}
 
 /* How it works dashed line */
 .et-landing-page .et-how-line {
@@ -227,12 +234,13 @@
 @media (max-width: 960px) {
   .et-landing-page .et-section { padding: 88px 24px; }
   .et-landing-page .et-hero-grid { grid-template-columns: 1fr; gap: 56px; }
-  .et-landing-page .et-hero-h1 { font-size: 44px; }
-  .et-landing-page .et-h2 { font-size: 34px; }
-  .et-landing-page .et-cta-h2 { font-size: 34px; }
+  .et-landing-page .et-hero-h1 { font-size: 48px; }
+  .et-landing-page .et-h2 { font-size: 37px; }
+  .et-landing-page .et-cta-h2 { font-size: 37px; }
   .et-landing-page .et-cta-band { padding: 48px 28px; }
   .et-landing-page .et-grid-3 { grid-template-columns: 1fr; gap: 16px; }
   .et-landing-page .et-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+  .et-landing-page .et-how-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
   .et-landing-page .et-how-line { display: none; }
   .et-landing-page .et-footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
 }
@@ -244,12 +252,13 @@
   .et-landing-page .et-burger { display: flex; }
   .et-landing-page .et-mobile-panel { display: flex; }
   .et-landing-page .et-section { padding: 72px 20px; }
-  .et-landing-page .et-hero-h1 { font-size: 36px; }
-  .et-landing-page .et-h2 { font-size: 28px; }
-  .et-landing-page .et-cta-h2 { font-size: 28px; }
+  .et-landing-page .et-hero-h1 { font-size: 40px; }
+  .et-landing-page .et-h2 { font-size: 31px; }
+  .et-landing-page .et-cta-h2 { font-size: 31px; }
   .et-landing-page .et-hero-stats { gap: 20px; }
   .et-landing-page .et-stat-divider { display: none; }
   .et-landing-page .et-hero-toast { left: 0 !important; right: 0; bottom: -14px !important; width: fit-content; margin: 0 auto; }
+  .et-landing-page .et-how-grid { grid-template-columns: 1fr; gap: 28px; }
   .et-landing-page .et-footer-grid { grid-template-columns: 1fr; gap: 28px; }
   .et-landing-page .et-footer-bottom { justify-content: flex-start !important; }
   .et-landing-page .et-grid-4 { grid-template-columns: 1fr; }
