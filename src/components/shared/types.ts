@@ -255,4 +255,26 @@ export const API_DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', '
 export const DAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 export const DAY_LABELS_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
 
+/** Backend kun nomi → o'zbekcha qisqa yorliq (availability gridlari uchun). */
+export const API_DAY_SHORT: Record<string, string> = {
+  MONDAY: 'Du',
+  TUESDAY: 'Se',
+  WEDNESDAY: 'Ch',
+  THURSDAY: 'Pa',
+  FRIDAY: 'Ju',
+  SATURDAY: 'Sha',
+  SUNDAY: 'Yak',
+};
+
+/**
+ * Company ish kunlarini kanonik tartibda (Du→Yak) qaytaradi.
+ * `orgDays` bo'sh/aniqlanmagan bo'lsa barcha 7 kun qaytadi (fallback).
+ * Yakshanba doim qo'shiladi (availability/timeoff uni ham belgilash mumkin bo'lsin).
+ */
+export function getActiveApiDays(orgDays?: string[] | null): string[] {
+  if (!orgDays || orgDays.length === 0) return [...API_DAYS_OF_WEEK];
+  const set = new Set([...orgDays, 'SUNDAY']);
+  return API_DAYS_OF_WEEK.filter((d) => set.has(d));
+}
+
 export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];

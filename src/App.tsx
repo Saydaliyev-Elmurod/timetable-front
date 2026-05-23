@@ -86,7 +86,7 @@ export default function App() {
   return (
     <>
       {renderCurrentView()}
-      <Toaster />
+      <Toaster position="top-center" />
     </>
   );
 }

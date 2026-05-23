@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 import { getToken, removeToken } from './token';
+import { toast } from 'sonner';
 
 const axiosInstance = axios.create({
     baseURL: API_CONFIG.BASE_URL,
@@ -27,12 +28,24 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && error.response.status === 401) {
-            // Handle unauthorized access (e.g., redirect to login)
-            removeToken();
-            localStorage.removeItem('user');
-            window.location.href = '/'; // Force redirect to landing/login
+        if (error.response) {
+            const data = error.response.data;
+            if (data && data.errorDescription) {
+                toast.error(data.errorDescription);
+            } else if (data && data.error) {
+                toast.error(data.error);
+            }
+
+            if (error.response.status === 401) {
+                // Handle unauthorized access (e.g., redirect to login)
+                removeToken();
+                localStorage.removeItem('user');
+                window.location.href = '/'; // Force redirect to landing/login
+            }
+        } else if (error.message) {
+            toast.error(error.message);
         }
+        
         return Promise.reject(error);
     }
 );

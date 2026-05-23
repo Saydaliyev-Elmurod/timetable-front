@@ -96,7 +96,7 @@
     "no_lessons_found": "Уроки не найдены"
   },
   "dashboard": {
-    "organization": "Организация",
+    "organization": "Школа",
     "classes": "Классы",
     "teachers": "Учителя",
     "subjects": "Предметы",
@@ -112,17 +112,17 @@
     "logout": "Выйти"
   },
   "organization": {
-    "title": "Настройки организации",
+    "title": "Настройки школы",
     "description": "Управляйте данными и конфигурацией вашей школы",
     "saving": "Сохранение...",
     "save_changes": "Сохранить изменения",
     "unsaved_changes": "Есть несохранённые изменения",
-    "information_title": "Информация об организации",
+    "information_title": "Информация о школе",
     "information_description": "Основная информация о вашем учебном заведении",
-    "name_label": "Название организации",
-    "name_placeholder": "Введите название организации...",
+    "name_label": "Название школы",
+    "name_placeholder": "Введите название школы...",
     "description_label": "Описание",
-    "description_placeholder": "Введите описание организации...",
+    "description_placeholder": "Введите описание школы...",
     "working_days_title": "Рабочие дни",
     "working_days_description": "Выберите рабочие дни в неделе",
     "days_selected": "Выбрано {{count}} из {{total}} дней",

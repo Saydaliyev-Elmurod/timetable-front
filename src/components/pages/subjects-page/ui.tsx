@@ -6,10 +6,11 @@ import { AvailState } from './helpers';
 interface AvailGridProps {
   avail: AvailState;
   periods: number[];
+  days?: readonly string[];
   onChange: (next: AvailState) => void;
 }
 
-export function AvailGrid({ avail, periods, onChange }: AvailGridProps) {
+export function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: AvailGridProps) {
   const color = '#10B981';
 
   const toggle = (d: string, p: number) => {
@@ -18,6 +19,7 @@ export function AvailGrid({ avail, periods, onChange }: AvailGridProps) {
     onChange(copy);
   };
 
+  // Kun (ustun) toggle — shu kunning barcha periodlari.
   const toggleDay = (e: React.MouseEvent, d: string) => {
     e.stopPropagation();
     const dayAvail = avail[d] || {};
@@ -32,13 +34,14 @@ export function AvailGrid({ avail, periods, onChange }: AvailGridProps) {
     onChange({ ...avail, [d]: nextDayAvail });
   };
 
+  // Period (qator) toggle — barcha faol kunlar bo'ylab.
   const togglePeriod = (e: React.MouseEvent, p: number) => {
     e.stopPropagation();
-    const allSelected = CL_DAYS.every((d) => avail[d]?.[p]);
+    const allSelected = days.every((d) => avail[d]?.[p]);
     const nextValue = !allSelected;
 
     const nextAvail = { ...avail };
-    CL_DAYS.forEach((d) => {
+    days.forEach((d) => {
       const dayAvail = { ...(nextAvail[d] || {}) };
       dayAvail[p] = nextValue;
       nextAvail[d] = dayAvail;
@@ -46,42 +49,45 @@ export function AvailGrid({ avail, periods, onChange }: AvailGridProps) {
     onChange(nextAvail);
   };
 
+  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4 }}>
-      <div />
-      {periods.map((p) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
+      <div key="corner" />
+      {days.map((d) => (
         <div
-          key={p}
-          onClick={(e) => togglePeriod(e, p)}
+          key={d}
+          onClick={(e) => toggleDay(e, d)}
           style={{
             textAlign: 'center',
-            font: '800 10px JetBrains Mono',
-            color: '#94A3B8',
+            font: '800 11px Plus Jakarta Sans',
+            color: '#475569',
             cursor: 'pointer',
             padding: '4px 0',
           }}
         >
-          {p}
+          {d}
         </div>
       ))}
-      {CL_DAYS.map((d) => (
-        <React.Fragment key={d}>
+      {periods.map((p) => (
+        <React.Fragment key={p}>
           <div
-            onClick={(e) => toggleDay(e, d)}
+            key={'pl-' + p}
+            onClick={(e) => togglePeriod(e, p)}
             style={{
-              font: '800 11px Plus Jakarta Sans',
-              color: '#475569',
+              font: '800 10px JetBrains Mono',
+              color: '#94A3B8',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
               padding: '4px 0',
             }}
           >
-            {d}
+            {p}
           </div>
-          {periods.map((p) => (
+          {days.map((d) => (
             <button
-              key={p}
+              key={d + '-' + p}
               onClick={() => toggle(d, p)}
               style={{
                 height: 24,

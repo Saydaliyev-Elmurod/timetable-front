@@ -8,7 +8,7 @@ import { ClassService, ClassResponse } from '@/lib/classes';
 import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -30,9 +30,9 @@ const CL_DAYS = API_DAYS_OF_WEEK;
 
 type AvailState = Record<string, Record<number, boolean>>;
 
-const getFullAvail = (periods: number[]): AvailState => {
+const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
   const res: AvailState = {};
-  CL_DAYS.forEach(d => {
+  days.forEach(d => {
     res[d] = {};
     periods.forEach(p => res[d][p] = true);
   });
@@ -46,9 +46,9 @@ const convertToApiFormat = (state: AvailState): TimeSlot[] => {
   }));
 };
 
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]): AvailState => {
-  const res = getFullAvail(periods);
-  CL_DAYS.forEach(d => periods.forEach(p => res[d][p] = false));
+const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
+  const res = getFullAvail(periods, days);
+  days.forEach(d => periods.forEach(p => res[d][p] = false));
   if (slots) {
     slots.forEach(s => {
       if (res[s.dayOfWeek]) {
@@ -61,13 +61,13 @@ const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]):
 
 // ─── Components ────────────────────────────────────────────────────────
 
-function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] }) {
+function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
   const color = '#10B981';
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {CL_DAYS.map(d => (
-        <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {periods.slice(0, 8).map(p => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {days.map(d => (
+        <div key={d} style={{ display: 'flex', gap: 1 }}>
+          {periods.map(p => (
             <div key={p} style={{
               width: 4, height: 4, borderRadius: 1,
               background: avail[d]?.[p] ? color : '#E2E8F0'
@@ -79,39 +79,42 @@ function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] })
   );
 }
 
-function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: number[], onChange: (s: AvailState) => void }) {
+function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: { avail: AvailState, periods: number[], days?: readonly string[], onChange: (s: AvailState) => void }) {
   const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d][p] } };
+    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
     onChange(next);
   };
 
+  // Kun (ustun) toggle — shu kunning barcha periodlari.
   const toggleDay = (d: string) => {
-    const allOn = periods.every(p => avail[d][p]);
+    const allOn = periods.every(p => avail[d]?.[p]);
     const next = { ...avail, [d]: {} as any };
     periods.forEach(p => next[d][p] = !allOn);
     onChange(next);
   };
 
+  // Period (qator) toggle — barcha faol kunlar bo'ylab.
   const togglePeriod = (p: number) => {
-    const allOn = CL_DAYS.every(d => avail[d][p]);
+    const allOn = days.every(d => avail[d]?.[p]);
     const next = { ...avail };
-    CL_DAYS.forEach(d => {
+    days.forEach(d => {
       next[d] = { ...next[d], [p] : !allOn };
     });
     onChange(next);
   };
 
+  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(8, 1fr)', gap: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
       <div />
-      {periods.slice(0, 8).map(p => (
-        <button key={p} onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
+      {days.map(d => (
+        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', cursor: 'pointer' }}>{API_DAY_SHORT[d] || d.slice(0, 3)}</button>
       ))}
-      {CL_DAYS.map(d => (
-        <React.Fragment key={d}>
-          <button onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', textAlign: 'left', cursor: 'pointer' }}>{d.slice(0, 3)}</button>
-          {periods.slice(0, 8).map(p => (
-            <button key={p} onClick={() => toggle(d, p)} style={{ height: 24, borderRadius: 4, border: 0, cursor: 'pointer', background: avail[d][p] ? '#10B981' : '#F1F5F9', transition: 'all 100ms' }} />
+      {periods.map(p => (
+        <React.Fragment key={p}>
+          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
+          {days.map(d => (
+            <button key={d} onClick={() => toggle(d, p)} style={{ height: 24, borderRadius: 4, border: 0, cursor: 'pointer', background: avail[d]?.[p] ? '#10B981' : '#F1F5F9', transition: 'all 100ms' }} />
           ))}
         </React.Fragment>
       ))}
@@ -119,9 +122,9 @@ function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: n
   );
 }
 
-function ClassRow({ t: _t, cls, periods, selected, onSelect, onEdit, onDelete }: any) {
+function ClassRow({ t: _t, cls, periods, days, selected, onSelect, onEdit, onDelete }: any) {
   const pal = palOf(cls.id);
-  const avail = useMemo(() => convertFromApiFormat(cls.availabilities, periods), [cls, periods]);
+  const avail = useMemo(() => convertFromApiFormat(cls.availabilities, periods, days), [cls, periods, days]);
   const totalHours = cls.availabilities?.reduce((acc: number, s: any) => acc + s.lessons.length, 0) || 0;
 
   return (
@@ -155,7 +158,7 @@ function ClassRow({ t: _t, cls, periods, selected, onSelect, onEdit, onDelete }:
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <AvailMini avail={avail} periods={periods} />
+        <AvailMini avail={avail} periods={periods} days={days} />
         <div style={{ font: '700 11px JetBrains Mono', color: '#64748B' }}>{totalHours} s.</div>
       </div>
 
@@ -176,6 +179,7 @@ function ClassRow({ t: _t, cls, periods, selected, onSelect, onEdit, onDelete }:
 export default function ClassesPage() {
   const { t } = useTranslation();
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [activeDays, setActiveDays] = useState<string[]>([...API_DAYS_OF_WEEK]);
   const [teachers, setTeachers] = useState<TeacherResponse[]>([]);
   const [rooms, setRooms] = useState<RoomResponse[]>([]);
 
@@ -209,6 +213,7 @@ export default function ClassesPage() {
         const nonBreak = org.periods.filter((p: any) => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
+      setActiveDays(getActiveApiDays(org?.daysOfWeek));
     }).catch(() => {});
   }, []);
 
@@ -304,8 +309,8 @@ export default function ClassesPage() {
           </div>
         ) : (
           filtered.map(c => (
-            <ClassRow 
-              key={c.id} cls={c} periods={periods}
+            <ClassRow
+              key={c.id} cls={c} periods={periods} days={activeDays}
               selected={selected.has(c.id)}
               onSelect={toggleSelect}
               onEdit={setEditing}
@@ -340,9 +345,9 @@ export default function ClassesPage() {
 
       {/* Modals */}
       {editing && (
-        <ClassEditor 
+        <ClassEditor
           initial={(editing as any).new ? null : editing}
-          periods={periods} teachers={teachers} rooms={rooms}
+          periods={periods} days={activeDays} teachers={teachers} rooms={rooms}
           onClose={() => setEditing(null)}
           onSave={handleSave} 
         />
@@ -367,9 +372,10 @@ export default function ClassesPage() {
       )}
 
       {showBatch && (
-        <BatchCreateModal 
+        <BatchCreateModal
           library={library}
           periods={periods}
+          days={activeDays}
           onClose={() => setShowBatch(false)}
           onSave={handleSave}
         />
@@ -381,7 +387,7 @@ export default function ClassesPage() {
 
 // ─── Batch Create Modal ────────────────────────────────────────────────
 
-function BatchCreateModal({ library, periods, onClose, onSave }: any) {
+function BatchCreateModal({ library, periods, days, onClose, onSave }: any) {
   const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
   const [selectedLetters, setSelectedLetters] = useState<string[]>([]);
   
@@ -404,7 +410,7 @@ function BatchCreateModal({ library, periods, onClose, onSave }: any) {
     const toCreate = generated.filter(c => !c.exists).map(c => ({
       name: c.name,
       shortName: c.name,
-      availabilities: convertToApiFormat(getFullAvail(periods))
+      availabilities: convertToApiFormat(getFullAvail(periods, days))
     }));
     if (toCreate.length > 0) onSave(toCreate);
     else onClose();
@@ -494,7 +500,7 @@ function BatchCreateModal({ library, periods, onClose, onSave }: any) {
 
 // ─── Class Editor Modal ───────────────────────────────────────────────
 
-function ClassEditor({ initial, periods, teachers, rooms: _rooms, onClose, onSave }: any) {
+function ClassEditor({ initial, periods, days, teachers, rooms: _rooms, onClose, onSave }: any) {
   const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulk = !!initial && 'bulkTimeoff' in initial;
   const isNew = !!initial && 'new' in initial;
@@ -503,8 +509,8 @@ function ClassEditor({ initial, periods, teachers, rooms: _rooms, onClose, onSav
     isEdit ? [{ name: initial.name, shortName: initial.shortName }] : [{ name: '', shortName: '' }]
   );
   const [teacherId, setTeacherId] = useState<string>(isEdit ? String(initial.teacher?.id || '') : '');
-  const [avail, setAvail] = useState<AvailState>(() => 
-    isEdit ? convertFromApiFormat(initial.availabilities, periods) : getFullAvail(periods)
+  const [avail, setAvail] = useState<AvailState>(() =>
+    isEdit ? convertFromApiFormat(initial.availabilities, periods, days) : getFullAvail(periods, days)
   );
 
   const handleSave = () => {
@@ -603,7 +609,7 @@ function ClassEditor({ initial, periods, teachers, rooms: _rooms, onClose, onSav
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud dars soatlari</label>
             <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 16, padding: 16 }}>
-              <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
+              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
             </div>
           </div>
         </div>

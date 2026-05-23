@@ -7,7 +7,6 @@ import {
   Calendar,
   FileText,
   CalendarDays,
-  Settings,
   LogOut,
   User as UserIcon,
   Languages,
@@ -15,6 +14,8 @@ import {
   Building2,
   DoorOpen,
   Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
@@ -42,7 +43,6 @@ const LessonsPage = lazy(() => import('./pages/LessonsPage'));
 const TimetablesPage = lazy(() => import('./pages/TimetablesPage'));
 const TimetableViewPage = lazy(() => import('./pages/TimetableViewPage'));
 const TimetableViewPageWithAPI = lazy(() => import('./pages/TimetableViewPageWithAPI'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 function PageLoader() {
@@ -61,6 +61,8 @@ interface DashboardProps {
 export default function Dashboard({ user, onLogout }: DashboardProps) {
   const { t, locale, setLocale } = useTranslation();
   const [currentPage, setCurrentPage] = useState('organization');
+  // Chap nav sidebar yopiq/ochiq holati.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -103,8 +105,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         return <TimetablesPage onNavigate={setCurrentPage} />;
       case 'timetable-view':
         return <TimetableViewPage onNavigate={setCurrentPage} />;
-      case 'settings':
-        return <SettingsPage />;
       case 'profile':
         return <ProfilePage user={user} />;
       default:
@@ -121,35 +121,47 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     <GenerationProvider onNavigate={setCurrentPage}>
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
-        {/* Logo/Brand */}
-        <div className="p-6 border-b border-sidebar-border">
-          <h2 className="text-sidebar-foreground">School Timetable</h2>
+      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-200`}>
+        {/* Logo/Brand + collapse toggle */}
+        <div className={`border-b border-sidebar-border flex items-center ${sidebarCollapsed ? 'justify-center p-4' : 'justify-between p-6'}`}>
+          {!sidebarCollapsed && <h2 className="text-sidebar-foreground">School Timetable</h2>}
+          <button
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? 'Ochish' : 'Yopish'}
+            className="p-1.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-3">
           {/* Organization Section */}
           <div className="space-y-1">
-            <div className="px-3 py-2">
-              <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                {t('dashboard.organization')}
-              </h3>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="px-3 py-2">
+                <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
+                  {t('dashboard.organization')}
+                </h3>
+              </div>
+            )}
             {organizationItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => setCurrentPage(item.id)}
+                  title={sidebarCollapsed ? item.label : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                    sidebarCollapsed ? 'justify-center' : ''
+                  } ${
                     currentPage === item.id
                       ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
                 </button>
               );
             })}
@@ -159,45 +171,35 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
           {/* Main Navigation Section */}
           <div className="space-y-1">
-            <div className="px-3 py-2">
-              <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                {t('dashboard.management')}
-              </h3>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="px-3 py-2">
+                <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
+                  {t('dashboard.management')}
+                </h3>
+              </div>
+            )}
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => setCurrentPage(item.id)}
+                  title={sidebarCollapsed ? item.label : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                    sidebarCollapsed ? 'justify-center' : ''
+                  } ${
                     currentPage === item.id
                       ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
                 </button>
               );
             })}
           </div>
         </nav>
-
-        {/* Settings at bottom */}
-        <div className="p-4 border-t border-sidebar-border">
-          <button
-            onClick={() => setCurrentPage('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              currentPage === 'settings'
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-            }`}
-          >
-            <Settings className="h-5 w-5" />
-            <span>{t('dashboard.settings')}</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -206,10 +208,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
           <div>
             <h1 className="text-foreground">
-              {navigationItems.find(item => item.id === currentPage)?.label || 
+              {navigationItems.find(item => item.id === currentPage)?.label ||
                organizationItems.find(item => item.id === currentPage)?.label ||
-               (currentPage === 'settings' ? t('dashboard.settings') : 
-               currentPage === 'profile' ? t('dashboard.profile') : '')}
+               (currentPage === 'profile' ? t('dashboard.profile') : '')}
             </h1>
           </div>
 
@@ -261,10 +262,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 <DropdownMenuItem onClick={() => setCurrentPage('profile')}>
                   <UserIcon className="mr-2 h-4 w-4" />
                   {t('dashboard.profile')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCurrentPage('settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  {t('dashboard.settings')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout}>

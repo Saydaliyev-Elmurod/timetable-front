@@ -37,6 +37,8 @@ const TimetableContent = ({
     showSubject: true,
   });
   const [selectedLesson, setSelectedLesson] = useState<Lesson | UnplacedLesson | null>(null);
+  // Unplaced panel yopiq/ochiq holati (sidebar kabi pin, > tugma bilan toggle).
+  const [unplacedCollapsed, setUnplacedCollapsed] = useState(false);
 
   const {
     isLoading,
@@ -130,8 +132,11 @@ const TimetableContent = ({
     () => Array.from(new Set(scheduledLessons.map((l) => l.teacher))).sort(),
     [scheduledLessons],
   );
+  // "No Room" (xonasiz darslar) by-room ko'rinishida alohida guruh bo'lib chiqmasin.
   const allRooms = useMemo(
-    () => Array.from(new Set(scheduledLessons.map((l) => l.room))).sort(),
+    () => Array.from(new Set(scheduledLessons.map((l) => l.room)))
+      .filter((room) => room !== 'No Room')
+      .sort(),
     [scheduledLessons],
   );
 
@@ -196,7 +201,7 @@ const TimetableContent = ({
           || (filterBy === 'teacher' && l.teacher === selectedEntity))
         .map((l) => l.room),
     );
-    return Array.from(relevant);
+    return Array.from(relevant).filter((room) => room !== 'No Room');
   }, [scheduledLessons, allRooms, filterBy, selectedEntity]);
 
   // Prepare DragContext data.
@@ -283,8 +288,8 @@ const TimetableContent = ({
           isSaving={isSaving}
         />
 
-        <div className="flex gap-6">
-          <div className="flex-1">
+        <div className="flex gap-6 items-start">
+          <div className="flex-1 min-w-0">
             <MainGrid
               viewMode={viewMode}
               filteredLessons={filteredLessons}
@@ -313,6 +318,8 @@ const TimetableContent = ({
             onDelete={handleDelete}
             onToggleLock={handleToggleLock}
             onSelectLesson={handleSelectLesson}
+            collapsed={unplacedCollapsed}
+            onToggleCollapse={() => setUnplacedCollapsed((v) => !v)}
           />
         </div>
       </PageContainer>

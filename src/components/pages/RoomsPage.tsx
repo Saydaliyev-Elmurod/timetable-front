@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { TimeSlot } from '@/lib/teachers';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, btnSecondaryCls, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, btnSecondaryCls, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { cn } from '@/components/ui/utils';
 
@@ -19,15 +19,14 @@ const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
 // ─── Constants ─────────────────────────────────────────────────────────
 
 const CL_DAYS = API_DAYS_OF_WEEK;
-const CL_DAYS_SHORT = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Yak'];
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 type AvailState = Record<string, Record<number, boolean>>;
 
-const getFullAvail = (periods: number[]): AvailState => {
+const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
   const res: AvailState = {};
-  CL_DAYS.forEach(d => {
+  days.forEach(d => {
     res[d] = {};
     periods.forEach(p => res[d][p] = true);
   });
@@ -41,9 +40,9 @@ const convertToApiFormat = (state: AvailState): TimeSlot[] => {
   }));
 };
 
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]): AvailState => {
-  const res = getFullAvail(periods);
-  CL_DAYS.forEach(d => periods.forEach(p => res[d][p] = false));
+const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
+  const res = getFullAvail(periods, days);
+  days.forEach(d => periods.forEach(p => res[d][p] = false));
   if (slots) {
     slots.forEach(s => {
       if (res[s.dayOfWeek]) {
@@ -72,6 +71,7 @@ function Badge({ children, color: _color, tint, ink }: any) {
 export default function RoomsPage() {
   const { t, locale } = useTranslation();
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [activeDays, setActiveDays] = useState<string[]>([...API_DAYS_OF_WEEK]);
 
   const [editing, setEditing] = useState<RoomResponse | { new: true } | { bulkTimeoff: true } | null>(null);
   const [confirmDel, setConfirmDel] = useState<{ id?: number, name?: string, bulk?: boolean, n?: number } | null>(null);
@@ -103,6 +103,7 @@ export default function RoomsPage() {
         const nonBreak = org.periods.filter(p => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
+      setActiveDays(getActiveApiDays(org?.daysOfWeek));
     }).catch(() => {});
   }, []);
 
@@ -196,7 +197,7 @@ export default function RoomsPage() {
                   </td>
                   <td className={tdCls}>
                     <Badge tint={room.type === RoomType.SPECIAL ? '#F5F3FF' : '#F0F9FF'} ink={room.type === RoomType.SPECIAL ? '#7C3AED' : '#0369A1'}>
-                      {t(ROOM_TYPE_DEFINITIONS[room.type].labelKey)}
+                      {t((ROOM_TYPE_DEFINITIONS[room.type] || ROOM_TYPE_DEFINITIONS[RoomType.SHARED]).labelKey)}
                     </Badge>
                   </td>
                   <td className={tdCls}>
@@ -269,8 +270,8 @@ export default function RoomsPage() {
 
       {/* Modals */}
       {editing && (
-        <RoomEditor 
-          initial={editing} periods={periods} t={t}
+        <RoomEditor
+          initial={editing} periods={periods} days={activeDays} t={t}
           onClose={() => setEditing(null)} 
           onSave={handleSave} 
         />
@@ -302,7 +303,7 @@ export default function RoomsPage() {
                 name: row['Xona nomi'] || row['name'],
                 shortName: row['Qisqa nomi'] || row['shortName'] || (row['Xona nomi'] || row['name']).substring(0, 5),
                 type: row['Turi'] === 'SPECIAL' || row['type'] === 'SPECIAL' ? RoomType.SPECIAL : RoomType.SHARED,
-                availabilities: convertToApiFormat(getFullAvail(periods))
+                availabilities: convertToApiFormat(getFullAvail(periods, activeDays))
               }));
               await RoomService.bulkCreate(requests);
               toast.success(t('rooms.import_success', 'Xonalar muvaffaqiyatli import qilindi'));
@@ -320,7 +321,7 @@ export default function RoomsPage() {
 
 // ─── Room Editor Modal ───────────────────────────────────────────────
 
-function RoomEditor({ initial, periods, t, onClose, onSave }: any) {
+function RoomEditor({ initial, periods, days, t, onClose, onSave }: any) {
   const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulk = !!initial && 'bulkTimeoff' in initial;
   const isNew = !!initial && 'new' in initial;
@@ -329,8 +330,8 @@ function RoomEditor({ initial, periods, t, onClose, onSave }: any) {
     isEdit ? [{ name: initial.name, shortName: initial.shortName, type: initial.type || RoomType.SHARED }] 
            : [{ name: '', shortName: '', type: RoomType.SHARED }]
   );
-  const [avail, setAvail] = useState<AvailState>(() => 
-    isEdit ? convertFromApiFormat(initial.availabilities, periods) : getFullAvail(periods)
+  const [avail, setAvail] = useState<AvailState>(() =>
+    isEdit ? convertFromApiFormat(initial.availabilities, periods, days) : getFullAvail(periods, days)
   );
 
   const handleSave = () => {
@@ -416,7 +417,7 @@ function RoomEditor({ initial, periods, t, onClose, onSave }: any) {
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud vaqtlari</label>
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 12 }}>
-              <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
+              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
             </div>
           </div>
         </div>
@@ -430,20 +431,40 @@ function RoomEditor({ initial, periods, t, onClose, onSave }: any) {
   );
 }
 
-function AvailGrid({ avail, periods, onChange }: any) {
+function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: any) {
   const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d][p] } };
+    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
     onChange(next);
   };
+
+  // Kun (ustun) toggle — shu kunning barcha periodlari.
+  const toggleDay = (d: string) => {
+    const allOn = periods.every((p: number) => avail[d]?.[p]);
+    const next = { ...avail, [d]: {} as any };
+    periods.forEach((p: number) => next[d][p] = !allOn);
+    onChange(next);
+  };
+
+  // Period (qator) toggle — barcha faol kunlar bo'ylab.
+  const togglePeriod = (p: number) => {
+    const allOn = days.every((d: string) => avail[d]?.[p]);
+    const next = { ...avail };
+    days.forEach((d: string) => { next[d] = { ...next[d], [p]: !allOn }; });
+    onChange(next);
+  };
+
+  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + periods.length + ', 1fr)', gap: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
       <div />
-      {periods.map((p: number) => <div key={p} style={{ font: '700 10px Inter', color: '#94A3B8', textAlign: 'center' }}>{p}</div>)}
-      {CL_DAYS.map((d: string, i: number) => (
-        <React.Fragment key={d}>
-          <div style={{ font: '700 11px Inter', color: '#64748B', display: 'flex', alignItems: 'center' }}>{CL_DAYS_SHORT[i]}</div>
-          {periods.map((p: number) => (
-            <button key={p} onClick={() => toggle(d, p)} style={{
+      {days.map((d: string) => (
+        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 11px Inter', color: '#64748B', cursor: 'pointer' }}>{API_DAY_SHORT[d] || d.slice(0, 3)}</button>
+      ))}
+      {periods.map((p: number) => (
+        <React.Fragment key={p}>
+          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '700 10px Inter', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
+          {days.map((d: string) => (
+            <button key={d} onClick={() => toggle(d, p)} style={{
               height: 24, borderRadius: 6, border: 0, cursor: 'pointer',
               background: avail[d]?.[p] ? '#4F46E5' : '#E2E8F0',
               transition: 'all 100ms'

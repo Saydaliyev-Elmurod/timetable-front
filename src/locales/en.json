@@ -96,7 +96,7 @@
     "no_lessons_found": "No lessons found"
   },
   "dashboard": {
-    "organization": "Organization",
+    "organization": "School",
     "classes": "Classes",
     "teachers": "Teachers",
     "subjects": "Subjects",
@@ -112,17 +112,17 @@
     "logout": "Logout"
   },
   "organization": {
-    "title": "Organization settings",
-    "description": "Manage your school's organization details and configuration",
+    "title": "School settings",
+    "description": "Manage your school details and configuration",
     "saving": "Saving...",
     "save_changes": "Save changes",
     "unsaved_changes": "You have unsaved changes",
-    "information_title": "Organization information",
+    "information_title": "School information",
     "information_description": "Basic info about your institution",
-    "name_label": "Organization name",
-    "name_placeholder": "Enter organization name...",
+    "name_label": "School name",
+    "name_placeholder": "Enter school name...",
     "description_label": "Description",
-    "description_placeholder": "Enter organization description...",
+    "description_placeholder": "Enter school description...",
     "working_days_title": "Working days",
     "working_days_description": "Configure which weekdays your school operates",
     "days_selected": "{{count}} of {{total}} days selected",

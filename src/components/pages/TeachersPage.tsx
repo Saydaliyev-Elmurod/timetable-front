@@ -7,7 +7,7 @@ import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, 
 import { SubjectService, SubjectResponse } from '@/lib/subjects';
 import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
@@ -31,9 +31,9 @@ const CL_DAYS = API_DAYS_OF_WEEK;
 
 type AvailState = Record<string, Record<number, boolean>>;
 
-const getFullAvail = (periods: number[]): AvailState => {
+const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
   const res: AvailState = {};
-  CL_DAYS.forEach(d => {
+  days.forEach(d => {
     res[d] = {};
     periods.forEach(p => res[d][p] = true);
   });
@@ -47,10 +47,10 @@ const convertToApiFormat = (state: AvailState): TimeSlot[] => {
   }));
 };
 
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]): AvailState => {
-  const res = getFullAvail(periods);
+const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
+  const res = getFullAvail(periods, days);
   // Reset all to false first
-  CL_DAYS.forEach(d => periods.forEach(p => res[d][p] = false));
+  days.forEach(d => periods.forEach(p => res[d][p] = false));
   
   if (slots) {
     slots.forEach(s => {
@@ -64,13 +64,13 @@ const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[]):
 
 // ─── Components ────────────────────────────────────────────────────────
 
-function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] }) {
+function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
   const color = '#10B981'; // Fixed green color
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {CL_DAYS.map(d => (
-        <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {periods.slice(0, 8).map(p => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {days.map(d => (
+        <div key={d} style={{ display: 'flex', gap: 1 }}>
+          {periods.map(p => (
             <div key={p} style={{
               width: 4, height: 4, borderRadius: 1,
               background: avail[d]?.[p] ? color : '#E2E8F0'
@@ -82,48 +82,51 @@ function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] })
   );
 }
 
-function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: number[], onChange: (s: AvailState) => void }) {
+function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: { avail: AvailState, periods: number[], days?: readonly string[], onChange: (s: AvailState) => void }) {
   const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d][p] } };
+    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
     onChange(next);
   };
 
+  // Kun (ustun) toggle — shu kunning barcha periodlari.
   const toggleDay = (d: string) => {
-    const allOn = periods.every(p => avail[d][p]);
+    const allOn = periods.every(p => avail[d]?.[p]);
     const next = { ...avail, [d]: {} as any };
     periods.forEach(p => next[d][p] = !allOn);
     onChange(next);
   };
 
+  // Period (qator) toggle — barcha faol kunlar bo'ylab.
   const togglePeriod = (p: number) => {
-    const allOn = CL_DAYS.every(d => avail[d][p]);
+    const allOn = days.every(d => avail[d]?.[p]);
     const next = { ...avail };
-    CL_DAYS.forEach(d => {
+    days.forEach(d => {
       next[d] = { ...next[d], [p]: !allOn };
     });
     onChange(next);
   };
 
+  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(8, 1fr)', gap: 4 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
       <div />
-      {periods.slice(0, 8).map(p => (
-        <button key={p} onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>
-          {p}
+      {days.map(d => (
+        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', cursor: 'pointer' }}>
+          {API_DAY_SHORT[d] || d.slice(0, 3)}
         </button>
       ))}
-      {CL_DAYS.map(d => (
-        <React.Fragment key={d}>
-          <button onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', textAlign: 'left', cursor: 'pointer' }}>
-            {d.slice(0, 3)}
+      {periods.map(p => (
+        <React.Fragment key={p}>
+          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>
+            {p}
           </button>
-          {periods.slice(0, 8).map(p => (
+          {days.map(d => (
             <button
-              key={p}
+              key={d}
               onClick={() => toggle(d, p)}
               style={{
                 height: 24, borderRadius: 4, border: 0, cursor: 'pointer',
-                background: avail[d][p] ? '#10B981' : '#F1F5F9',
+                background: avail[d]?.[p] ? '#10B981' : '#F1F5F9',
                 transition: 'all 100ms'
               }}
             />
@@ -134,8 +137,8 @@ function AvailGrid({ avail, periods, onChange }: { avail: AvailState, periods: n
   );
 }
 
-function TeacherRow({ t: _t, teacher, periods, selected, onSelect, onEdit, onDelete }: any) {
-  const avail = useMemo(() => convertFromApiFormat(teacher.availabilities, periods), [teacher, periods]);
+function TeacherRow({ t: _t, teacher, periods, days, selected, onSelect, onEdit, onDelete }: any) {
+  const avail = useMemo(() => convertFromApiFormat(teacher.availabilities, periods, days), [teacher, periods, days]);
   const totalHours = teacher.availabilities?.reduce((acc: number, s: any) => acc + s.lessons.length, 0) || 0;
 
   return (
@@ -173,7 +176,7 @@ function TeacherRow({ t: _t, teacher, periods, selected, onSelect, onEdit, onDel
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <AvailMini avail={avail} periods={periods} />
+        <AvailMini avail={avail} periods={periods} days={days} />
         <div style={{ font: '700 11px JetBrains Mono', color: '#64748B' }}>{totalHours} s.</div>
       </div>
 
@@ -194,6 +197,7 @@ function TeacherRow({ t: _t, teacher, periods, selected, onSelect, onEdit, onDel
 export default function TeachersPage() {
   const { t, locale } = useTranslation();
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [activeDays, setActiveDays] = useState<string[]>([...API_DAYS_OF_WEEK]);
   const [subjects, setSubjects] = useState<SubjectResponse[]>([]);
 
   const [editing, setEditing] = useState<TeacherResponse | { new: true } | { bulkTimeoff: true } | null>(null);
@@ -227,6 +231,7 @@ export default function TeachersPage() {
         const nonBreak = org.periods.filter(p => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
+      setActiveDays(getActiveApiDays(org?.daysOfWeek));
     }).catch(() => {});
   }, []);
 
@@ -316,7 +321,7 @@ export default function TeachersPage() {
             </div>
           ) : (
             library.map(teacher => (
-              <TeacherRow key={teacher.id} teacher={teacher} periods={periods} t={t}
+              <TeacherRow key={teacher.id} teacher={teacher} periods={periods} days={activeDays} t={t}
                 selected={selected.has(teacher.id)}
                 onSelect={toggleSelect}
                 onEdit={setEditing}
@@ -374,7 +379,7 @@ export default function TeachersPage() {
       {/* Modals */}
       {editing && (
         <TeacherEditor 
-          initial={editing} periods={periods} subjects={subjects} t={t}
+          initial={editing} periods={periods} days={activeDays} subjects={subjects} t={t}
           onClose={() => setEditing(null)} 
           onSave={handleSave} 
         />
@@ -404,7 +409,7 @@ export default function TeachersPage() {
               fullName: row['Ism'],
               shortName: row['Qisqa nom'],
               subjects: [],
-              availabilities: convertToApiFormat(getFullAvail(periods))
+              availabilities: convertToApiFormat(getFullAvail(periods, activeDays))
             })}
             onImport={async (data) => {
               await TeacherService.bulkAdd(data);
@@ -424,7 +429,7 @@ export default function TeachersPage() {
 
 // ─── Teacher Editor Modal ───────────────────────────────────────────────
 
-function TeacherEditor({ initial, periods, subjects, t: _t, onClose, onSave }: any) {
+function TeacherEditor({ initial, periods, days, subjects, t: _t, onClose, onSave }: any) {
   const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulk = !!initial && 'bulkTimeoff' in initial;
   const isNew = !!initial && 'new' in initial;
@@ -433,8 +438,8 @@ function TeacherEditor({ initial, periods, subjects, t: _t, onClose, onSave }: a
     isEdit ? [{ fullName: initial.fullName, shortName: initial.shortName }] : [{ fullName: '', shortName: '' }]
   );
   const [selectedSubs, setSelectedSubs] = useState<number[]>(isEdit ? (initial.subjects || []).map((s: any) => s.id) : []);
-  const [avail, setAvail] = useState<AvailState>(() => 
-    isEdit ? convertFromApiFormat(initial.availabilities, periods) : getFullAvail(periods)
+  const [avail, setAvail] = useState<AvailState>(() =>
+    isEdit ? convertFromApiFormat(initial.availabilities, periods, days) : getFullAvail(periods, days)
   );
 
   const handleSave = () => {
@@ -547,7 +552,7 @@ function TeacherEditor({ initial, periods, subjects, t: _t, onClose, onSave }: a
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 6 }}>Mavjud vaqtlari</label>
             <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 12, padding: 12 }}>
-              <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
+              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
             </div>
           </div>
         </div>

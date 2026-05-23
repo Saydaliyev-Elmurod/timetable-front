@@ -25,6 +25,7 @@ type EditorInitial =
 interface SubjectEditorProps {
   initial: EditorInitial;
   periods: number[];
+  days?: readonly string[];
   onClose: () => void;
   onSave: (data: any) => void;
 }
@@ -34,7 +35,7 @@ interface SubjectEntry {
   short: string;
 }
 
-export function SubjectEditor({ initial, periods, onClose, onSave }: SubjectEditorProps) {
+export function SubjectEditor({ initial, periods, days, onClose, onSave }: SubjectEditorProps) {
   const { locale } = useTranslation();
 
   const isEdit =
@@ -56,8 +57,8 @@ export function SubjectEditor({ initial, periods, onClose, onSave }: SubjectEdit
   );
   const [avail, setAvail] = useState<AvailState>(() =>
     isEdit
-      ? convertFromApiFormat((initial as SubjectResponse).availabilities, periods)
-      : getFullAvail(periods),
+      ? convertFromApiFormat((initial as SubjectResponse).availabilities, periods, days)
+      : getFullAvail(periods, days),
   );
 
   const p = palOf(color);
@@ -403,7 +404,7 @@ export function SubjectEditor({ initial, periods, onClose, onSave }: SubjectEdit
                   padding: 12,
                 }}
               >
-                <AvailGrid avail={avail} periods={periods} onChange={setAvail} />
+                <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
               </div>
             </Field>
           )}

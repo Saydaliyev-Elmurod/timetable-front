@@ -32,18 +32,18 @@ export function getLocalizedName(sub: any, locale: string): string {
   return sub.name;
 }
 
-export const getEmptyAvail = (periods: number[]): AvailState => {
+export const getEmptyAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
   const res: AvailState = {};
-  CL_DAYS.forEach((d) => {
+  days.forEach((d) => {
     res[d] = {};
     periods.forEach((p) => (res[d][p] = false));
   });
   return res;
 };
 
-export const getFullAvail = (periods: number[]): AvailState => {
+export const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
   const res: AvailState = {};
-  CL_DAYS.forEach((d) => {
+  days.forEach((d) => {
     res[d] = {};
     periods.forEach((p) => (res[d][p] = true));
   });
@@ -58,8 +58,8 @@ export const convertToApiFormat = (avail: AvailState) =>
       .map(([period]) => parseInt(period)),
   }));
 
-export const convertFromApiFormat = (apiAvail: any[], periods: number[]): AvailState => {
-  const result = getEmptyAvail(periods);
+export const convertFromApiFormat = (apiAvail: any[], periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
+  const result = getEmptyAvail(periods, days);
   if (!apiAvail) return result;
   apiAvail.forEach((slot) => {
     const d = dayMapFromApi[slot.dayOfWeek];

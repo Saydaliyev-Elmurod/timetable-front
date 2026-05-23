@@ -6,9 +6,9 @@ import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
-import { CrudPageHeader, BulkActionBar } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
-import { CL_DAYS, palOf } from './subjects-page/constants';
+import { CL_DAYS, palOf, dayMapFromApi } from './subjects-page/constants';
 import {
   AvailState,
   convertFromApiFormat,
@@ -57,13 +57,13 @@ function WeightBadge({ value }: { value: number }) {
   );
 }
 
-function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] }) {
+function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
   const color = '#10B981'; // Fixed green color
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {CL_DAYS.map(d => (
-        <div key={d} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {periods.slice(0, 7).map(p => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {days.map(d => (
+        <div key={d} style={{ display: 'flex', gap: 1 }}>
+          {periods.map(p => (
             <div key={p} style={{
               width: 4, height: 4, borderRadius: 1,
               background: avail[d]?.[p] ? color : '#E2E8F0'
@@ -79,6 +79,7 @@ function AvailMini({ avail, periods }: { avail: AvailState, periods: number[] })
 
 export default function SubjectsPage() {
   const [periods, setPeriods] = useState<number[]>([1, 2, 3, 4, 5, 6, 7]);
+  const [activeDays, setActiveDays] = useState<string[]>([...CL_DAYS]);
 
   const [catFilter, setCatFilter] = useState('ALL');
   const [weightFilter, setWeightFilter] = useState('all');
@@ -119,6 +120,8 @@ export default function SubjectsPage() {
         const nonBreak = org.periods.filter(p => !p.isBreak).length;
         setPeriods(Array.from({ length: nonBreak }, (_, i) => i + 1));
       }
+      // Backend ish kunlarini o'zbekcha kalitga (CL_DAYS) map qilamiz.
+      setActiveDays(getActiveApiDays(org?.daysOfWeek).map((d) => dayMapFromApi[d]).filter(Boolean));
     }).catch(() => {});
   }, []);
 
@@ -193,7 +196,7 @@ export default function SubjectsPage() {
       shortName: t.shortName,
       color: t.color || '#4F46E5',
       weight: t.weight || 6,
-      availabilities: convertToApiFormat(getFullAvail(periods)),
+      availabilities: convertToApiFormat(getFullAvail(periods, activeDays)),
       emoji: t.emoji || '📖'
     }));
     await handleSave(requests);
@@ -277,7 +280,7 @@ export default function SubjectsPage() {
             </div>
           ) : (
             sorted.map(s => (
-              <SubjectRow key={s.id} sub={s} periods={periods}
+              <SubjectRow key={s.id} sub={s} periods={periods} days={activeDays}
                 selected={selected.has(s.id)}
                 onSelect={toggleSelect}
                 onEdit={setEditing}
@@ -351,6 +354,7 @@ export default function SubjectsPage() {
         <SubjectEditor
           initial={(editing as any).new ? null : editing}
           periods={periods}
+          days={activeDays}
           onClose={() => setEditing(null)}
           onSave={handleSave} />
       )}
@@ -378,9 +382,9 @@ export default function SubjectsPage() {
 
 // ─── Row Component ─────────────────────────────────────────────────────
 
-function SubjectRow({ sub, periods, selected, onSelect, onEdit, onDelete }: any) {
+function SubjectRow({ sub, periods, days, selected, onSelect, onEdit, onDelete }: any) {
   const p = palOf(sub.color || '#4F46E5');
-  const avail = useMemo(() => convertFromApiFormat(sub.availabilities, periods), [sub.availabilities, periods]);
+  const avail = useMemo(() => convertFromApiFormat(sub.availabilities, periods, days), [sub.availabilities, periods, days]);
   
   return (
     <div style={{
@@ -416,7 +420,7 @@ function SubjectRow({ sub, periods, selected, onSelect, onEdit, onDelete }: any)
 
       <WeightBadge value={sub.weight || 1} />
 
-      <div><AvailMini avail={avail} periods={periods} /></div>
+      <div><AvailMini avail={avail} periods={periods} days={days} /></div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button onClick={() => onEdit?.(sub)} title="Tahrirlash" style={iconRowBtn(false)}>

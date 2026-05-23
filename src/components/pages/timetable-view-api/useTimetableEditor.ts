@@ -385,7 +385,10 @@ export function useTimetableEditor({
 
       const v = validatePlacement(dragged, targetPos, excludeForDrag);
       if (!v.ok) {
-        toast.error("Bu yerga qo'yib bo'lmaydi", { description: v.reason });
+        toast.error("Bu yerga qo'yib bo'lmaydi", {
+          description: v.reason,
+          descriptionClassName: '!text-red-600 !opacity-100 font-semibold',
+        });
         return;
       }
 

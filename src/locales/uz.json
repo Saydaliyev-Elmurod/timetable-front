@@ -96,7 +96,7 @@
     "no_lessons_found": "Darslar topilmadi"
   },
   "dashboard": {
-    "organization": "Tashkilot",
+    "organization": "Maktab",
     "classes": "Sinflar",
     "teachers": "O'qituvchilar",
     "subjects": "Fanlar",
@@ -112,17 +112,17 @@
     "logout": "Chiqish"
   },
   "organization": {
-    "title": "Tashkilot sozlamalari",
-    "description": "Maktabingiz tashkiloti tafsilotlari va konfiguratsiyalarini boshqaring",
+    "title": "Maktab sozlamalari",
+    "description": "Maktabingiz tafsilotlari va konfiguratsiyalarini boshqaring",
     "saving": "Saqlanmoqda...",
     "save_changes": "O'zgarishlarni saqlash",
     "unsaved_changes": "Sizda saqlanmagan o'zgarishlar mavjud",
-    "information_title": "Tashkilot ma'lumotlari",
+    "information_title": "Maktab ma'lumotlari",
     "information_description": "Ta'lim muassasangiz haqida asosiy ma'lumotlar",
-    "name_label": "Tashkilot nomi",
-    "name_placeholder": "Tashkilot nomini kiriting...",
+    "name_label": "Maktab nomi",
+    "name_placeholder": "Maktab nomini kiriting...",
     "description_label": "Tavsif",
-    "description_placeholder": "Tashkilot tavsifini kiriting...",
+    "description_placeholder": "Maktab tavsifini kiriting...",
     "working_days_title": "Maktab ish kunlari",
     "working_days_description": "Maktabingiz haftaning qaysi kunlari ishlashini sozlang",
     "days_selected": "{{count}} of {{total}} kun tanlandi",
