@@ -16,7 +16,7 @@ import {
 } from './et-lessons/GroupedView';
 import { MatrixModal } from './et-lessons/MatrixView';
 import { BulkPasteModal, DesignNotes, TemplatesModal } from './et-lessons/modals';
-import { EditClassDrawer, SidePanel } from './et-lessons/side-panels';
+import { EditEntityDrawer, SidePanel } from './et-lessons/side-panels';
 import { Stat, ghostBtnT, primaryBtnT } from './et-lessons/ui';
 
 // Re-export catalog initializer + types so external callers keep the same import surface.
@@ -40,6 +40,8 @@ function LessonsPage({
   rooms = [],
   classes = [],
   initialLessons = [],
+  resolveEntity,
+  onEntitySave,
 }: any) {
   // Sync module-level catalog whenever props change. The catalog has to be a
   // mutable singleton because every picker/chip reads through it.
@@ -79,7 +81,7 @@ function LessonsPage({
   const [showPaste, setShowPaste] = React.useState(false);
   const [showTmpl, setShowTmpl] = React.useState(false);
   const [showNotes, setShowNotes] = React.useState(false);
-  const [editClass, setEditClass] = React.useState<string | null>(null);
+  const [editEntity, setEditEntity] = React.useState<{ kind: string; key: string } | null>(null);
   const [showMatrix, setShowMatrix] = React.useState(false);
 
   const notifyChanges = (newRows: any) => {
@@ -313,7 +315,7 @@ function LessonsPage({
               expanded={expanded} setExpanded={setExpanded}
               onAddToGroup={addToGroup}
               onUpdateRow={updateRow} onDupRow={dupRow} onDelRow={delRow}
-              onEditClass={(c: any) => setEditClass(c)}
+              onEditGroup={(gb: any, key: any) => setEditEntity({ kind: gb, key })}
               openCell={openCell}
               onOpen={(rid: any, f: any) => setOpenCell({ row: rid, field: f })}
               onClose={() => setOpenCell(null)}
@@ -328,7 +330,16 @@ function LessonsPage({
       {showPaste && <BulkPasteModal onClose={() => setShowPaste(false)} onApply={applyPaste} />}
       {showTmpl && <TemplatesModal onClose={() => setShowTmpl(false)} onApply={applyTemplate} />}
       <DesignNotes open={showNotes} onClose={() => setShowNotes(false)} />
-      {editClass && <EditClassDrawer classId={editClass} rows={rows} onClose={() => setEditClass(null)} />}
+      {editEntity && (
+        <EditEntityDrawer
+          kind={editEntity.kind}
+          entityKey={editEntity.key}
+          rows={rows}
+          resolveEntity={resolveEntity}
+          onEntitySave={onEntitySave}
+          onClose={() => setEditEntity(null)}
+        />
+      )}
       {showMatrix && <MatrixModal rows={rows} onClose={() => setShowMatrix(false)} />}
     </div>
   );

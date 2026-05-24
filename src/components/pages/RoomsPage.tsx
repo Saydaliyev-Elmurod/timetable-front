@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { TimeSlot } from '@/lib/teachers';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, btnSecondaryCls, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { cn } from '@/components/ui/utils';
 
@@ -237,27 +237,17 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Footer / Pagination */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-          <span className="font-semibold text-[13px] text-slate-400 font-inter">{totalElements} {t('rooms.count', 'ta xona')}</span>
-          <div className="flex gap-2">
-            <button
-              disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
-              className={cn(btnSecondaryCls, 'px-3 py-1.5')}
-            >
-              {t('common.prev', 'Oldingi')}
-            </button>
-            <button
-              disabled={page === totalPages - 1}
-              onClick={() => setPage(p => p + 1)}
-              className={cn(btnSecondaryCls, 'px-3 py-1.5')}
-            >
-              {t('common.next', 'Keyingi')}
-            </button>
-          </div>
-        </div>
       </div>
+
+      {/* Pagination */}
+      <Pagination
+        page={page}
+        size={size}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        onPageChange={setPage}
+        onSizeChange={(s) => { setSize(s); setPage(0); }}
+      />
 
       <BulkActionBar
         count={selected.size}

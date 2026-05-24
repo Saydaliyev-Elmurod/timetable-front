@@ -39,6 +39,7 @@ import {
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '../ui/alert';
 import { PageContainer } from '../shared/PageContainer';
+import { Pagination } from '../shared';
 import { logger } from '../../lib/logger';
 import { useGeneration } from '@/context/GenerationNotifier';
 
@@ -84,7 +85,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [generateName, setGenerateName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchTimetables();
@@ -380,31 +381,17 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                 </TableBody>
               </Table>
 
-              {/* Pagination — clean bottom bar */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-white">
-                  <p className="text-xs text-gray-500">
-                    {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredTimetables.length)}{' '}
-                    / {filteredTimetables.length}
-                  </p>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Oldingi
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Keyingi
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Pagination */}
+              <div className="px-6">
+                <Pagination
+                  page={currentPage - 1}
+                  size={itemsPerPage}
+                  totalPages={totalPages}
+                  totalElements={filteredTimetables.length}
+                  onPageChange={(p) => setCurrentPage(p + 1)}
+                  onSizeChange={(s) => { setItemsPerPage(s); setCurrentPage(1); }}
+                />
+              </div>
             </>
           )}
         </CardContent>

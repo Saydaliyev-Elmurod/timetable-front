@@ -1,4 +1,5 @@
 import { apiCall } from '../lib/api';
+import type { AppLanguage } from '../lib/lang';
 import { toast } from 'sonner';
 
 const API_BASE_URL = 'http://localhost:8080';
@@ -17,6 +18,8 @@ export interface CompanyRequest {
   description: string;
   daysOfWeek: string[];
   periods: LessonPeriod[];
+  /** Preferred UI language; persisted to DB and echoed back on every fetch. */
+  lang?: AppLanguage;
 }
 
 export interface CompanyResponse extends CompanyRequest {
@@ -54,7 +57,22 @@ const updateOrganization = async (data: CompanyRequest): Promise<void> => {
   }
 };
 
+// Persist only the language preference. Fire-and-forget: runs in the background
+// when the user switches language, so failures stay silent (no toast spam while
+// the backend endpoint is still being added).
+const updateLang = async (lang: AppLanguage): Promise<void> => {
+  try {
+    await apiCall(`${API_URL}/lang`, {
+      method: 'PUT',
+      body: JSON.stringify({ lang }),
+    });
+  } catch {
+    // ignore — language is also kept in localStorage as the source of truth
+  }
+};
+
 export const organizationApi = {
   get: getOrganization,
   update: updateOrganization,
+  updateLang,
 };

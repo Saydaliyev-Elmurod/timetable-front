@@ -12,6 +12,8 @@ export type { PageContainerSize } from './PageContainer';
 export { SearchBar } from './SearchBar';
 export { DeleteConfirmDialog } from './DeleteConfirmDialog';
 export { TablePagination } from './TablePagination';
+export { Pagination } from './Pagination';
+export type { PaginationBarProps } from './Pagination';
 export { CrudPageHeader } from './CrudPageHeader';
 export type { CrudAction, CrudPageHeaderProps } from './CrudPageHeader';
 export { BulkActionBar } from './BulkActionBar';

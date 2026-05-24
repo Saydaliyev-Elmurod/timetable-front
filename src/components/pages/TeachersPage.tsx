@@ -7,7 +7,7 @@ import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, 
 import { SubjectService, SubjectResponse } from '@/lib/subjects';
 import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
@@ -331,35 +331,14 @@ export default function TeachersPage() {
         </div>
 
         {/* Footer & Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-               <span style={{ font: '600 12px Manrope', color: '#64748B' }}>Sahifada:</span>
-               <select value={size} onChange={e => { setSize(Number(e.target.value)); setPage(0); }} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #E2E8F0', font: '600 12px Manrope' }}>
-                 <option value={10}>10</option>
-                 <option value={20}>20</option>
-                 <option value={40}>40</option>
-               </select>
-            </div>
-            <span style={{ font: '500 12px Manrope', color: '#94A3B8' }}>Jami: {totalElements}</span>
-          </div>
-
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === 0 ? 0.5 : 1 }}>Oldingi</button>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button key={i} onClick={() => setPage(i)} style={{
-                    width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0',
-                    background: page === i ? '#4F46E5' : '#fff', color: page === i ? '#fff' : '#64748B',
-                    font: '700 12px Manrope', cursor: 'pointer'
-                  }}>{i + 1}</button>
-                ))}
-              </div>
-              <button disabled={page === totalPages - 1} onClick={() => setPage(p => p + 1)} style={{ ...btnSecondary, padding: '6px 12px', opacity: page === totalPages - 1 ? 0.5 : 1 }}>Keyingi</button>
-            </div>
-          )}
-        </div>
+        <Pagination
+          page={page}
+          size={size}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          onPageChange={setPage}
+          onSizeChange={(s) => { setSize(s); setPage(0); }}
+        />
       </div>
 
       <BulkActionBar

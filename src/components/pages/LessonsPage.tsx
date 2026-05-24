@@ -4,7 +4,7 @@ import { LessonService } from '@/lib/lessons';
 import { ClassService } from '@/lib/classes';
 import { SubjectService } from '@/lib/subjects';
 import { TeacherService } from '@/lib/teachers';
-import { RoomService } from '@/lib/rooms';
+import { RoomService, RoomType } from '@/lib/rooms';
 import { toast } from 'sonner';
 import { LessonsWithMetadataResponse, LessonRequest, GroupLessonDetail } from '@/types/api';
 import { Plus } from 'lucide-react';
@@ -296,6 +296,69 @@ export default function LessonsPage() {
     }
   };
 
+  // Resolve a group key (class name / entity id-string) to its full backend entity.
+  const resolveEntity = useCallback((kind: string, key: string): any => {
+    if (!maps) return null;
+    if (kind === 'class') return maps.classByName.get(key) || null;
+    if (kind === 'teacher') return maps.teacherById.get(key) || null;
+    if (kind === 'subject') return maps.subjectById.get(key) || null;
+    if (kind === 'room') return maps.roomById.get(key) || null;
+    return null;
+  }, [maps]);
+
+  // Save edits from the lessons-view drawer. Merges the edited fields into the
+  // full entity so untouched backend fields (availabilities, subjects…) survive.
+  const handleEntitySave = useCallback(async (kind: string, key: string, form: any): Promise<boolean> => {
+    const e = resolveEntity(kind, key);
+    if (!e) { toast.error("Ma'lumot topilmadi"); return false; }
+    try {
+      if (kind === 'class') {
+        await ClassService.update(e.id, {
+          name: form.name?.trim() || e.name,
+          shortName: e.shortName,
+          teacherId: e.teacher?.id ?? null,
+          availabilities: e.availabilities ?? [],
+        });
+      } else if (kind === 'teacher') {
+        await TeacherService.update(e.id, {
+          fullName: form.fullName?.trim() || e.fullName,
+          shortName: form.shortName?.trim() || e.shortName,
+          subjects: (e.subjects ?? []).map((s: any) => s.id),
+          availabilities: e.availabilities ?? [],
+          deletedSubjects: [],
+        });
+      } else if (kind === 'subject') {
+        await SubjectService.update(e.id, {
+          name: form.name?.trim() || e.name,
+          nameUz: e.nameUz,
+          nameRu: e.nameRu,
+          nameEn: e.nameEn,
+          shortName: form.shortName?.trim() || e.shortName,
+          availabilities: e.availabilities ?? [],
+          color: e.color,
+          weight: e.weight,
+          category: e.category,
+        });
+      } else if (kind === 'room') {
+        await RoomService.update(e.id, {
+          name: form.name?.trim() || e.name,
+          shortName: e.shortName || form.name?.trim() || e.name,
+          type: (form.type || e.type) as RoomType,
+          availabilities: e.availabilities ?? [],
+        });
+      } else {
+        return false;
+      }
+      toast.success('Saqlandi');
+      await loadData();
+      return true;
+    } catch (err) {
+      logger.error('Entity save failed', err);
+      toast.error('Saqlashda xatolik');
+      return false;
+    }
+  }, [resolveEntity, loadData]);
+
   const handleModalSubmit = async (lessonData: any) => {
     try {
       setIsSaving(true);
@@ -356,6 +419,8 @@ export default function LessonsPage() {
       <EtLessonsPage
         onSave={(rows: any) => handleSave(rows)}
         onRowsChange={(rows: any) => setCurrentRows(rows)}
+        resolveEntity={resolveEntity}
+        onEntitySave={handleEntitySave}
         {...dataProps}
       />
 

@@ -6,7 +6,7 @@ import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
 import { toast } from 'sonner';
 import { Loader2, Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
-import { CrudPageHeader, BulkActionBar, getActiveApiDays } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { CL_DAYS, palOf, dayMapFromApi } from './subjects-page/constants';
 import {
@@ -24,7 +24,7 @@ import {
   Field,
   Select as SelectField,
 } from './subjects-page/ui';
-import { btnPrimary, btnSecondary, iconRowBtn, inp } from './subjects-page/styles';
+import { btnPrimary, iconRowBtn, inp } from './subjects-page/styles';
 import { SubjectEditor } from './subjects-page/SubjectEditor';
 import { TemplatesModal } from './subjects-page/TemplatesModal';
 
@@ -128,10 +128,10 @@ export default function SubjectsPage() {
   // Sort (Filtering now handled by backend)
   const sorted = useMemo(() => {
     let arr = [...library];
-    if (sortBy === 'name') arr.sort((a, b) => a.name.localeCompare(b.name, 'uz'));
+    if (sortBy === 'name') arr.sort((a, b) => getLocalizedName(a, locale).localeCompare(getLocalizedName(b, locale), 'uz'));
     if (sortBy === 'weight') arr.sort((a, b) => (b.weight || 0) - (a.weight || 0));
     return arr;
-  }, [library, sortBy]);
+  }, [library, sortBy, locale]);
 
   // Operations
   const handleSave = async (data: SubjectRequest | SubjectRequest[] | any) => {
@@ -290,53 +290,14 @@ export default function SubjectsPage() {
         </div>
 
         {/* Footer actions & Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SelectField 
-              label="Sahifa hajmi" 
-              value={size} 
-              onChange={(v: any) => { setSize(Number(v)); setPage(0); }}
-              options={[
-                { v: 10, label: '10' },
-                { v: 20, label: '20' },
-                { v: 40, label: '40' },
-              ]}
-            />
-            <span style={{ font: '500 12px Manrope', color: '#94A3B8' }}>Jami: {totalElements}</span>
-          </div>
-
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button 
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-                style={{ ...btnSecondary, padding: '8px 12px', opacity: page === 0 ? 0.5 : 1 }}
-              > Oldingi </button>
-              
-              <div style={{ display: 'flex', gap: 5 }}>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => setPage(i)}
-                    style={{
-                      width: 34, height: 34, borderRadius: 8, border: '1px solid #E2E8F0',
-                      background: page === i ? '#4F46E5' : '#fff',
-                      color: page === i ? '#fff' : '#64748B',
-                      font: '700 13px Manrope', cursor: 'pointer',
-                      transition: 'all 120ms'
-                    }}
-                  > {i + 1} </button>
-                ))}
-              </div>
-
-              <button 
-                disabled={page === totalPages - 1}
-                onClick={() => setPage(p => p + 1)}
-                style={{ ...btnSecondary, padding: '8px 12px', opacity: page === totalPages - 1 ? 0.5 : 1 }}
-              > Keyingi </button>
-            </div>
-          )}
-        </div>
+        <Pagination
+          page={page}
+          size={size}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          onPageChange={setPage}
+          onSizeChange={(s) => { setSize(s); setPage(0); }}
+        />
       </div>
 
       <BulkActionBar
@@ -383,6 +344,7 @@ export default function SubjectsPage() {
 // ─── Row Component ─────────────────────────────────────────────────────
 
 function SubjectRow({ sub, periods, days, selected, onSelect, onEdit, onDelete }: any) {
+  const { locale } = useTranslation();
   const p = palOf(sub.color || '#4F46E5');
   const avail = useMemo(() => convertFromApiFormat(sub.availabilities, periods, days), [sub.availabilities, periods, days]);
   
@@ -409,7 +371,7 @@ function SubjectRow({ sub, periods, days, selected, onSelect, onEdit, onDelete }
           font: '700 15px Plus Jakarta Sans', color: '#0F172A',
           letterSpacing: '-0.01em',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{getLocalizedName(sub, useTranslation().locale)}</div>
+        }}>{getLocalizedName(sub, locale)}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3 }}>
           <span style={{
             font: '700 10px JetBrains Mono', color: p.ink, background: p.tint,

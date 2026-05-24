@@ -8,7 +8,7 @@ import { ClassService, ClassResponse } from '@/lib/classes';
 import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -198,6 +198,7 @@ export default function ClassesPage() {
     items: library,
     isLoading,
     totalElements,
+    totalPages,
     page, size, setPage, setSize,
     query, setQuery,
     selected, toggleSelect, clearSelection,
@@ -321,13 +322,14 @@ export default function ClassesPage() {
       </div>
 
       {/* Pagination Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 }}>
-        <span style={{ font: '600 13px Manrope', color: '#94A3B8' }}>Jami {totalElements} ta sinf</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button disabled={page === 0} onClick={() => setPage(p => p - 1)} style={{ ...btnSecondary, padding: '8px 14px' }}>Oldingi</button>
-          <button disabled={library.length < size} onClick={() => setPage(p => p + 1)} style={{ ...btnSecondary, padding: '8px 14px' }}>Keyingi</button>
-        </div>
-      </div>
+      <Pagination
+        page={page}
+        size={size}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        onPageChange={setPage}
+        onSizeChange={(s) => { setSize(s); setPage(0); }}
+      />
 
       <BulkActionBar
         count={selected.size}

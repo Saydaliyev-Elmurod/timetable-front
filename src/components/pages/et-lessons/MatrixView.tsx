@@ -27,11 +27,14 @@ export function MatrixView({ rows, classes, onCellEdit }: any) {
           <thead>
             <tr>
               <th style={{ ...mxHead, left: 0, position: 'sticky' as const, zIndex: 3, minWidth: 180, background: '#F8FAFC', textAlign: 'left' as const, paddingLeft: 14 }}>Fan</th>
-              {classes.map((c: any) => (
-                <th key={c} style={{ ...mxHead, minWidth: 64, textAlign: 'center' as const }}>
-                  <span style={{ font: '700 11px JetBrains Mono', color: '#475569' }}>{c}</span>
-                </th>
-              ))}
+              {classes.map((c: any) => {
+                const code = typeof c === 'string' ? c : c.name;
+                return (
+                  <th key={code} style={{ ...mxHead, minWidth: 64, textAlign: 'center' as const }}>
+                    <span style={{ font: '700 11px JetBrains Mono', color: '#475569' }}>{code}</span>
+                  </th>
+                );
+              })}
               <th style={{ ...mxHead, minWidth: 64, textAlign: 'right' as const, paddingRight: 12 }}>
                 <span style={{ font: '700 10px Plus Jakarta Sans', letterSpacing: '.1em', color: '#94A3B8', textTransform: 'uppercase' as const }}>Jami</span>
               </th>
@@ -51,11 +54,12 @@ export function MatrixView({ rows, classes, onCellEdit }: any) {
                     </div>
                   </td>
                   {classes.map((c: any) => {
-                    const cell = row[c];
+                    const code = typeof c === 'string' ? c : c.name;
+                    const cell = row[code];
                     const h = cell?.hours;
                     return (
-                      <td key={c} style={{ ...mxCell, textAlign: 'center' as const, padding: 0 }}>
-                        <button onClick={() => onCellEdit && onCellEdit(s.id, c)}
+                      <td key={code} style={{ ...mxCell, textAlign: 'center' as const, padding: 0 }}>
+                        <button onClick={() => onCellEdit && onCellEdit(s.id, code)}
                           style={{
                             width: '100%', height: '100%', minHeight: 42,
                             border: 0, cursor: 'pointer' as const,
@@ -87,10 +91,11 @@ export function MatrixView({ rows, classes, onCellEdit }: any) {
                 <span style={{ font: '700 11px Plus Jakarta Sans', letterSpacing: '.08em', textTransform: 'uppercase' as const, color: '#64748B' }}>Sinf yuki</span>
               </td>
               {classes.map((c: any) => {
-                const sum = LC_SUBJECTS.reduce((s: any, sub: any) => s + (map[sub.id]?.[c]?.hours || 0), 0);
+                const code = typeof c === 'string' ? c : c.name;
+                const sum = LC_SUBJECTS.reduce((s: any, sub: any) => s + (map[sub.id]?.[code]?.hours || 0), 0);
                 const tone = sum > 36 ? '#DC2626' : sum > 30 ? '#D97706' : '#0D9488';
                 return (
-                  <td key={c} style={{ ...mxCell, textAlign: 'center' as const, borderTop: '2px solid #E2E8F0', background: '#F8FAFC' }}>
+                  <td key={code} style={{ ...mxCell, textAlign: 'center' as const, borderTop: '2px solid #E2E8F0', background: '#F8FAFC' }}>
                     <span style={{ font: '800 12px JetBrains Mono', color: sum ? tone : '#CBD5E1' }}>{sum || '·'}</span>
                   </td>
                 );

@@ -14,11 +14,9 @@ import { GroupLessonConfig } from './types';
 interface GroupConfigRowProps {
   config: GroupLessonConfig;
   teachers: any[];
-  subjects: any[];
   rooms: any[];
   onToggle: (groupId: number) => void;
   onTeacherChange: (groupId: number, teacherId: number | null, teacherName?: string) => void;
-  onSubjectChange: (groupId: number, subjectId: number | null, subjectName?: string) => void;
   onRoomToggle: (groupId: number, roomId: number) => void;
   onRoomRemove: (groupId: number, roomId: number) => void;
 }
@@ -26,16 +24,13 @@ interface GroupConfigRowProps {
 export function GroupConfigRow({
   config,
   teachers,
-  subjects,
   rooms,
   onToggle,
   onTeacherChange,
-  onSubjectChange,
   onRoomToggle,
   onRoomRemove,
 }: GroupConfigRowProps) {
   const teacherFieldId = `group-teacher-${config.groupId}`;
-  const subjectFieldId = `group-subject-${config.groupId}`;
 
   return (
     <div className="p-3 border rounded-lg bg-white dark:bg-slate-900">
@@ -71,31 +66,6 @@ export function GroupConfigRow({
                 {teachers.map((teacher: any) => (
                   <SelectItem key={teacher.id} value={teacher.id.toString()}>
                     {teacher.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor={subjectFieldId} className="text-sm">
-              Subject
-            </Label>
-            <Select
-              value={config.subjectId?.toString() || ''}
-              onValueChange={(value) => {
-                const subjectId = parseInt(value);
-                const subject = subjects.find((s) => s.id === subjectId);
-                onSubjectChange(config.groupId, subjectId, subject?.name);
-              }}
-            >
-              <SelectTrigger id={subjectFieldId} className="text-sm">
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map((subject: any) => (
-                  <SelectItem key={subject.id} value={subject.id.toString()}>
-                    {subject.name}
                   </SelectItem>
                 ))}
               </SelectContent>

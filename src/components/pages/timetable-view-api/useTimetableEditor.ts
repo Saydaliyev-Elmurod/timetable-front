@@ -356,90 +356,124 @@ export function useTimetableEditor({
     [applyChanges, bumpOps],
   );
 
+  // Guruhga bo'lingan dars = bitta slotda bir nechta karta (har guruh uchun bittadan).
+  // Ular bir xil sinf+kun+soat+haftada turadi. Bittasini sudraganda hammasi birga ko'chsin.
+  const slotMates = useCallback((card: Lesson): Lesson[] => {
+    const pos = lessonPos(card);
+    if (!pos) return [card]; // unscheduled — faqat o'zi
+    const mates = scheduledRef.current.filter(
+      (l) =>
+        l.classId === card.classId &&
+        l.day === pos.day &&
+        l.timeSlot === pos.hour &&
+        (l.weekIndex ?? null) === (pos.week ?? null),
+    );
+    return mates.length > 0 ? mates : [card];
+  }, []);
+
   // ── Drag-drop ─────────────────────────────────────────────────────────────
   const handleDrop = useCallback(
     (dragged: Lesson, targetDay: string, targetTimeSlot: number) => {
       if (isSavingRef.current) return;
       const draggedPos = lessonPos(dragged);
-      const targetPos: NonNullable<SlotPos> = {
-        day: targetDay,
-        hour: targetTimeSlot,
-        week: dragged.weekIndex ?? null,
-      };
+      const week = dragged.weekIndex ?? null;
+      const targetPos: NonNullable<SlotPos> = { day: targetDay, hour: targetTimeSlot, week };
 
       // O'sha slotga tashlash — no-op
       if (draggedPos && samePos(draggedPos, targetPos)) return;
 
-      // Nishondagi mavjud dars (shu sinf, hafta kesishsa)
-      const occupant = scheduledRef.current.find(
+      // Sudralayotgan kartaning butun guruhi (slotdagi barcha kartalar) birga ko'chadi.
+      const movingGroup = slotMates(dragged);
+      const movingIds = new Set(movingGroup.map((c) => c.id));
+
+      // Nishondagi mavjud dars(lar) — shu sinf, hafta kesishsa, ko'chayotgan guruhdan tashqari.
+      const occupants = scheduledRef.current.filter(
         (l) =>
-          l.id !== dragged.id &&
-          l.class === dragged.class &&
+          !movingIds.has(l.id) &&
+          l.classId === dragged.classId &&
           l.day === targetDay &&
           l.timeSlot === targetTimeSlot &&
-          weeksOverlap(l.weekIndex ?? null, targetPos.week),
+          weeksOverlap(l.weekIndex ?? null, week),
       );
+      const occupantIds = new Set(occupants.map((o) => o.id));
 
-      const excludeForDrag = new Set<string>([dragged.id]);
-      if (occupant) excludeForDrag.add(occupant.id);
+      // Ko'chayotgan guruh va nishon egasini to'qnashuv tekshiruvidan chiqaramiz
+      // (guruh a'zolari bir slotda birga turishi normal; egalari bo'shaydi).
+      const excludeForDrag = new Set<string>([...movingIds, ...occupantIds]);
 
-      const v = validatePlacement(dragged, targetPos, excludeForDrag);
-      if (!v.ok) {
-        toast.error("Bu yerga qo'yib bo'lmaydi", {
-          description: v.reason,
-          descriptionClassName: '!text-red-600 !opacity-100 font-semibold',
-        });
-        return;
+      // Har bir guruh a'zosi nishonga sig'ishi kerak.
+      for (const card of movingGroup) {
+        const v = validatePlacement(card, targetPos, excludeForDrag);
+        if (!v.ok) {
+          toast.error("Bu yerga qo'yib bo'lmaydi", {
+            description: v.reason,
+            descriptionClassName: '!text-red-600 !opacity-100 font-semibold',
+          });
+          return;
+        }
       }
 
-      if (!occupant) {
-        // Oddiy move yoki unscheduled→place
+      const moveChanges: CardChange[] = movingGroup.map((c) => ({
+        cardId: c.id,
+        before: lessonPos(c),
+        after: { day: targetDay, hour: targetTimeSlot, week: c.weekIndex ?? null },
+      }));
+
+      if (occupants.length === 0) {
         pushOp({
-          changes: [{ cardId: dragged.id, before: draggedPos, after: targetPos }],
-          label: draggedPos ? "Dars ko'chirildi" : "Dars qo'yildi",
+          changes: moveChanges,
+          label: draggedPos
+            ? (movingGroup.length > 1 ? "Guruh ko'chirildi" : "Dars ko'chirildi")
+            : "Dars qo'yildi",
         });
         return;
       }
 
-      // SWAP — B ni A ga qo'ya olamizmi?
+      // SWAP — egalarni sudralgan guruhning eski slotiga qo'ya olamizmi?
       const canSwapBack =
         draggedPos != null &&
-        validatePlacement(occupant, draggedPos, excludeForDrag).ok;
+        occupants.every((o) => validatePlacement(o, draggedPos, excludeForDrag).ok);
 
       if (canSwapBack) {
         pushOp({
           changes: [
-            { cardId: dragged.id, before: draggedPos, after: targetPos },
-            { cardId: occupant.id, before: lessonPos(occupant), after: draggedPos },
+            ...moveChanges,
+            ...occupants.map((o) => ({
+              cardId: o.id,
+              before: lessonPos(o),
+              after: { day: draggedPos!.day, hour: draggedPos!.hour, week: o.weekIndex ?? null },
+            })),
           ],
           label: 'Darslar almashtirildi',
         });
       } else {
-        // B sig'masa (yoki A unscheduled bo'lsa) → B ni unscheduled qilamiz
+        // Egalar sig'masa (yoki sudralgan dars unscheduled bo'lsa) → egalarni bo'shatamiz
         pushOp({
           changes: [
-            { cardId: dragged.id, before: draggedPos, after: targetPos },
-            { cardId: occupant.id, before: lessonPos(occupant), after: null },
+            ...moveChanges,
+            ...occupants.map((o) => ({ cardId: o.id, before: lessonPos(o), after: null })),
           ],
           label: "Almashtirildi (eski dars bo'shatildi)",
         });
       }
     },
-    [pushOp, validatePlacement],
+    [pushOp, validatePlacement, slotMates],
   );
 
-  // O'chirish = unschedule (undo qilinadi, save bo'ladi)
+  // O'chirish = unschedule (undo qilinadi, save bo'ladi).
+  // Guruhga bo'lingan dars bitta birlik — barcha guruh a'zolari birga bo'shaydi.
   const unscheduleLesson = useCallback(
     (lesson: Lesson) => {
       if (isSavingRef.current) return;
       const pos = lessonPos(lesson);
       if (!pos) return; // allaqachon unscheduled
+      const group = slotMates(lesson);
       pushOp({
-        changes: [{ cardId: lesson.id, before: pos, after: null }],
-        label: "Dars bo'shatildi",
+        changes: group.map((c) => ({ cardId: c.id, before: lessonPos(c), after: null })),
+        label: group.length > 1 ? "Guruh bo'shatildi" : "Dars bo'shatildi",
       });
     },
-    [pushOp],
+    [pushOp, slotMates],
   );
 
   // ── Undo / Redo ───────────────────────────────────────────────────────────

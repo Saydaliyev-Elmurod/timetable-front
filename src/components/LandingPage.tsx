@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './LandingPage.css';
 import { useTranslation, Locale } from '@/i18n/index';
+import { BrandLogo } from './brand/Brand';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -8,48 +9,9 @@ interface LandingPageProps {
 }
 
 function Logo({ dark = false }: { dark?: boolean }) {
-  // Calendar-style monogram: indigo card with binder rings + date dots,
-  // one teal-highlighted date represents a scheduled lesson.
   return (
     <a href="#" className="et-logo" style={{ textDecoration: 'none' }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 10,
-        position: 'relative',
-        boxShadow: '0 6px 16px -4px rgba(79,70,229,0.45)',
-        overflow: 'hidden',
-      }}>
-        <svg width="36" height="36" viewBox="0 0 36 36" style={{ display: 'block' }}>
-          <defs>
-            <linearGradient id="et-logo-bg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#6366F1"/>
-              <stop offset="1" stopColor="#312E81"/>
-            </linearGradient>
-          </defs>
-          <rect width="36" height="36" rx="10" fill="url(#et-logo-bg)"/>
-
-          {/* Binder rings */}
-          <rect x="12.5" y="6.5" width="2.5" height="5.2" rx="1.25" fill="#fff"/>
-          <rect x="21" y="6.5" width="2.5" height="5.2" rx="1.25" fill="#fff"/>
-
-          {/* Calendar body */}
-          <rect x="8.5" y="10.5" width="19" height="18" rx="2.6"
-                fill="none" stroke="#fff" strokeWidth="1.7"/>
-          <line x1="8.5" y1="15.4" x2="27.5" y2="15.4" stroke="#fff" strokeWidth="1.4"/>
-
-          {/* Date dots — one teal "scheduled" */}
-          <circle cx="13" cy="19.5" r="1.25" fill="#fff" opacity="0.55"/>
-          <circle cx="18" cy="19.5" r="1.25" fill="#fff" opacity="0.55"/>
-          <circle cx="23" cy="19.5" r="1.7"  fill="#14B8A6"/>
-          <circle cx="13" cy="24"   r="1.25" fill="#fff" opacity="0.55"/>
-          <circle cx="18" cy="24"   r="1.25" fill="#fff" opacity="0.55"/>
-          <circle cx="23" cy="24"   r="1.25" fill="#fff" opacity="0.55"/>
-        </svg>
-      </div>
-      <span style={{
-        fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif',
-        fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em',
-        color: dark ? '#F8FAFC' : '#0F172A'
-      }}>E-timetable</span>
+      <BrandLogo dark={dark} size={36} />
     </a>
   );
 }

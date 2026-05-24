@@ -100,6 +100,13 @@ function headStripe(head: any, groupBy: any) {
   return { avatar: null };
 }
 
+const EDIT_TITLE: Record<string, string> = {
+  class: 'Sinfni tahrirlash',
+  teacher: "O'qituvchini tahrirlash",
+  subject: 'Fanni tahrirlash',
+  room: 'Xonani tahrirlash',
+};
+
 function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: any) {
   const stripe = headStripe(head, groupBy);
   return (
@@ -136,7 +143,7 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
         </div>
         <div style={{ display: 'flex' as const, gap: 6 }}>
           {onEdit && (
-            <button onClick={(e: any) => { e.stopPropagation(); onEdit(); }} title="Sinfni tahrirlash" style={{
+            <button onClick={(e: any) => { e.stopPropagation(); onEdit(); }} title={EDIT_TITLE[groupBy] || 'Tahrirlash'} style={{
               display: 'inline-flex' as const, alignItems: 'center' as const, gap: 6,
               font: '600 12px Manrope', color: '#475569', background: '#fff',
               border: '1px solid #E2E8F0', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' as const,
@@ -160,7 +167,7 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
   );
 }
 
-export function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpdateRow, onDupRow, onDelRow, onEditClass, openCell, onOpen, onClose, query }: any) {
+export function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup, onUpdateRow, onDupRow, onDelRow, onEditGroup, openCell, onOpen, onClose, query }: any) {
   const groups = computeGroups(rows, groupBy);
 
   const renderHead = (g: any): any => {
@@ -268,7 +275,7 @@ export function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup
               setExpanded(n);
             }}
             onAdd={() => onAddToGroup(groupBy, g.key)}
-            onEdit={groupBy === 'class' ? () => onEditClass(g.key) : null}
+            onEdit={g.key === 'MISC' ? null : () => onEditGroup(groupBy, g.key)}
           >
             {isOpen && (
               <>

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="E-Timetable logo mark">
+  <title>E-Timetable mark</title>
+  <rect x="22" y="40" width="156" height="36" rx="9" fill="#4F46E5"></rect>
+  <rect x="32" y="50" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.95"></rect>
+  <rect x="66" y="50" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.42"></rect>
+  <rect x="100" y="50" width="30" height="16" rx="3.5" fill="#14B8A6"></rect>
+  <rect x="134" y="50" width="36" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.42"></rect>
+  <rect x="22" y="82" width="108" height="36" rx="9" fill="#4F46E5"></rect>
+  <rect x="32" y="92" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.95"></rect>
+  <rect x="66" y="92" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.42"></rect>
+  <rect x="100" y="92" width="22" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.95"></rect>
+  <rect x="22" y="124" width="156" height="36" rx="9" fill="#4F46E5"></rect>
+  <rect x="32" y="134" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.95"></rect>
+  <rect x="66" y="134" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.42"></rect>
+  <rect x="100" y="134" width="30" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.95"></rect>
+  <rect x="134" y="134" width="36" height="16" rx="3.5" fill="#ffffff" fill-opacity="0.42"></rect>
+</svg>

@@ -1,5 +1,8 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from '@/i18n/index';
+import { organizationApi } from '@/api/organizationApi';
+import { setLanguage, type AppLanguage } from '@/lib/lang';
+import { BrandLogo } from './brand/Brand';
 import {
   BookOpen,
   Users,
@@ -70,6 +73,26 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     { code: 'uz', name: 'O\'zbek', flag: '🇺🇿' }
   ];
 
+  // On login, adopt the language saved on the company (DB source of truth).
+  useEffect(() => {
+    organizationApi.get()
+      .then((c) => {
+        if (c?.lang) {
+          setLanguage(c.lang);
+          setLocale(c.lang);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Switch language: update UI immediately and persist to the company in DB.
+  const handleSelectLanguage = (code: AppLanguage) => {
+    setLanguage(code); // write localStorage first so the request below sends the new Accept-Language
+    setLocale(code);
+    organizationApi.updateLang(code);
+  };
+
   const organizationItems = [
     { id: 'organization', label: t('dashboard.organization'), icon: Building2 },
   ];
@@ -124,7 +147,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-200`}>
         {/* Logo/Brand + collapse toggle */}
         <div className={`border-b border-sidebar-border flex items-center ${sidebarCollapsed ? 'justify-center p-4' : 'justify-between p-6'}`}>
-          {!sidebarCollapsed && <h2 className="text-sidebar-foreground">School Timetable</h2>}
+          {!sidebarCollapsed && <BrandLogo size={28} />}
           <button
             onClick={() => setSidebarCollapsed((v) => !v)}
             title={sidebarCollapsed ? 'Ochish' : 'Yopish'}
@@ -228,7 +251,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
                 {languages.map((lang) => (
                   <DropdownMenuItem
                     key={lang.code}
-                    onClick={() => setLocale(lang.code as any)}
+                    onClick={() => handleSelectLanguage(lang.code as AppLanguage)}
                     className="flex items-center justify-between cursor-pointer"
                   >
                     <span className="flex items-center gap-2">

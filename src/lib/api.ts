@@ -1,4 +1,5 @@
 import { getToken } from './auth';
+import { getLanguage } from './lang';
 import { toast } from 'sonner';
 import { API_CONFIG, getApiUrl, ApiEndpoint } from '@/config/api';
 import { logger } from '../lib/logger';
@@ -36,6 +37,8 @@ export async function apiCall<T>(
     const token = getToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      // Backend localizes error messages by this header.
+      'Accept-Language': getLanguage(),
       ...options.headers,
     };
 

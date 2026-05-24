@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Plus, Check } from 'lucide-react';
-import { useTranslation } from '@/i18n/index';
 import { SubjectRequest, SubjectResponse } from '@/lib/subjects';
 import { palOf, SX_PALETTE, SX_WEIGHT_PRESETS } from './constants';
 import {
@@ -8,7 +7,6 @@ import {
   convertFromApiFormat,
   convertToApiFormat,
   getFullAvail,
-  getLocalizedName,
   getWeightColor,
   weightLabel,
 } from './helpers';
@@ -31,24 +29,29 @@ interface SubjectEditorProps {
 }
 
 interface SubjectEntry {
-  name: string;
+  nameUz: string;
+  nameRu: string;
+  nameEn: string;
   short: string;
 }
 
 export function SubjectEditor({ initial, periods, days, onClose, onSave }: SubjectEditorProps) {
-  const { locale } = useTranslation();
-
   const isEdit =
     !!initial && !('bulkWeight' in initial) && !('bulkTimeoff' in initial) && !('new' in initial);
   const isBulkWeight = !!initial && 'bulkWeight' in initial;
   const isBulkTimeoff = !!initial && 'bulkTimeoff' in initial;
   const isBulk = isBulkWeight || isBulkTimeoff;
 
-  const [entries, setEntries] = useState<SubjectEntry[]>(() =>
-    isEdit
-      ? [{ name: getLocalizedName(initial, locale), short: (initial as SubjectResponse).shortName }]
-      : [{ name: '', short: '' }],
-  );
+  const [entries, setEntries] = useState<SubjectEntry[]>(() => {
+    if (!isEdit) return [{ nameUz: '', nameRu: '', nameEn: '', short: '' }];
+    const s = initial as SubjectResponse;
+    return [{
+      nameUz: s.nameUz || s.name || '',
+      nameRu: s.nameRu || '',
+      nameEn: s.nameEn || '',
+      short: s.shortName,
+    }];
+  });
   const [color, setColor] = useState<string>(
     isEdit ? (initial as SubjectResponse).color || '#4F46E5' : '#4F46E5',
   );
@@ -72,23 +75,27 @@ export function SubjectEditor({ initial, periods, days, onClose, onSave }: Subje
       onSave({ availabilities: convertToApiFormat(avail) });
       return;
     }
-    const filled = entries.filter((e) => e.name.trim().length >= 2);
+    const baseOf = (e: SubjectEntry) => (e.nameUz || e.nameRu || e.nameEn).trim();
+    const filled = entries.filter((e) => baseOf(e).length >= 2);
     if (filled.length === 0) return;
 
-    const requests: SubjectRequest[] = filled.map((e) => ({
-      name: e.name.trim(),
-      nameUz: e.name.trim(),
-      nameRu: e.name.trim(),
-      nameEn: e.name.trim(),
-      shortName: e.short.trim() || e.name.trim().slice(0, 3).toUpperCase(),
-      color,
-      weight,
-      availabilities: convertToApiFormat(avail),
-    }));
+    const requests: SubjectRequest[] = filled.map((e) => {
+      const base = baseOf(e);
+      return {
+        name: base,
+        nameUz: (e.nameUz || base).trim(),
+        nameRu: (e.nameRu || base).trim(),
+        nameEn: (e.nameEn || base).trim(),
+        shortName: e.short.trim() || base.slice(0, 3).toUpperCase(),
+        color,
+        weight,
+        availabilities: convertToApiFormat(avail),
+      };
+    });
     onSave(isEdit ? requests[0] : requests);
   };
 
-  const addEntry = () => setEntries((prev) => [...prev, { name: '', short: '' }]);
+  const addEntry = () => setEntries((prev) => [...prev, { nameUz: '', nameRu: '', nameEn: '', short: '' }]);
   const updateEntry = (i: number, patch: Partial<SubjectEntry>) =>
     setEntries((prev) => prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
   const removeEntry = (i: number) =>
@@ -191,14 +198,40 @@ export function SubjectEditor({ initial, periods, days, onClose, onSave }: Subje
             <Field label={isEdit ? 'Fan nomi' : "Fanlar ro'yxati"} required>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {entries.map((e, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      value={e.name}
-                      onChange={(ev) => updateEntry(i, { name: ev.target.value })}
-                      placeholder="Nomi"
-                      style={inp}
-                      autoFocus={i === 0}
-                    />
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {isEdit ? (
+                        <>
+                          <input
+                            value={e.nameUz}
+                            onChange={(ev) => updateEntry(i, { nameUz: ev.target.value })}
+                            placeholder="Nomi (UZ)"
+                            style={inp}
+                            autoFocus
+                          />
+                          <input
+                            value={e.nameRu}
+                            onChange={(ev) => updateEntry(i, { nameRu: ev.target.value })}
+                            placeholder="Название (RU)"
+                            style={inp}
+                          />
+                          <input
+                            value={e.nameEn}
+                            onChange={(ev) => updateEntry(i, { nameEn: ev.target.value })}
+                            placeholder="Name (EN)"
+                            style={inp}
+                          />
+                        </>
+                      ) : (
+                        <input
+                          value={e.nameUz}
+                          onChange={(ev) => updateEntry(i, { nameUz: ev.target.value })}
+                          placeholder="Nomi"
+                          style={inp}
+                          autoFocus={i === 0}
+                        />
+                      )}
+                    </div>
                     <input
                       value={e.short}
                       onChange={(ev) =>

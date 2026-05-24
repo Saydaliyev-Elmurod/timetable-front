@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 import { getToken, removeToken } from './token';
+import { getLanguage } from './lang';
 import { toast } from 'sonner';
 
 const axiosInstance = axios.create({
@@ -17,6 +18,8 @@ axiosInstance.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        // Backend localizes error messages by this header.
+        config.headers['Accept-Language'] = getLanguage();
         return config;
     },
     (error) => {

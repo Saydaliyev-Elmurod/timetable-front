@@ -214,16 +214,6 @@ export default function AddLessonModal({
     );
   };
 
-  const handleGroupSubjectChange = (groupId: number, subjectId: number | null, subjectName?: string) => {
-    setGroupLessonConfigs(prev =>
-      prev.map(g =>
-        g.groupId === groupId
-          ? { ...g, subjectId, subjectName: subjectName || '' }
-          : g
-      )
-    );
-  };
-
   const handleGroupRoomToggle = (groupId: number, roomId: number) => {
     setGroupLessonConfigs(prev =>
       prev.map(g => {
@@ -284,40 +274,47 @@ export default function AddLessonModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Subject is common to both modes (shared by all groups in group mode).
+    if (!formData.subject || formData.selectedClasses.length === 0) {
+      toast.error('Fan va sinf(lar) tanlang');
+      return;
+    }
+
     if (isGroupMode) {
-      // Group Mode Validation
+      // Group Mode Validation — each selected group needs a teacher (subject is shared).
       const selectedGroups = groupLessonConfigs.filter(g => g.isSelected);
       if (selectedGroups.length === 0) {
-        toast.error('Please select at least one group');
+        toast.error('Kamida bitta guruh tanlang');
         return;
       }
-      const incomplete = selectedGroups.some(g => !g.teacherId || !g.subjectId);
-      if (incomplete) {
-        toast.error('All selected groups must have a teacher and subject assigned');
+      if (selectedGroups.some(g => !g.teacherId)) {
+        toast.error("Har bir tanlangan guruhga o'qituvchi tayinlang");
         return;
       }
     } else {
       // Regular Mode Validation
-      if (!formData.subject || formData.selectedClasses.length === 0 || !formData.selectedTeacherId) {
-        toast.error('Please fill in all required fields (Subject, Main Teacher, Classes)');
+      if (!formData.selectedTeacherId) {
+        toast.error("O'qituvchi tanlang");
         return;
       }
     }
 
+    const commonSubjectId = parseInt(formData.subject);
     const selectedGroups = groupLessonConfigs.filter(g => g.isSelected);
 
+    // All groups share the common class subject.
     const groupDetails: GroupLessonDetail[] = selectedGroups.map(g => ({
       groupId: g.groupId,
       teacherId: g.teacherId!,
-      subjectId: g.subjectId!,
+      subjectId: commonSubjectId,
       roomIds: g.roomIds
     }));
 
     // map formData.frequency to API enum format
     const frequencyUpper = (formData.frequency || 'WEEKLY').toUpperCase();
 
-    // If group is selected, we must provide valid teacherId/subjectId to pass backend validation
-    // We'll peek at the first selected group for this.
+    // Top-level teacherId still required by the request shape; in group mode use
+    // the first group's teacher as the nominal main teacher.
     const firstGroup = groupDetails.length > 0 ? groupDetails[0] : null;
 
     const lessonData = {
@@ -329,12 +326,8 @@ export default function AddLessonModal({
       // Conditional mappings based on mode
       groups: isGroupMode ? groupDetails : undefined,
 
-      // IMPORTANT: Backend likely validates that subjectId exists. 
-      // We cannot send 0. We send the subject/teacher from the first group.
-      // It's a "dummy" main subject but required for the request object structure.
-      subjectId: isGroupMode
-        ? (firstGroup?.subjectId)
-        : parseInt(formData.subject),
+      // Subject is the common class subject in both modes.
+      subjectId: commonSubjectId,
 
       teacherId: isGroupMode
         ? (firstGroup?.teacherId)
@@ -351,7 +344,7 @@ export default function AddLessonModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-11/12 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingLesson ? 'Edit Lesson' : 'Add Lesson'}
@@ -416,57 +409,60 @@ export default function AddLessonModal({
               <Label htmlFor="group-mode">Split into Groups / Divide Class</Label>
             </div>
 
-            {/* Standard Mode Fields */}
-            {!isGroupMode && (
-              <>
-                {/* Subject Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject *</Label>
-                  <Select
-                    value={formData.subject}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
-                  >
-                    <SelectTrigger id="subject">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subjects.map((subject: any) => (
-                        <SelectItem key={subject.id} value={subject.id.toString()}>
-                          {subject.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            {/* Subject Selection — common for the whole class.
+                In group mode both groups teach the SAME subject. */}
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject *</Label>
+              {isGroupMode && (
+                <p className="text-sm text-muted-foreground">
+                  Fan butun sinf uchun bitta — har ikkala guruh ham shu fanni o'tadi
+                </p>
+              )}
+              <Select
+                value={formData.subject}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
+              >
+                <SelectTrigger id="subject">
+                  <SelectValue placeholder="Select subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((subject: any) => (
+                    <SelectItem key={subject.id} value={subject.id.toString()}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Teachers Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="teacher">Main Teacher *</Label>
-                  <Select
-                    value={formData.selectedTeacherId?.toString() || ''}
-                    onValueChange={(value) => {
-                      const teacherId = parseInt(value);
-                      const teacher = teachers.find(t => t.id === teacherId);
-                      setFormData(prev => ({
-                        ...prev,
-                        selectedTeacherId: teacherId,
-                        selectedTeacher: teacher?.fullName || ''
-                      }));
-                    }}
-                  >
-                    <SelectTrigger id="teacher">
-                      <SelectValue placeholder="Select main teacher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.map((teacher: any) => (
-                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                          {teacher.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
+            {/* Main Teacher — standard mode only (each group has its own teacher) */}
+            {!isGroupMode && (
+              <div className="space-y-2">
+                <Label htmlFor="teacher">Main Teacher *</Label>
+                <Select
+                  value={formData.selectedTeacherId?.toString() || ''}
+                  onValueChange={(value) => {
+                    const teacherId = parseInt(value);
+                    const teacher = teachers.find(t => t.id === teacherId);
+                    setFormData(prev => ({
+                      ...prev,
+                      selectedTeacherId: teacherId,
+                      selectedTeacher: teacher?.fullName || ''
+                    }));
+                  }}
+                >
+                  <SelectTrigger id="teacher">
+                    <SelectValue placeholder="Select main teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers.map((teacher: any) => (
+                      <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                        {teacher.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {/* Day and Hour inputs removed per user request */}
@@ -545,11 +541,9 @@ export default function AddLessonModal({
                       key={groupConfig.groupId}
                       config={groupConfig}
                       teachers={teachers}
-                      subjects={subjects}
                       rooms={rooms}
                       onToggle={handleGroupToggle}
                       onTeacherChange={handleGroupTeacherChange}
-                      onSubjectChange={handleGroupSubjectChange}
                       onRoomToggle={handleGroupRoomToggle}
                       onRoomRemove={removeGroupRoom}
                     />
@@ -570,9 +564,11 @@ export default function AddLessonModal({
             <Button
               type="submit"
               disabled={
-                isGroupMode
-                  ? groupLessonConfigs.filter(g => g.isSelected).length === 0
-                  : (!formData.subject || formData.selectedClasses.length === 0 || !formData.selectedTeacherId)
+                !formData.subject || formData.selectedClasses.length === 0 || (
+                  isGroupMode
+                    ? groupLessonConfigs.filter(g => g.isSelected).length === 0
+                    : !formData.selectedTeacherId
+                )
               }
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             >
