@@ -1,4 +1,5 @@
 import API, { PaginatedResponse } from './api';
+import axiosInstance from './axios';
 import {
   LessonResponseCompact,
   LessonResponseFull,
@@ -169,6 +170,22 @@ export const LessonService = {
       }
     );
     if (response.error) throw response.error;
+  },
+
+  /**
+   * Excel "taqsimot" shablonini backendga yuklaydi.
+   * POST /api/lessons/v1/template — multipart `file` maydoni bilan.
+   * Backend faylni o'qib darslarni (class, subject, teacher, room, soat) yaratadi/yangilaydi.
+   * axiosInstance ishlatiladi — multipart boundary va auth/Accept-Language interceptor orqali qo'shiladi.
+   */
+  importTemplate: async (file: File): Promise<void> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    await axiosInstance.post(
+      `${API.config.ENDPOINTS.LESSONS}/template`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
   },
 
   delete: async (id: number): Promise<void> => {

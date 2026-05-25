@@ -46,7 +46,7 @@ const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], 
   if (slots) {
     slots.forEach(s => {
       if (res[s.dayOfWeek]) {
-        s.lessons.forEach(l => res[s.dayOfWeek][l] = true);
+        (s.lessons ?? []).forEach(l => res[s.dayOfWeek][l] = true);
       }
     });
   }
@@ -206,7 +206,7 @@ export default function RoomsPage() {
                       className="flex items-center gap-1.5 bg-transparent border-0 p-0 cursor-pointer font-semibold text-[13px] text-slate-500 font-inter hover:text-slate-700"
                     >
                       <Clock size={14} className="text-indigo-600" />
-                      {room.availabilities.reduce((acc, s) => acc + s.lessons.length, 0)} {t('rooms.slots', 'soat')}
+                      {(room.availabilities ?? []).reduce((acc, s) => acc + (s.lessons?.length ?? 0), 0)} {t('rooms.slots', 'soat')}
                     </button>
                   </td>
                   <td className={cn(tdCls, 'text-right')}>

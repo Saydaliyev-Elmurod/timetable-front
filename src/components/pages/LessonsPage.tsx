@@ -421,6 +421,7 @@ export default function LessonsPage() {
         onRowsChange={(rows: any) => setCurrentRows(rows)}
         resolveEntity={resolveEntity}
         onEntitySave={handleEntitySave}
+        onImported={loadData}
         {...dataProps}
       />
 

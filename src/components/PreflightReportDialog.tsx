@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertTriangle, Lightbulb, XCircle } from 'lucide-react';
+import { Lightbulb, XCircle } from 'lucide-react';
 import type { PreflightIssue, PreflightReport } from '@/lib/generationSocket';
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -74,9 +74,9 @@ function IssueRow({ index, issue, tone }: { index: number; issue: PreflightIssue
 }
 
 /**
- * Renders a pre-flight rejection report: CRITICAL issues first (in backend order),
- * then warnings — each with its resource and fix suggestions. Replaces the old
- * single crammed error string so the user can read what actually failed.
+ * Renders a pre-flight rejection report: only CRITICAL issues (in backend order),
+ * each with its resource and fix suggestions. WARNING-severity issues are NOT
+ * shown — they are non-blocking and the backend no longer emits them in the alert.
  */
 export function PreflightReportDialog({
   report,
@@ -92,7 +92,6 @@ export function PreflightReportDialog({
   if (!report) return null;
 
   const criticals = report.issues.filter((i) => i.severity === 'CRITICAL');
-  const warnings = report.issues.filter((i) => i.severity === 'WARNING');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,8 +103,7 @@ export function PreflightReportDialog({
           </DialogTitle>
           <DialogDescription>
             {timetableName ? `"${timetableName}" — ` : ''}Pre-flight diagnostika{' '}
-            <b>{report.criticalCount}</b> ta kritik va <b>{report.warningCount}</b> ta ogohlantirish
-            topdi. Avval shu muammolarni bartaraf eting.
+            <b>{report.criticalCount}</b> ta kritik muammo topdi. Avval shu muammolarni bartaraf eting.
           </DialogDescription>
         </DialogHeader>
 
@@ -119,20 +117,6 @@ export function PreflightReportDialog({
               <ol className="space-y-2">
                 {criticals.map((issue, i) => (
                   <IssueRow key={i} index={i + 1} issue={issue} tone="critical" />
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {warnings.length > 0 && (
-            <section>
-              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-amber-700">
-                <AlertTriangle className="h-4 w-4" />
-                Ogohlantirishlar ({warnings.length})
-              </h3>
-              <ol className="space-y-2">
-                {warnings.map((issue, i) => (
-                  <IssueRow key={i} index={i + 1} issue={issue} tone="warning" />
                 ))}
               </ol>
             </section>

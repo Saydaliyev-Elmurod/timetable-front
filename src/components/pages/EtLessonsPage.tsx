@@ -15,7 +15,8 @@ import {
   tabPlaceholder,
 } from './et-lessons/GroupedView';
 import { MatrixModal } from './et-lessons/MatrixView';
-import { BulkPasteModal, DesignNotes, TemplatesModal } from './et-lessons/modals';
+import { ExcelImportModal } from './et-lessons/ExcelImportModal';
+import { DesignNotes, TemplatesModal } from './et-lessons/modals';
 import { EditEntityDrawer, SidePanel } from './et-lessons/side-panels';
 import { Stat, ghostBtnT, primaryBtnT } from './et-lessons/ui';
 
@@ -42,6 +43,7 @@ function LessonsPage({
   initialLessons = [],
   resolveEntity,
   onEntitySave,
+  onImported,
 }: any) {
   // Sync module-level catalog whenever props change. The catalog has to be a
   // mutable singleton because every picker/chip reads through it.
@@ -78,7 +80,7 @@ function LessonsPage({
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
   const [openCell, setOpenCell] = React.useState<{ row: any; field: string } | null>(null);
   const [query, setQuery] = React.useState('');
-  const [showPaste, setShowPaste] = React.useState(false);
+  const [showExcel, setShowExcel] = React.useState(false);
   const [showTmpl, setShowTmpl] = React.useState(false);
   const [showNotes, setShowNotes] = React.useState(false);
   const [editEntity, setEditEntity] = React.useState<{ kind: string; key: string } | null>(null);
@@ -135,28 +137,6 @@ function LessonsPage({
       return next;
     });
     setTimeout(() => setOpenCell({ row: blank.id, field: 'class' }), 60);
-  };
-
-  const applyPaste = (parsed: any) => {
-    const out = parsed.map((p: any, i: any) => {
-      const sub = LC_SUBJECTS.find((s) => s.name === p.subject || s.short === p.subject);
-      const tch = LC_TEACHERS.find((t) => t.name === p.teacher);
-      const rm = LC_ROOMS.find((r) => r.no === p.room);
-      let dur = 1;
-      if (p.block === '2') dur = 2;
-      else if (p.block === '3') dur = 3;
-      else if (p.block && p.block.includes('+')) dur = parseInt(p.block.split('+')[0], 10) || 1;
-      return {
-        id: 'L' + Date.now() + '_' + i,
-        classes: p.classes,
-        subjectId: sub?.id || '',
-        teacher: tch?.id || '',
-        room: rm?.id || '',
-        hours: p.hours,
-        dur,
-      };
-    });
-    setRows((rs: any) => [...out, ...rs]);
   };
 
   const applyTemplate = (T: any, classNames: any) => {
@@ -220,7 +200,7 @@ function LessonsPage({
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
               Shablon
             </button>
-            <button onClick={() => setShowPaste(true)} style={ghostBtnT}>
+            <button onClick={() => setShowExcel(true)} style={ghostBtnT}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></svg>
               Excel'dan
             </button>
@@ -327,7 +307,7 @@ function LessonsPage({
 
       <SidePanel rows={rows} filterClasses={[]} />
 
-      {showPaste && <BulkPasteModal onClose={() => setShowPaste(false)} onApply={applyPaste} />}
+      {showExcel && <ExcelImportModal onClose={() => setShowExcel(false)} onImported={onImported} />}
       {showTmpl && <TemplatesModal onClose={() => setShowTmpl(false)} onApply={applyTemplate} />}
       <DesignNotes open={showNotes} onClose={() => setShowNotes(false)} />
       {editEntity && (
