@@ -165,19 +165,12 @@ export function DraggableLessonCard({
                                 </div>
                             )}
 
-                            {/* Group Name & Bi-Weekly Info */}
-                            {(lesson.groupName || (lesson.isBiWeekly && lesson.weekIndex !== undefined)) && (
+                            {/* Group Name Info */}
+                            {lesson.groupName && (
                                 <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
-                                    {lesson.groupName && (
-                                        <span className={cn('text-xs font-semibold text-indigo-700 bg-indigo-50 px-1 rounded', compact && 'text-[10px]')}>
-                                            {lesson.groupName}
-                                        </span>
-                                    )}
-                                    {lesson.isBiWeekly && lesson.weekIndex !== undefined && (
-                                        <span className={cn('text-xs font-bold text-purple-700 bg-purple-50 px-1 rounded', compact && 'text-[10px]')}>
-                                            {lesson.weekIndex === 0 ? 'Week A' : 'Week B'}
-                                        </span>
-                                    )}
+                                    <span className={cn('text-xs font-semibold text-indigo-700 bg-indigo-50 px-1 rounded', compact && 'text-[10px]')}>
+                                        {lesson.groupName}
+                                    </span>
                                 </div>
                             )}
 

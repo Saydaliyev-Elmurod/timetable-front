@@ -100,25 +100,38 @@ const DroppableTimeSlotImpl = ({
       }
       if (manualPlacementStatus === 'teacher-conflict') {
         return cn(
-          'border border-red-300 p-1 transition-colors bg-red-50 relative cursor-pointer hover:bg-red-100',
+          'border border-red-300 p-0 transition-colors bg-red-50 relative cursor-pointer hover:bg-red-100',
           compact ? 'min-h-[60px]' : 'min-h-[70px]',
         );
       }
       if (manualPlacementStatus === 'room-conflict') {
         return cn(
-          'border border-blue-300 p-1 transition-colors bg-blue-50 relative cursor-pointer hover:bg-blue-100',
+          'border border-blue-300 p-0 transition-colors bg-blue-50 relative cursor-pointer hover:bg-blue-100',
           compact ? 'min-h-[60px]' : 'min-h-[70px]',
         );
       }
       return cn(
-        'border border-green-400 p-1 transition-colors bg-green-50 relative cursor-pointer hover:bg-green-100 ring-1 ring-inset ring-green-200',
+        'border border-green-400 p-0 transition-colors bg-green-50 relative cursor-pointer hover:bg-green-100 ring-1 ring-inset ring-green-200',
+        compact ? 'min-h-[60px]' : 'min-h-[70px]',
+      );
+    }
+
+    if (isOver) {
+      if (!canDrop) {
+        return cn(
+          'border border-red-400 p-0 transition-colors bg-red-50 relative opacity-50',
+          compact ? 'min-h-[60px]' : 'min-h-[70px]',
+        );
+      }
+      return cn(
+        'border border-green-400 p-0 transition-colors bg-green-50 relative cursor-pointer hover:bg-green-100 ring-1 ring-inset ring-green-200',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
       );
     }
 
     if (!draggedLesson || !allLessons) {
       return cn(
-        'border border-gray-200 p-1 transition-colors relative',
+        'border border-gray-200 p-0 transition-colors relative',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
         isOver && canDrop && 'bg-blue-50 border-blue-300',
         lessons.length === 0 && 'hover:bg-gray-50',
@@ -127,7 +140,7 @@ const DroppableTimeSlotImpl = ({
 
     if (rowClass && draggedLesson.class !== rowClass) {
       return cn(
-        'border border-gray-200 p-1 transition-colors relative opacity-50 bg-gray-100',
+        'border border-gray-200 p-0 transition-colors relative opacity-50 bg-gray-100',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
       );
     }
@@ -138,7 +151,7 @@ const DroppableTimeSlotImpl = ({
       draggedLesson.class === rowClass
     ) {
       return cn(
-        'border border-gray-200 p-1 transition-colors relative',
+        'border border-gray-200 p-0 transition-colors relative',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
         'bg-gray-50',
       );
@@ -154,7 +167,7 @@ const DroppableTimeSlotImpl = ({
 
     if (teacherConflict) {
       return cn(
-        'border border-red-300 p-1 transition-colors bg-red-100 relative',
+        'border border-red-300 p-0 transition-colors bg-red-100 relative',
         compact ? 'min-h-[60px]' : 'min-h-[70px]',
       );
     }
@@ -170,14 +183,14 @@ const DroppableTimeSlotImpl = ({
 
       if (roomConflict) {
         return cn(
-          'border border-blue-300 p-1 transition-colors bg-blue-100 relative',
+          'border border-blue-300 p-0 transition-colors bg-blue-100 relative',
           compact ? 'min-h-[60px]' : 'min-h-[70px]',
         );
       }
     }
 
     return cn(
-      'border border-green-300 p-1 transition-colors bg-green-100 relative',
+      'border border-green-300 p-0 transition-colors bg-green-100 relative',
       compact ? 'min-h-[60px]' : 'min-h-[70px]',
     );
   };
@@ -185,7 +198,7 @@ const DroppableTimeSlotImpl = ({
   return (
     <div
       ref={drop as any}
-      className={getSlotStyle()}
+      className={cn(getSlotStyle(), 'min-w-0')}
       onClick={() => {
         if (selectedLesson && onManualPlace) {
           onManualPlace(day, timeSlot);
@@ -193,101 +206,74 @@ const DroppableTimeSlotImpl = ({
       }}
     >
       {(() => {
+        const checkConflict = (currentLesson: typeof lessons[0]) => {
+          if (!allLessons) return false;
+          return allLessons.some((l) => {
+            if (l.id === currentLesson.id) return false;
+            if (l.day !== day || l.timeSlot !== timeSlot) return false;
+            
+            if (l.teacherId && currentLesson.teacherId && l.teacherId === currentLesson.teacherId) return true;
+            if (l.roomId && currentLesson.roomId && l.roomId === currentLesson.roomId) return true;
+            
+            if (l.classId === currentLesson.classId) {
+              if (l.groupName && currentLesson.groupName && l.groupName !== currentLesson.groupName) return false;
+              if (l.weekIndex !== null && currentLesson.weekIndex !== null && l.weekIndex !== currentLesson.weekIndex) return false;
+              return true;
+            }
+            return false;
+          });
+        };
+
         const weekALesson = lessons.find((l) => l.weekIndex === 0);
         const weekBLesson = lessons.find((l) => l.weekIndex === 1);
-        const isWeekABPair = lessons.length === 2 && !!weekALesson && !!weekBLesson;
+        const hasBiWeekly = lessons.some((l) => l.isBiWeekly || l.weekIndex === 0 || l.weekIndex === 1);
 
-        if (isWeekABPair) {
+        if (hasBiWeekly) {
           return (
-            <div className="relative w-full h-full">
-              <div
-                className="absolute inset-0"
-                style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)', zIndex: 10 }}
-              >
-                <div className="h-full w-full pr-[50%] pb-[50%]">
+            <div className="flex flex-col h-full w-full gap-0">
+              {weekALesson && (
+                <div className="relative min-h-0 flex-1 border-b border-gray-300">
                   <DraggableLessonCard
-                    lesson={weekALesson!}
+                    lesson={weekALesson}
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onToggleLock={onToggleLock}
                     displayOptions={displayOptions}
                     compact={true}
                     showClass={showClass}
-                    hasConflict={
-                      allLessons
-                        ? allLessons.some(
-                            (l) =>
-                              l.id !== weekALesson!.id &&
-                              l.day === day &&
-                              l.timeSlot === timeSlot &&
-                              (l.teacherId === weekALesson!.teacherId ||
-                                (l.roomId !== 0 && l.roomId === weekALesson!.roomId) ||
-                                l.classId === weekALesson!.classId),
-                          )
-                        : false
-                    }
-                    isSelected={selectedLesson?.id === weekALesson!.id}
+                    hasConflict={checkConflict(weekALesson)}
+                    isSelected={selectedLesson?.id === weekALesson.id}
                     onSelect={noopSelect}
                   />
                 </div>
-              </div>
-
-              <div
-                className="absolute inset-0"
-                style={{ clipPath: 'polygon(100% 100%, 0 100%, 100% 0)', zIndex: 10 }}
-              >
-                <div className="h-full w-full pl-[50%] pt-[50%]">
+              )}
+              {weekBLesson && (
+                <div className="relative min-h-0 flex-1">
                   <DraggableLessonCard
-                    lesson={weekBLesson!}
+                    lesson={weekBLesson}
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onToggleLock={onToggleLock}
                     displayOptions={displayOptions}
                     compact={true}
                     showClass={showClass}
-                    hasConflict={
-                      allLessons
-                        ? allLessons.some(
-                            (l) =>
-                              l.id !== weekBLesson!.id &&
-                              l.day === day &&
-                              l.timeSlot === timeSlot &&
-                              (l.teacherId === weekBLesson!.teacherId ||
-                                (l.roomId !== 0 && l.roomId === weekBLesson!.roomId) ||
-                                l.classId === weekBLesson!.classId),
-                          )
-                        : false
-                    }
-                    isSelected={selectedLesson?.id === weekBLesson!.id}
+                    hasConflict={checkConflict(weekBLesson)}
+                    isSelected={selectedLesson?.id === weekBLesson.id}
                     onSelect={noopSelect}
                   />
                 </div>
-              </div>
+              )}
             </div>
           );
         }
 
         return (
-          <div className="flex h-full w-full gap-1">
+          <div className="flex h-full w-full gap-0">
             {lessons.map((lesson) => {
-              const lessonConflict = allLessons
-                ? allLessons.some(
-                    (l) =>
-                      l.id !== lesson.id &&
-                      l.day === day &&
-                      l.timeSlot === timeSlot &&
-                      (l.teacherId === lesson.teacherId ||
-                        (l.roomId !== 0 && l.roomId === lesson.roomId) ||
-                        l.classId === lesson.classId),
-                  )
-                : false;
-
-              const isSingleBiWeekly = lessons.length === 1 && lesson.isBiWeekly;
-
               return (
                 <div
                   key={lesson.id}
-                  className={cn('relative', isSingleBiWeekly ? 'w-1/2' : 'flex-1')}
+                  className="relative min-w-0 flex-1 border-r border-gray-300 last:border-r-0"
                 >
                   <DraggableLessonCard
                     lesson={lesson}
@@ -297,7 +283,7 @@ const DroppableTimeSlotImpl = ({
                     displayOptions={displayOptions}
                     compact={compact || lessons.length > 1}
                     showClass={showClass}
-                    hasConflict={lessonConflict}
+                    hasConflict={checkConflict(lesson)}
                     isSelected={selectedLesson?.id === lesson.id}
                     onSelect={noopSelect}
                   />

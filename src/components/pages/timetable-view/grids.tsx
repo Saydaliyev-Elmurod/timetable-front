@@ -89,16 +89,16 @@ export const ClassViewGrid = ({
 
       <div className="p-4 overflow-x-auto">
         <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
+          <div className="grid grid-cols-[100px_repeat(6,minmax(0,1fr))] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 min-w-0">
+              <span className="text-sm font-medium truncate">Time</span>
             </div>
             {DAYS.map((day) => (
               <div
                 key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0 min-w-0"
               >
-                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+                <span className="text-sm font-medium truncate">{DAY_LABELS[day]}</span>
               </div>
             ))}
 
@@ -171,16 +171,16 @@ export const TeacherViewGrid = ({
 
       <div className="p-4 overflow-x-auto">
         <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
+          <div className="grid grid-cols-[100px_repeat(6,minmax(0,1fr))] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 min-w-0">
+              <span className="text-sm font-medium truncate">Time</span>
             </div>
             {DAYS.map((day) => (
               <div
                 key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0 min-w-0"
               >
-                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+                <span className="text-sm font-medium truncate">{DAY_LABELS[day]}</span>
               </div>
             ))}
 
@@ -253,16 +253,16 @@ export const RoomViewGrid = ({
 
       <div className="p-4 overflow-x-auto">
         <div className="min-w-[900px]">
-          <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
-              <span className="text-sm font-medium">Time</span>
+          <div className="grid grid-cols-[100px_repeat(6,minmax(0,1fr))] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 min-w-0">
+              <span className="text-sm font-medium truncate">Time</span>
             </div>
             {DAYS.map((day) => (
               <div
                 key={day}
-                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0"
+                className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300 last:border-r-0 min-w-0"
               >
-                <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
+                <span className="text-sm font-medium truncate">{DAY_LABELS[day]}</span>
               </div>
             ))}
 
@@ -334,19 +334,19 @@ export const CompactViewGrid = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="p-4 overflow-x-auto">
+      <div className="p-4 overflow-auto max-h-[75vh]">
         <div className="min-w-max">
-          <div className="border border-gray-300 rounded-lg overflow-hidden">
+          <div className="border border-gray-300 rounded-lg">
             <div
-              className="grid gap-0"
+              className="grid gap-0 sticky top-0 z-30 shadow-sm"
               style={{
                 gridTemplateColumns: `100px 80px repeat(${classes.length}, 140px)`,
               }}
             >
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
+              <div className="bg-indigo-600 text-white p-3 flex items-center justify-center border-r border-indigo-500 sticky left-0 z-40">
                 <span className="text-sm font-medium">Day</span>
               </div>
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-3 flex items-center justify-center border-r border-indigo-500">
+              <div className="bg-indigo-600 text-white p-3 flex items-center justify-center border-r border-indigo-500 sticky left-[100px] z-40">
                 <span className="text-sm font-medium">Period</span>
               </div>
               {classes.map((className) => {
@@ -355,13 +355,13 @@ export const CompactViewGrid = ({
                   <div
                     key={className}
                     className={cn(
-                      'text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors',
+                      'text-white p-3 flex items-center justify-center border-r border-indigo-500 last:border-r-0 transition-colors min-w-0',
                       isTargetClass
                         ? 'bg-gradient-to-r from-green-600 to-green-700'
                         : 'bg-gradient-to-r from-indigo-600 to-indigo-700',
                     )}
                   >
-                    <span className="text-sm font-medium">{className}</span>
+                    <span className="text-sm font-medium truncate">{className}</span>
                   </div>
                 );
               })}
@@ -375,7 +375,7 @@ export const CompactViewGrid = ({
                   dayIndex > 0 && 'border-t-4 border-indigo-600',
                 )}
               >
-                <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200 w-[100px] flex-shrink-0">
+                <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200 w-[100px] flex-shrink-0 sticky left-0 z-20">
                   <span className="text-sm font-medium">{DAY_LABELS[day]}</span>
                 </div>
 
@@ -388,7 +388,7 @@ export const CompactViewGrid = ({
                         gridTemplateColumns: `80px repeat(${classes.length}, 140px)`,
                       }}
                     >
-                      <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200">
+                      <div className="bg-gray-50 p-2 flex items-center justify-center border-r border-gray-200 sticky left-[100px] z-20">
                         <span className="text-xs font-medium">Period {slotId}</span>
                       </div>
 
