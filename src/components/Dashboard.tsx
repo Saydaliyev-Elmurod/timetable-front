@@ -2,23 +2,14 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from '@/i18n/index';
 import { organizationApi } from '@/api/organizationApi';
 import { setLanguage, type AppLanguage } from '@/lib/lang';
-import { BrandLogo } from './brand/Brand';
+import { BrandMark } from './brand/Brand';
+import { NavRailIcon, type NavIconName } from './nav/NavRailIcon';
 import {
-  BookOpen,
-  Users,
-  GraduationCap,
-  Calendar,
-  FileText,
-  CalendarDays,
   LogOut,
   User as UserIcon,
   Languages,
   Check,
-  Building2,
-  DoorOpen,
   Loader2,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
@@ -30,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Button } from './ui/button';
-import { Separator } from './ui/separator';
 import { User } from '@/types/common';
 import { GenerationProvider } from '@/context/GenerationNotifier';
 
@@ -64,8 +54,6 @@ interface DashboardProps {
 export default function Dashboard({ user, onLogout }: DashboardProps) {
   const { t, locale, setLocale } = useTranslation();
   const [currentPage, setCurrentPage] = useState('organization');
-  // Chap nav sidebar yopiq/ochiq holati.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -93,18 +81,54 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     organizationApi.updateLang(code);
   };
 
-  const organizationItems = [
-    { id: 'organization', label: t('dashboard.organization'), icon: Building2 },
+  // B variant — har bo'limga moslashtirilgan ikon (NavRailIcon nomi).
+  const organizationItems: { id: string; label: string; icon: NavIconName }[] = [
+    { id: 'organization', label: t('dashboard.organization'), icon: 'maktab' },
   ];
 
-  const navigationItems = [
-    { id: 'classes', label: t('dashboard.classes'), icon: BookOpen },
-    { id: 'teachers', label: t('dashboard.teachers'), icon: Users },
-    { id: 'subjects', label: t('dashboard.subjects'), icon: GraduationCap },
-    { id: 'rooms', label: t('dashboard.rooms'), icon: DoorOpen },
-    { id: 'lessons', label: t('dashboard.lessons'), icon: Calendar },
-    { id: 'timetables', label: t('dashboard.timetables'), icon: CalendarDays },
+  const navigationItems: { id: string; label: string; icon: NavIconName }[] = [
+    { id: 'classes', label: t('dashboard.classes'), icon: 'sinflar' },
+    { id: 'teachers', label: t('dashboard.teachers'), icon: 'oqituvchilar' },
+    { id: 'subjects', label: t('dashboard.subjects'), icon: 'fanlar' },
+    { id: 'rooms', label: t('dashboard.rooms'), icon: 'xonalar' },
+    { id: 'lessons', label: t('dashboard.lessons'), icon: 'darslar' },
+    { id: 'timetables', label: t('dashboard.timetables'), icon: 'jadvallari' },
   ];
+
+  // Rail pastidagi avatar uchun bosh harflar (maks. 2 ta).
+  const initials = (user?.name || user?.email || 'U')
+    .split(/\s+/)
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  // Bitta nav element — ikon + ostidagi qisqa label, faol holatda indigo accent.
+  const renderNavItem = (item: { id: string; label: string; icon: NavIconName }) => {
+    const isActive = currentPage === item.id;
+    return (
+      <button
+        key={item.id}
+        onClick={() => setCurrentPage(item.id)}
+        title={item.label}
+        className={`flex flex-col items-center gap-1 rounded-[10px] px-1 py-[9px] transition-colors ${
+          isActive
+            ? 'bg-indigo-50 text-indigo-700'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        }`}
+      >
+        <NavRailIcon name={item.icon} size={20} stroke={isActive ? 2 : 1.75} />
+        <span
+          className={`max-w-[60px] truncate text-center text-[10.5px] leading-tight ${
+            isActive ? 'font-bold' : 'font-medium'
+          }`}
+        >
+          {item.label}
+        </span>
+      </button>
+    );
+  };
 
   const renderPage = React.useMemo(() => {
     switch (currentPage) {
@@ -143,86 +167,26 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   return (
     <GenerationProvider onNavigate={setCurrentPage}>
     <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-200`}>
-        {/* Logo/Brand + collapse toggle */}
-        <div className={`border-b border-sidebar-border flex items-center ${sidebarCollapsed ? 'justify-center p-4' : 'justify-between p-6'}`}>
-          {!sidebarCollapsed && <BrandLogo size={28} />}
-          <button
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            title={sidebarCollapsed ? 'Ochish' : 'Yopish'}
-            className="p-1.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-          >
-            {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-          </button>
-        </div>
+      {/* Sidebar — B variant: kompakt ikon-rail (76px), har doim ko'rinadi */}
+      <aside className="w-[76px] shrink-0 bg-white border-r border-slate-200 flex flex-col items-center py-3.5">
+        {/* Brand glyph */}
+        <BrandMark size={36} className="mb-[18px]" />
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-3">
-          {/* Organization Section */}
-          <div className="space-y-1">
-            {!sidebarCollapsed && (
-              <div className="px-3 py-2">
-                <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                  {t('dashboard.organization')}
-                </h3>
-              </div>
-            )}
-            {organizationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentPage(item.id)}
-                  title={sidebarCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    sidebarCollapsed ? 'justify-center' : ''
-                  } ${
-                    currentPage === item.id
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {!sidebarCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
-
-          <Separator className="bg-sidebar-border" />
-
-          {/* Main Navigation Section */}
-          <div className="space-y-1">
-            {!sidebarCollapsed && (
-              <div className="px-3 py-2">
-                <h3 className="text-xs uppercase tracking-wider text-sidebar-foreground/60 font-semibold">
-                  {t('dashboard.management')}
-                </h3>
-              </div>
-            )}
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentPage(item.id)}
-                  title={sidebarCollapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                    sidebarCollapsed ? 'justify-center' : ''
-                  } ${
-                    currentPage === item.id
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
-                  {!sidebarCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
+        {/* Navigation — Maktab guruhi, nozik chiziq, keyin Boshqaruv guruhi */}
+        <nav className="flex flex-col gap-0.5 w-full flex-1 overflow-y-auto px-2">
+          {organizationItems.map(renderNavItem)}
+          <div className="h-px bg-slate-200 mx-2 my-1.5" />
+          {navigationItems.map(renderNavItem)}
         </nav>
+
+        {/* Foydalanuvchi avatari → profil */}
+        <button
+          onClick={() => setCurrentPage('profile')}
+          title={user?.name || user?.email || ''}
+          className="mt-2.5 h-[34px] w-[34px] rounded-full bg-gradient-to-br from-teal-500 to-teal-600 text-white grid place-items-center text-xs font-extrabold"
+        >
+          {initials}
+        </button>
       </aside>
 
       {/* Main Content */}

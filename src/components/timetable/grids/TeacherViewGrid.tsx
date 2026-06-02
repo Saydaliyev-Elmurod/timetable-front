@@ -46,7 +46,7 @@ export function TeacherViewGrid({
 
             <div className="p-4 overflow-x-auto">
                 <div className="min-w-[900px]">
-                    <div className="grid grid-cols-[100px_repeat(6,1fr)] gap-0 border border-gray-300 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-[100px_repeat(6,minmax(0,1fr))] gap-0 border border-gray-300 rounded-lg overflow-hidden">
                         <div className="bg-gray-100 p-2 flex items-center justify-center border-r border-gray-300">
                             <span className="text-sm font-medium">Time</span>
                         </div>

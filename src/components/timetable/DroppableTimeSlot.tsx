@@ -330,7 +330,7 @@ export function DroppableTimeSlot({
     return (
         <div
             ref={drop as any}
-            className={getSlotStyle()}
+            className={cn(getSlotStyle(), 'min-w-0')}
             onClick={() => {
                 if (selectedLesson && onManualPlace) {
                     onManualPlace(day, timeSlot);
@@ -361,7 +361,7 @@ export function DroppableTimeSlot({
                     return (
                         <div
                             key={lesson.id}
-                            className={cn('relative', isSingleBiWeekly ? 'w-1/2' : 'flex-1')}
+                            className={cn('relative min-w-0', isSingleBiWeekly ? 'w-1/2' : 'flex-1')}
                         >
                             <DraggableLessonCard
                                 lesson={lesson}
