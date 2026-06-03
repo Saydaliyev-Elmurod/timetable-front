@@ -56,6 +56,26 @@ function weeksOverlap(a: number | null, b: number | null): boolean {
   return a == null || b == null || a === b;
 }
 
+/** Slot kaliti — bir (kun, soat) uchun bitta bucket. */
+const slotKey = (day: string, hour: number) => `${day}-${hour}`;
+
+/**
+ * Joylashtirilgan darslarni (kun, soat) bo'yicha indekslaydi, shunda
+ * `validatePlacement` butun ro'yxatni emas, faqat nishon slotdagi kichik
+ * bucket'ni aylanadi (O(n) skan → O(1) qidiruv + kichik bucket).
+ */
+function buildSlotIndex(lessons: Lesson[]): Map<string, Lesson[]> {
+  const idx = new Map<string, Lesson[]>();
+  for (const l of lessons) {
+    if (!l.day || typeof l.timeSlot !== 'number') continue;
+    const k = slotKey(l.day, l.timeSlot);
+    const bucket = idx.get(k);
+    if (bucket) bucket.push(l);
+    else idx.set(k, [l]);
+  }
+  return idx;
+}
+
 /** Scheduled dars id si "1042" ko'rinishida — son. Unscheduled (uuid) uchun null. */
 function numericLessonId(card: Lesson): number | null {
   const fromRaw = (card as any).rawDetails?.lessonId;
@@ -223,7 +243,12 @@ export function useTimetableEditor({
 
   // ── Frontend validatsiya ──────────────────────────────────────────────────
   const validatePlacement = useCallback(
-    (card: Lesson, pos: NonNullable<SlotPos>, exclude: Set<string>): { ok: boolean; reason?: string } => {
+    (
+      card: Lesson,
+      pos: NonNullable<SlotPos>,
+      exclude: Set<string>,
+      slotIndex: Map<string, Lesson[]>,
+    ): { ok: boolean; reason?: string } => {
       // Vaqt chegaralari
       if (!isAvail(classAvail, card.classId, pos.day, pos.hour)) {
         return { ok: false, reason: 'Sinf vaqt chegarasi' };
@@ -235,19 +260,21 @@ export function useTimetableEditor({
         return { ok: false, reason: 'Fan vaqt chegarasi' };
       }
 
-      // Egallanganlik (boshqa darslar bilan to'qnashuv)
-      for (const l of scheduledRef.current) {
-        if (exclude.has(l.id)) continue;
-        if (l.day !== pos.day || l.timeSlot !== pos.hour) continue;
-        if (!weeksOverlap(l.weekIndex ?? null, pos.week)) continue;
-        if (card.teacherId && l.teacherId === card.teacherId) {
-          return { ok: false, reason: "O'qituvchi band" };
-        }
-        if (card.roomId && l.roomId === card.roomId) {
-          return { ok: false, reason: 'Xona band' };
-        }
-        if (l.classId === card.classId) {
-          return { ok: false, reason: 'Sinf band' };
+      // Egallanganlik — faqat nishon slotdagi darslar bilan to'qnashuv (O(1) bucket).
+      const bucket = slotIndex.get(slotKey(pos.day, pos.hour));
+      if (bucket) {
+        for (const l of bucket) {
+          if (exclude.has(l.id)) continue;
+          if (!weeksOverlap(l.weekIndex ?? null, pos.week)) continue;
+          if (card.teacherId && l.teacherId === card.teacherId) {
+            return { ok: false, reason: "O'qituvchi band" };
+          }
+          if (card.roomId && l.roomId === card.roomId) {
+            return { ok: false, reason: 'Xona band' };
+          }
+          if (l.classId === card.classId) {
+            return { ok: false, reason: 'Sinf band' };
+          }
         }
       }
       return { ok: true };
@@ -401,9 +428,13 @@ export function useTimetableEditor({
       // (guruh a'zolari bir slotda birga turishi normal; egalari bo'shaydi).
       const excludeForDrag = new Set<string>([...movingIds, ...occupantIds]);
 
+      // Bir marta indekslaymiz — scheduledRef bu handler ichida o'zgarmaydi,
+      // shuning uchun barcha validatePlacement chaqiruvlari shu indeksdan foydalanadi.
+      const slotIndex = buildSlotIndex(scheduledRef.current);
+
       // Har bir guruh a'zosi nishonga sig'ishi kerak.
       for (const card of movingGroup) {
-        const v = validatePlacement(card, targetPos, excludeForDrag);
+        const v = validatePlacement(card, targetPos, excludeForDrag, slotIndex);
         if (!v.ok) {
           toast.error("Bu yerga qo'yib bo'lmaydi", {
             description: v.reason,
@@ -432,7 +463,7 @@ export function useTimetableEditor({
       // SWAP — egalarni sudralgan guruhning eski slotiga qo'ya olamizmi?
       const canSwapBack =
         draggedPos != null &&
-        occupants.every((o) => validatePlacement(o, draggedPos, excludeForDrag).ok);
+        occupants.every((o) => validatePlacement(o, draggedPos, excludeForDrag, slotIndex).ok);
 
       if (canSwapBack) {
         pushOp({
