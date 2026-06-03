@@ -230,3 +230,21 @@ html {
     display: none;
   }
 }
+
+/**
+ * Deferred list item for long, scrollable lists (e.g. the unplaced-lessons
+ * sidebar). Off-screen items skip layout/paint until scrolled near.
+ * `contain-intrinsic-size: auto none auto 110px` — width is decided by the
+ * fixed-width column (none), ~110px height placeholder remembered after first
+ * paint. Only apply to items in a genuinely overflowing list, never above-fold.
+ */
+.cv-list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 110px;
+}
+
+@supports not (content-visibility: auto) {
+  .cv-list-item {
+    contain: layout style paint;
+  }
+}

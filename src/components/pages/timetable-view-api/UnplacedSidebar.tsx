@@ -84,7 +84,8 @@ export function UnplacedSidebar({
         ) : (
           <div className="space-y-3">
             {unplacedLessons.map((lesson) => (
-              <div key={lesson.id}>
+              <div key={lesson.id} className="cv-list-item">
+
                 <DraggableLessonCard
                   lesson={lesson}
                   onEdit={onEdit}
