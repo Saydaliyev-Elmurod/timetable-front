@@ -86,6 +86,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [confirmDel, setConfirmDel] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     fetchTimetables();
@@ -134,9 +135,6 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('timetables.delete_confirm') || "Rostdan ham bu jadvalni o'chirmoqchimisiz?")) {
-      return;
-    }
     try {
       const response = await apiCall<void>(`http://localhost:8080/api/timetable/v1/timetable/${id}`, {
         method: 'DELETE',
@@ -144,6 +142,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
       if (response.error) throw new Error(response.error.message);
       setTimetables(prev => prev.filter((t) => t.id !== id));
       toast.success("Jadval muvaffaqiyatli o'chirildi");
+      setConfirmDel(null);
     } catch (err) {
       logger.error('Delete error:', err);
       toast.error("Jadvalni o'chirishda xatolik");
@@ -369,7 +368,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                           {/* Delete */}
                           <button
                             className="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); handleDelete(timetable.id); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDel({ id: timetable.id, name: timetable.name }); }}
                             title="O'chirish"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -479,6 +478,43 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modals */}
+      {confirmDel && (
+        <ConfirmDialog 
+          title={t('timetables.delete_title', "Jadvalni o'chirish")}
+          desc={t('timetables.delete_desc', `"${confirmDel.name}" jadvalini o'chirishni tasdiqlaysizmi?`)}
+          onConfirm={() => handleDelete(confirmDel.id)}
+          onClose={() => setConfirmDel(null)}
+        />
+      )}
     </PageContainer>
+  );
+}
+
+// ─── Shared Components ──────────────────────────────────────────────────
+
+function ConfirmDialog({ title, desc, onConfirm, onClose }: any) {
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-[400px] shadow-2xl p-6" style={{ boxShadow: '0 20px 50px -12px rgba(0,0,0,0.2)' }}>
+        <h3 className="text-[20px] font-extrabold text-slate-900 font-plus-jakarta mb-2">{title}</h3>
+        <p className="text-[14px] font-medium text-slate-500 font-manrope mb-6">{desc}</p>
+        <div className="flex justify-end gap-2.5">
+          <button 
+            onClick={onClose}
+            className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold text-[14px] font-manrope cursor-pointer hover:bg-slate-50 transition-colors"
+          >
+            Bekor
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="h-10 px-5 rounded-xl border-0 bg-rose-500 text-white font-bold text-[14px] font-manrope cursor-pointer hover:bg-rose-600 transition-colors"
+          >
+            O'chirish
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

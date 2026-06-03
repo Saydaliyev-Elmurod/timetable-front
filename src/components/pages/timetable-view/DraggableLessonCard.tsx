@@ -98,11 +98,11 @@ const DraggableLessonCardImpl = ({
           ref={drag as any}
           style={{ opacity }}
           className={cn(
-            'p-2 rounded-lg border-2 cursor-pointer hover:shadow-md transition-all h-full relative overflow-hidden',
+            'cursor-pointer transition-all h-full relative overflow-hidden w-full',
             subjectColor,
-            lesson.isLocked && 'ring-2 ring-yellow-500',
-            isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-lg',
-            compact && 'p-1.5',
+            lesson.isLocked && 'ring-2 ring-yellow-500 z-10',
+            isSelected && 'ring-2 ring-blue-500 border-blue-500 shadow-lg z-10',
+            compact ? 'p-1' : 'p-2 rounded-lg border-2 hover:shadow-md'
           )}
           onClick={(e) => {
             if (onSelect) {
@@ -131,21 +131,14 @@ const DraggableLessonCardImpl = ({
                   {lesson.subject}
                 </div>
               )}
-
-              {(lesson.groupName || (lesson.isBiWeekly && lesson.weekIndex !== undefined)) && (
-                <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
-                  {lesson.groupName && (
+                {/* Group Name Info */}
+                {lesson.groupName && (
+                  <div className="flex flex-wrap gap-1 mt-0.5 mb-0.5">
                     <span className={cn('text-xs font-semibold text-indigo-700 bg-indigo-50 px-1 rounded', compact && 'text-[10px]')}>
                       {lesson.groupName}
                     </span>
-                  )}
-                  {lesson.isBiWeekly && lesson.weekIndex !== undefined && (
-                    <span className={cn('text-xs font-bold text-purple-700 bg-purple-50 px-1 rounded', compact && 'text-[10px]')}>
-                      {lesson.weekIndex === 0 ? 'Week A' : 'Week B'}
-                    </span>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
               {showClass && (
                 <div className={cn('text-sm opacity-75 truncate', compact && 'text-xs')}>
