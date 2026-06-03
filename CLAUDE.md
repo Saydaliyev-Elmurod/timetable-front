@@ -35,6 +35,9 @@ The CRUD entity pages (`Classes/Teachers/Subjects/Rooms`) share these. Reuse bef
 - `ConnectDragSource`/`ConnectDropTarget` → `Ref<HTMLDivElement>` mismatch
 - react-dnd v16 + React 18 known issue — works at runtime, ignore TS errors
 
+## Build / Chunking (⚠️ prod-breaking trap)
+- `vite.config.ts` `manualChunks` keeps the **entire React ecosystem in one `vendor` chunk**; only `xlsx` is split out (huge + lazy + no React dep). Do NOT re-split React/react-dom/radix/react-dnd into separate vendor chunks. They're CommonJS and share Rollup's CJS-interop helpers; any split puts the helpers in one chunk and React in another → a cross-chunk import cycle that leaves React in the TDZ when radix/react-dnd call `forwardRef`/`createContext` at module-eval time → **prod build white-screens** (`Cannot read properties of undefined (reading 'forwardRef')`). Dev is unaffected (unbundled ESM), so it only shows in `vite preview`/deploy. Verify any chunking change with a `vite preview` smoke test, not just `npm run build`.
+
 ## Styling
 - Tailwind CSS v4 + Shadcn/UI (`components/ui/`) — Tailwind must compile live, never dump a static `index.css`
 - Subject colors defined in `components/pages/timetable-view/constants.ts`

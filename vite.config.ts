@@ -61,39 +61,25 @@ export default defineConfig({
         manualChunks: (id) => {
           if (!id.includes('node_modules')) return undefined;
 
-          // React core
-          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
-            return 'vendor-react';
-          }
-          // Radix UI primitives
-          if (id.includes('@radix-ui/')) {
-            return 'vendor-radix';
-          }
-          // Drag-and-drop
-          if (id.includes('react-dnd') || id.includes('dnd-core')) {
-            return 'vendor-dnd';
-          }
-          // Charts (recharts is heavy)
-          if (id.includes('recharts') || id.includes('d3-')) {
-            return 'vendor-charts';
-          }
-          // Icons (lucide-react is large)
-          if (id.includes('lucide-react')) {
-            return 'vendor-icons';
-          }
-          // xlsx is huge (~400KB) — keep isolated so it only loads with ImportModal
+          // xlsx is huge (~400KB), lazy (only ImportModal), and has no React
+          // dependency — safe to isolate, and nothing imports it back so there
+          // is no cross-chunk cycle.
           if (id.includes('/xlsx/') || id.includes('xlsx-')) {
             return 'vendor-xlsx';
           }
-          // Forms & dates
-          if (id.includes('react-hook-form') || id.includes('react-day-picker') || id.includes('date-fns')) {
-            return 'vendor-forms';
-          }
-          // i18n
-          if (id.includes('i18next') || id.includes('react-i18next')) {
-            return 'vendor-i18n';
-          }
 
+          // Everything else (React, react-dom, scheduler, radix, react-dnd,
+          // lucide, i18n, forms…) goes in ONE chunk on purpose. React and these
+          // libs are CommonJS and share Rollup's CJS-interop helpers
+          // (__commonJS/__toESM). Splitting them into separate vendor chunks
+          // makes those helpers live in one chunk while React lives in another,
+          // so React's chunk imports helpers back from a chunk that imports
+          // React — a cross-chunk cycle. That leaves the React namespace in the
+          // temporal dead zone when a lib (radix, react-dnd) touches
+          // React.forwardRef/createContext at module-eval time, white-screening
+          // the prod build. Keeping them together makes every such cycle
+          // intra-chunk, which Rollup orders correctly. (Was a per-lib split;
+          // see git history — it white-screened under any split arrangement.)
           return 'vendor';
         },
       },
