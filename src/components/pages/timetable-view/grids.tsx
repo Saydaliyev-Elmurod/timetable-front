@@ -74,7 +74,7 @@ export const ClassViewGrid = ({
   return (
     <div
       className={cn(
-        'bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all',
+        'cv-grid-isolate bg-white rounded-lg border border-gray-200 overflow-hidden mb-6 transition-all',
         isTargetClass && 'ring-4 ring-green-400 border-green-500 shadow-lg',
       )}
     >
@@ -161,7 +161,7 @@ export const TeacherViewGrid = ({
     cellIndex.get(cellKey(day, timeSlot)) ?? EMPTY_LESSONS;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div className="cv-grid-isolate bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
       <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3">
         <div className="flex items-center gap-2">
           <User className="h-5 w-5" />
@@ -243,7 +243,7 @@ export const RoomViewGrid = ({
     cellIndex.get(cellKey(day, timeSlot)) ?? EMPTY_LESSONS;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+    <div className="cv-grid-isolate bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
       <div className="bg-gradient-to-r from-amber-600 to-amber-700 text-white px-6 py-3">
         <div className="flex items-center gap-2">
           <DoorOpen className="h-5 w-5" />

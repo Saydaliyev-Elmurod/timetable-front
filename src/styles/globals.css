@@ -189,3 +189,23 @@
 html {
   font-size: var(--font-size);
 }
+
+/**
+ * Render-isolation for repeated timetable grids (one per class/teacher/room).
+ * `content-visibility: auto` enforces layout/style/paint containment so a drag
+ * or cell mutation inside one grid reflows only that grid, never the whole list.
+ * `contain-intrinsic-size` is mandatory: its `auto` keyword lets the browser
+ * remember the real size after first paint while the px values are first-render
+ * placeholders (~900px wide grid, ~600px tall) that prevent scroll-jump.
+ */
+.cv-grid-isolate {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px auto 600px;
+}
+
+/* Fallback for browsers without content-visibility: still isolate reflow. */
+@supports not (content-visibility: auto) {
+  .cv-grid-isolate {
+    contain: layout style paint;
+  }
+}
