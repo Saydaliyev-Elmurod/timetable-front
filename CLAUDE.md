@@ -39,3 +39,11 @@ The CRUD entity pages (`Classes/Teachers/Subjects/Rooms`) share these. Reuse bef
 - Tailwind CSS v4 + Shadcn/UI (`components/ui/`) — Tailwind must compile live, never dump a static `index.css`
 - Subject colors defined in `components/pages/timetable-view/constants.ts`
 - NEVER use inline hex colors — use Tailwind utilities
+
+## Performance (render isolation & deferral)
+`content-visibility` utilities live in `styles/globals.css` (each paired with a `@supports not` fallback). **Reuse these — do NOT inline raw `content-visibility` or re-invent.**
+- `.cv-grid-isolate` → on each **repeated grid root** (per class/teacher/room) in `timetable-view/grids.tsx`. Isolates drag/cell reflow to one grid + defers off-screen grids. Keep on any new per-entity grid.
+- `.cv-view-cached` → marks an **inactive but mounted** view in `MainGrid.tsx`. Views are lazy-mounted on first visit then cached (not unmounted) for instant switching; inactive views are frozen from live drag props (null drag props + memo dep collapses to null) so they don't re-render mid-drag. Preserve that freeze if you touch `MainGrid`.
+- `.cv-list-item` → on items in a **genuinely overflowing** list (e.g. `UnplacedSidebar`). ⚠️ Do NOT add to paginated/above-the-fold rows (CRUD entity lists) — `content-visibility:auto` on in-viewport content *delays* paint (anti-pattern).
+- Drag conflict checks use a per-drop `day-hour` slot index (`buildSlotIndex` in `useTimetableEditor.ts`), not a full scan — keep `validatePlacement` O(1)-per-slot; never reintroduce a `scheduledRef.current` full loop.
+- `lib/webVitals.ts` → dev-only INP/LCP/CLS attribution, wired behind `import.meta.env.DEV` in `main.tsx` (stripped from prod). Open DevTools console + drag → `[web-vitals] INP …` to measure. Pass `{ beacon: '/url' }` to switch to prod RUM when an endpoint exists.
