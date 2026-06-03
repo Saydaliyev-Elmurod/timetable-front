@@ -211,27 +211,6 @@ html {
 }
 
 /**
- * Cached-but-inactive timetable view (classes/teachers/rooms/compact).
- * `content-visibility: hidden` keeps the view's DOM + rendering state in memory
- * but skips layout/paint, so switching back is near-instant (no remount). Pulled
- * out of flow with absolute positioning so only the active view drives height.
- * Only the small fixed set of 4 views is cached, so no eviction is needed.
- */
-.cv-view-cached {
-  content-visibility: hidden;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-/* Fallback: no content-visibility caching, just hide it. */
-@supports not (content-visibility: hidden) {
-  .cv-view-cached {
-    display: none;
-  }
-}
-
-/**
  * Deferred list item for long, scrollable lists (e.g. the unplaced-lessons
  * sidebar). Off-screen items skip layout/paint until scrolled near.
  * `contain-intrinsic-size: auto none auto 110px` — width is decided by the
