@@ -1,57 +1,20 @@
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useCrudResource } from '@/hooks';
 import {
   Upload, Building2, School, Clock, LayoutGrid,
-  Plus, Edit, Trash2, X, Loader2, ChevronRight,
+  Plus, Edit, Trash2, X, ChevronRight,
   ArrowRight, Check, Calendar, Filter,
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { RoomService, RoomResponse, RoomRequest, RoomType, ROOM_TYPE_DEFINITIONS } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import { TimeSlot } from '@/lib/teachers';
-import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
+import { CrudPageHeader, BulkActionBar, Pagination, AvailGrid, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { cn } from '@/components/ui/utils';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
-
-// ─── Constants ─────────────────────────────────────────────────────────
-
-const CL_DAYS = API_DAYS_OF_WEEK;
-
-// ─── Helpers ───────────────────────────────────────────────────────────
-
-type AvailState = Record<string, Record<number, boolean>>;
-
-const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res: AvailState = {};
-  days.forEach(d => {
-    res[d] = {};
-    periods.forEach(p => res[d][p] = true);
-  });
-  return res;
-};
-
-const convertToApiFormat = (state: AvailState): TimeSlot[] => {
-  return Object.entries(state).map(([day, pMap]) => ({
-    dayOfWeek: day,
-    lessons: Object.entries(pMap).filter(([_, v]) => v).map(([p]) => Number(p)).sort((a, b) => a - b)
-  }));
-};
-
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res = getFullAvail(periods, days);
-  days.forEach(d => periods.forEach(p => res[d][p] = false));
-  if (slots) {
-    slots.forEach(s => {
-      if (res[s.dayOfWeek]) {
-        (s.lessons ?? []).forEach(l => res[s.dayOfWeek][l] = true);
-      }
-    });
-  }
-  return res;
-};
 
 // ─── Components ────────────────────────────────────────────────────────
 
@@ -268,7 +231,7 @@ export default function RoomsPage() {
       )}
 
       {confirmDel && (
-        <ConfirmDialog 
+        <ConfirmDialog
           title={confirmDel.bulk ? t('rooms.bulk_delete_title', "Xonalarni o'chirish") : t('rooms.delete_title', "Xonani o'chirish")}
           desc={confirmDel.bulk ? t('rooms.bulk_delete_desc', `Siz haqiqatan ham ${confirmDel.n} ta xonani o'chirmoqchimisiz?`) : t('rooms.delete_desc', `"${confirmDel.name}" xonasini o'chirishni tasdiqlaysizmi?`)}
           onConfirm={confirmDel.bulk ? handleBulkDelete : () => {
@@ -407,7 +370,20 @@ function RoomEditor({ initial, periods, days, t, onClose, onSave }: any) {
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud vaqtlari</label>
             <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 12 }}>
-              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
+              <AvailGrid
+                avail={avail}
+                periods={periods}
+                days={days}
+                onChange={setAvail}
+                onColor="#4F46E5"
+                offColor="#E2E8F0"
+                cellRadius={6}
+                dayLabel={(d) => API_DAY_SHORT[d] || d.slice(0, 3)}
+                dayHeaderFont="700 11px Inter"
+                dayHeaderColor="#64748B"
+                periodFont="700 10px Inter"
+                periodColor="#94A3B8"
+              />
             </div>
           </div>
         </div>
@@ -417,51 +393,6 @@ function RoomEditor({ initial, periods, days, t, onClose, onSave }: any) {
           <button onClick={handleSave} style={{ ...btnPrimary, paddingLeft: 24, paddingRight: 24 }}>Saqlash</button>
         </footer>
       </div>
-    </div>
-  );
-}
-
-function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: any) {
-  const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
-    onChange(next);
-  };
-
-  // Kun (ustun) toggle — shu kunning barcha periodlari.
-  const toggleDay = (d: string) => {
-    const allOn = periods.every((p: number) => avail[d]?.[p]);
-    const next = { ...avail, [d]: {} as any };
-    periods.forEach((p: number) => next[d][p] = !allOn);
-    onChange(next);
-  };
-
-  // Period (qator) toggle — barcha faol kunlar bo'ylab.
-  const togglePeriod = (p: number) => {
-    const allOn = days.every((d: string) => avail[d]?.[p]);
-    const next = { ...avail };
-    days.forEach((d: string) => { next[d] = { ...next[d], [p]: !allOn }; });
-    onChange(next);
-  };
-
-  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
-      <div />
-      {days.map((d: string) => (
-        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 11px Inter', color: '#64748B', cursor: 'pointer' }}>{API_DAY_SHORT[d] || d.slice(0, 3)}</button>
-      ))}
-      {periods.map((p: number) => (
-        <React.Fragment key={p}>
-          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '700 10px Inter', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
-          {days.map((d: string) => (
-            <button key={d} onClick={() => toggle(d, p)} style={{
-              height: 24, borderRadius: 6, border: 0, cursor: 'pointer',
-              background: avail[d]?.[p] ? '#4F46E5' : '#E2E8F0',
-              transition: 'all 100ms'
-            }} />
-          ))}
-        </React.Fragment>
-      ))}
     </div>
   );
 }
@@ -481,3 +412,4 @@ function ConfirmDialog({ title, desc, onConfirm, onClose }: any) {
     </div>
   );
 }
+

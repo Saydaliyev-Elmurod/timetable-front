@@ -1,6 +1,28 @@
+import {
+  AvailState,
+  getEmptyAvail as emptyAvail,
+  getFullAvail as fullAvail,
+  convertToApiFormat as toApi,
+  convertFromApiFormat as fromApi,
+} from '@/lib/availability';
 import { CL_DAYS, dayMapToApi, dayMapFromApi } from './constants';
 
-export type AvailState = Record<string, Record<number, boolean>>;
+export type { AvailState };
+
+// Subjects pages call these without `days` (localized CL_DAYS is implied), so the
+// wrappers keep the old default that the shared lib intentionally dropped.
+export const getEmptyAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState =>
+  emptyAvail(periods, days);
+export const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState =>
+  fullAvail(periods, days);
+
+export const convertToApiFormat = (avail: AvailState) => toApi(avail, { dayMap: dayMapToApi });
+
+export const convertFromApiFormat = (
+  apiAvail: any[],
+  periods: number[],
+  days: readonly string[] = CL_DAYS,
+): AvailState => fromApi(apiAvail, periods, days, { dayMap: dayMapFromApi });
 
 export interface WeightColor {
   base: string;
@@ -31,45 +53,3 @@ export function getLocalizedName(sub: any, locale: string): string {
   if (locale === 'en') return sub.nameEn || sub.name;
   return sub.name;
 }
-
-export const getEmptyAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res: AvailState = {};
-  days.forEach((d) => {
-    res[d] = {};
-    periods.forEach((p) => (res[d][p] = false));
-  });
-  return res;
-};
-
-export const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res: AvailState = {};
-  days.forEach((d) => {
-    res[d] = {};
-    periods.forEach((p) => (res[d][p] = true));
-  });
-  return res;
-};
-
-export const convertToApiFormat = (avail: AvailState) =>
-  Object.entries(avail).map(([day, periods]) => ({
-    dayOfWeek: dayMapToApi[day] || day,
-    lessons: Object.entries(periods)
-      .filter(([, value]) => value)
-      .map(([period]) => parseInt(period)),
-  }));
-
-export const convertFromApiFormat = (apiAvail: any[], periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const result = getEmptyAvail(periods, days);
-  if (!apiAvail) return result;
-  apiAvail.forEach((slot) => {
-    const d = dayMapFromApi[slot.dayOfWeek];
-    if (d && result[d]) {
-      slot.lessons.forEach((p: number) => {
-        if (Object.prototype.hasOwnProperty.call(result[d], p)) {
-          result[d][p] = true;
-        }
-      });
-    }
-  });
-  return result;
-};

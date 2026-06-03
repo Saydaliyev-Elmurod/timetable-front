@@ -109,6 +109,60 @@ export async function apiCall<T>(
   }
 }
 
+// ─── Generic CRUD service factory ────────────────────────────────────────
+// Removes the identical "build URL → apiCall → throw on error → return data!"
+// boilerplate that every entity service (Class/Room/Subject/Teacher) repeated.
+// Each entity service spreads the base methods it needs and adds/aliases its
+// own divergent ones (custom getPaginated, getTemplates, renamed bulk methods).
+
+async function getJson<R>(url: string): Promise<R> {
+  const res = await apiCall<R>(url);
+  if (res.error) throw res.error;
+  return res.data!;
+}
+
+async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+  const res = await apiCall(url, {
+    method,
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  if (res.error) throw res.error;
+}
+
+/** Build `base?key=val&...`, skipping nullish/empty values and url-encoding. */
+export function buildQuery(
+  base: string,
+  params: Record<string, string | number | undefined | null>,
+): string {
+  const qs = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  return qs ? `${base}?${qs}` : base;
+}
+
+export function createCrudService<TRes, TReq = TRes, TUpdateReq = TReq>(
+  endpointKey: ApiEndpoint,
+) {
+  const endpoint = () => getApiUrl(endpointKey);
+  return {
+    /** Base endpoint URL, for composing custom routes. */
+    endpoint,
+    /** GET helper: throws on error, returns unwrapped data. */
+    get: getJson,
+    /** Body helper (POST/PUT/DELETE): throws on error. */
+    send: sendJson,
+    getAll: () => getJson<TRes[]>(`${endpoint()}/all`),
+    getById: (id: number) => getJson<TRes>(`${endpoint()}/${id}`),
+    create: (data: TReq) => sendJson(endpoint(), 'POST', data),
+    bulkCreate: (data: TReq[]) => sendJson(`${endpoint()}/bulk`, 'POST', data),
+    update: (id: number, data: TUpdateReq) => sendJson(`${endpoint()}/${id}`, 'PUT', data),
+    bulkUpdate: <T>(data: T) => sendJson(`${endpoint()}/bulk`, 'PUT', data),
+    delete: (id: number) => sendJson(`${endpoint()}/${id}`, 'DELETE'),
+    bulkDelete: (ids: number[]) => sendJson(`${endpoint()}/bulk`, 'DELETE', ids),
+  };
+}
+
 // API Configuration
 export const API = {
   config: API_CONFIG,

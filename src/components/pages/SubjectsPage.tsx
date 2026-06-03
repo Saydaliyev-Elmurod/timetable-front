@@ -5,12 +5,11 @@ import { SubjectService, SubjectResponse, SubjectRequest } from '@/lib/subjects'
 import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
-import { CrudPageHeader, BulkActionBar, Pagination, getActiveApiDays } from '@/components/shared';
+import { Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
+import { CrudPageHeader, BulkActionBar, Pagination, getActiveApiDays, AvailMini, PageLoading } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { CL_DAYS, palOf, dayMapFromApi } from './subjects-page/constants';
 import {
-  AvailState,
   convertFromApiFormat,
   convertToApiFormat,
   getFullAvail,
@@ -53,24 +52,6 @@ function WeightBadge({ value }: { value: number }) {
         </span>
         <span style={{ font: '600 10px Manrope', color: w.ink, opacity: 0.8, letterSpacing: '.02em' }}>{weightLabel(value)}</span>
       </div>
-    </div>
-  );
-}
-
-function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
-  const color = '#10B981'; // Fixed green color
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {days.map(d => (
-        <div key={d} style={{ display: 'flex', gap: 1 }}>
-          {periods.map(p => (
-            <div key={p} style={{
-              width: 4, height: 4, borderRadius: 1,
-              background: avail[d]?.[p] ? color : '#E2E8F0'
-            }} />
-          ))}
-        </div>
-      ))}
     </div>
   );
 }
@@ -211,13 +192,7 @@ export default function SubjectsPage() {
   };
 
   if (isLoading && library.length === 0) {
-    return (
-      <PageContainer fullHeight noGap>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-        </div>
-      </PageContainer>
-    );
+    return <PageLoading />;
   }
 
   return (

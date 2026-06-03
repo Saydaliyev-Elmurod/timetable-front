@@ -1,4 +1,4 @@
-import API, { PaginatedResponse } from './api';
+import { PaginatedResponse, createCrudService, buildQuery } from './api';
 import { TimeSlot } from './teachers';
 
 export interface SubjectRequest {
@@ -32,102 +32,36 @@ export interface SubjectBulkUpdateRequest {
   availabilities?: TimeSlot[];
 }
 
+const base = createCrudService<SubjectResponse, SubjectRequest>('SUBJECTS');
+
 export const SubjectService = {
-  getAll: async (): Promise<SubjectResponse[]> => {
-    const response = await API.call<SubjectResponse[]>(
-      `${API.url('SUBJECTS')}/all`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  getAll: base.getAll,
+  getById: base.getById,
+  create: base.create,
+  update: base.update,
+  delete: base.delete,
+  bulkCreate: base.bulkCreate,
+  bulkDelete: base.bulkDelete,
 
-  getTemplates: async (): Promise<SubjectResponse[]> => {
-    const response = await API.call<SubjectResponse[]>(
-      `${API.url('SUBJECTS')}/templates`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  getTemplates: (): Promise<SubjectResponse[]> =>
+    base.get<SubjectResponse[]>(`${base.endpoint()}/templates`),
 
-  getPaginated: async (page: number, size: number, query?: string, category?: string, sort?: string): Promise<PaginatedResponse<SubjectResponse>> => {
-    let url = `${API.url('SUBJECTS')}?page=${page}&size=${size}`;
-    if (query) url += `&query=${encodeURIComponent(query)}`;
-    if (category && category !== 'ALL' && category !== 'all') url += `&category=${category}`;
-    if (sort) url += `&sort=${sort}`;
-    
-    const response = await API.call<PaginatedResponse<SubjectResponse>>(url);
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  getPaginated: (
+    page: number,
+    size: number,
+    query?: string,
+    category?: string,
+    sort?: string,
+  ): Promise<PaginatedResponse<SubjectResponse>> =>
+    base.get<PaginatedResponse<SubjectResponse>>(
+      buildQuery(base.endpoint(), {
+        page,
+        size,
+        query,
+        category: category && category !== 'ALL' && category !== 'all' ? category : undefined,
+        sort,
+      }),
+    ),
 
-  getById: async (id: number): Promise<SubjectResponse> => {
-    const response = await API.call<SubjectResponse>(
-      `${API.url('SUBJECTS')}/${id}`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
-
-  create: async (data: SubjectRequest): Promise<void> => {
-    const response = await API.call(
-      API.url('SUBJECTS'),
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkCreate: async (data: SubjectRequest[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('SUBJECTS')}/bulk`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  update: async (id: number, data: SubjectRequest): Promise<void> => {
-    const response = await API.call(
-      `${API.url('SUBJECTS')}/${id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  delete: async (id: number): Promise<void> => {
-    const response = await API.call(
-      `${API.url('SUBJECTS')}/${id}`,
-      { method: 'DELETE' }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkDelete: async (ids: number[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('SUBJECTS')}/bulk`,
-      {
-        method: 'DELETE',
-        body: JSON.stringify(ids)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkUpdate: async (data: SubjectBulkUpdateRequest): Promise<void> => {
-    const response = await API.call(
-      `${API.url('SUBJECTS')}/bulk`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  }
+  bulkUpdate: (data: SubjectBulkUpdateRequest): Promise<void> => base.bulkUpdate(data),
 };

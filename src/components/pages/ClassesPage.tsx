@@ -1,14 +1,15 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCrudResource } from '@/hooks';
-import { Upload, Plus, Edit, Trash2, X, Loader2, Layers, Users, LayoutGrid } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, X, Layers, Users, LayoutGrid } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { ClassService, ClassResponse } from '@/lib/classes';
-import { TeacherService, TeacherResponse, TimeSlot } from '@/lib/teachers';
+import { TeacherService, TeacherResponse } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays, AvailGrid, AvailMini, PageLoading } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -24,103 +25,7 @@ const SX_PALETTE = [
 
 const palOf = (id: number) => SX_PALETTE[id % SX_PALETTE.length];
 
-const CL_DAYS = API_DAYS_OF_WEEK;
-
-// ─── Helpers ───────────────────────────────────────────────────────────
-
-type AvailState = Record<string, Record<number, boolean>>;
-
-const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res: AvailState = {};
-  days.forEach(d => {
-    res[d] = {};
-    periods.forEach(p => res[d][p] = true);
-  });
-  return res;
-};
-
-const convertToApiFormat = (state: AvailState): TimeSlot[] => {
-  return Object.entries(state).map(([day, pMap]) => ({
-    dayOfWeek: day,
-    lessons: Object.entries(pMap).filter(([_, v]) => v).map(([p]) => Number(p)).sort((a, b) => a - b)
-  }));
-};
-
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res = getFullAvail(periods, days);
-  days.forEach(d => periods.forEach(p => res[d][p] = false));
-  if (slots) {
-    slots.forEach(s => {
-      if (res[s.dayOfWeek]) {
-        s.lessons.forEach(l => res[s.dayOfWeek][l] = true);
-      }
-    });
-  }
-  return res;
-};
-
 // ─── Components ────────────────────────────────────────────────────────
-
-function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
-  const color = '#10B981';
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {days.map(d => (
-        <div key={d} style={{ display: 'flex', gap: 1 }}>
-          {periods.map(p => (
-            <div key={p} style={{
-              width: 4, height: 4, borderRadius: 1,
-              background: avail[d]?.[p] ? color : '#E2E8F0'
-            }} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: { avail: AvailState, periods: number[], days?: readonly string[], onChange: (s: AvailState) => void }) {
-  const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
-    onChange(next);
-  };
-
-  // Kun (ustun) toggle — shu kunning barcha periodlari.
-  const toggleDay = (d: string) => {
-    const allOn = periods.every(p => avail[d]?.[p]);
-    const next = { ...avail, [d]: {} as any };
-    periods.forEach(p => next[d][p] = !allOn);
-    onChange(next);
-  };
-
-  // Period (qator) toggle — barcha faol kunlar bo'ylab.
-  const togglePeriod = (p: number) => {
-    const allOn = days.every(d => avail[d]?.[p]);
-    const next = { ...avail };
-    days.forEach(d => {
-      next[d] = { ...next[d], [p] : !allOn };
-    });
-    onChange(next);
-  };
-
-  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
-      <div />
-      {days.map(d => (
-        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', cursor: 'pointer' }}>{API_DAY_SHORT[d] || d.slice(0, 3)}</button>
-      ))}
-      {periods.map(p => (
-        <React.Fragment key={p}>
-          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>{p}</button>
-          {days.map(d => (
-            <button key={d} onClick={() => toggle(d, p)} style={{ height: 24, borderRadius: 4, border: 0, cursor: 'pointer', background: avail[d]?.[p] ? '#10B981' : '#F1F5F9', transition: 'all 100ms' }} />
-          ))}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
 
 function ClassRow({ t: _t, cls, periods, days, selected, onSelect, onEdit, onDelete }: any) {
   const pal = palOf(cls.id);
@@ -264,13 +169,7 @@ export default function ClassesPage() {
   }, [library, query]);
 
   if (isLoading && library.length === 0) {
-    return (
-      <PageContainer fullHeight noGap>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-        </div>
-      </PageContainer>
-    );
+    return <PageLoading />;
   }
 
   return (
@@ -360,8 +259,8 @@ export default function ClassesPage() {
           <div style={{ background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 20px 50px -12px rgba(0,0,0,0.2)' }}>
             <h3 style={{ font: '800 20px Plus Jakarta Sans', color: '#0F172A', marginBottom: 8 }}>{confirmDel.bulk ? "Sinflarni o'chirish" : "Sinfni o'chirish"}</h3>
             <p style={{ font: '500 14px Manrope', color: '#64748B', marginBottom: 24 }}>
-              {confirmDel.bulk 
-                ? `Siz tanlagan ${confirmDel.n} ta sinfni o'chirishni tasdiqlaysizmi?` 
+              {confirmDel.bulk
+                ? `Siz tanlagan ${confirmDel.n} ta sinfni o'chirishni tasdiqlaysizmi?`
                 : `"${confirmDel.name}" sinfini o'chirishni tasdiqlaysizmi?`
               } Bu amalni qaytarib bo'lmaydi.
             </p>
@@ -611,7 +510,7 @@ function ClassEditor({ initial, periods, days, teachers, rooms: _rooms, onClose,
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud dars soatlari</label>
             <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 16, padding: 16 }}>
-              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
+              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} dayLabel={(d) => API_DAY_SHORT[d] || d.slice(0, 3)} />
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import API, { PaginatedResponse } from './api';
+import { PaginatedResponse, createCrudService, buildQuery } from './api';
 
 
 // Types
@@ -44,108 +44,24 @@ export interface SubjectResponse {
 }
 
 // Service
+const base = createCrudService<TeacherResponse, TeacherRequest, TeacherUpdateRequest>('TEACHERS');
+
 export const TeacherService = {
-  getAll: async (): Promise<TeacherResponse[]> => {
+  getAll: base.getAll,
+  getById: base.getById,
+  create: base.create,
+  update: base.update,
+  delete: base.delete,
+  bulkDelete: base.bulkDelete,
+  bulkAdd: base.bulkCreate,
 
+  getPaginated: (page: number, size: number, query?: string): Promise<PaginatedResponse<TeacherResponse>> =>
+    base.get<PaginatedResponse<TeacherResponse>>(
+      buildQuery(base.endpoint(), { page, size, query }),
+    ),
 
-    const response = await API.call<TeacherResponse[]>(
-      `${API.url('TEACHERS')}/all`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  bulkUpdate: (data: TeacherBulkUpdateRequest): Promise<void> => base.bulkUpdate(data),
 
-  getPaginated: async (page: number, size: number, query?: string): Promise<PaginatedResponse<TeacherResponse>> => {
-    let url = `${API.url('TEACHERS')}?page=${page}&size=${size}`;
-    if (query) url += `&query=${encodeURIComponent(query)}`;
-    
-    const response = await API.call<PaginatedResponse<TeacherResponse>>(url);
-    if (response.error) throw response.error;
-    return response.data!;
-  },
-
-  getById: async (id: number): Promise<TeacherResponse> => {
-
-
-    const response = await API.call<TeacherResponse>(
-      `${API.url('TEACHERS')}/${id}`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
-
-  create: async (data: TeacherRequest): Promise<void> => {
-
-
-    const response = await API.call(
-      API.url('TEACHERS'),
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  update: async (id: number, data: TeacherUpdateRequest): Promise<void> => {
-
-
-    const response = await API.call(
-      `${API.url('TEACHERS')}/${id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  delete: async (id: number): Promise<void> => {
-
-
-    const response = await API.call(
-      `${API.url('TEACHERS')}/${id}`,
-      { method: 'DELETE' }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkDelete: async (ids: number[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('TEACHERS')}/bulk`,
-      {
-        method: 'DELETE',
-        body: JSON.stringify(ids)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkUpdate: async (data: TeacherBulkUpdateRequest): Promise<void> => {
-    const response = await API.call(
-      `${API.url('TEACHERS')}/bulk`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkAdd: async (data: TeacherRequest[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('TEACHERS')}/bulk`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  getTemplates: async (): Promise<TeacherResponse[]> => {
-    const response = await API.call<TeacherResponse[]>(`${API.url('TEACHERS')}/templates`);
-    if (response.error) throw response.error;
-    return response.data!;
-  }
+  getTemplates: (): Promise<TeacherResponse[]> =>
+    base.get<TeacherResponse[]>(`${base.endpoint()}/templates`),
 };

@@ -1,4 +1,4 @@
-import API, { PaginatedResponse } from './api';
+import { PaginatedResponse, createCrudService } from './api';
 import { TimeSlot } from './teachers';
 import type { RoomResponse } from '@/types/api';
 
@@ -32,91 +32,21 @@ export interface ClassBulkTimeoffRequest {
   timeOff: TimeSlot[];
 }
 
+const base = createCrudService<ClassResponse, ClassRequest>('CLASSES');
+
 export const ClassService = {
-  getAll: async (): Promise<ClassResponse[]> => {
-    const response = await API.call<ClassResponse[]>(
-      `${API.url('CLASSES')}/all`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  getAll: base.getAll,
+  getById: base.getById,
+  create: base.create,
+  update: base.update,
+  delete: base.delete,
 
-  getPaginated: async (page: number, size: number): Promise<PaginatedResponse<ClassResponse>> => {
-    const response = await API.call<PaginatedResponse<ClassResponse>>(
-      `${API.url('CLASSES')}?page=${page}&size=${size}`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  getPaginated: (page: number, size: number): Promise<PaginatedResponse<ClassResponse>> =>
+    base.get<PaginatedResponse<ClassResponse>>(`${base.endpoint()}?page=${page}&size=${size}`),
 
-  getById: async (id: number): Promise<ClassResponse> => {
-    const response = await API.call<ClassResponse>(
-      `${API.url('CLASSES')}/${id}`
-    );
-    if (response.error) throw response.error;
-    return response.data!;
-  },
+  createBulk: base.bulkCreate,
+  deleteBulk: base.bulkDelete,
 
-  create: async (data: ClassRequest): Promise<void> => {
-    const response = await API.call(
-      API.url('CLASSES'),
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  createBulk: async (data: ClassRequest[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('CLASSES')}/bulk`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  update: async (id: number, data: ClassRequest): Promise<void> => {
-    const response = await API.call(
-      `${API.url('CLASSES')}/${id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  delete: async (id: number): Promise<void> => {
-    const response = await API.call(
-      `${API.url('CLASSES')}/${id}`,
-      { method: 'DELETE' }
-    );
-    if (response.error) throw response.error;
-  },
-
-  deleteBulk: async (ids: number[]): Promise<void> => {
-    const response = await API.call(
-      `${API.url('CLASSES')}/bulk`,
-      {
-        method: 'DELETE',
-        body: JSON.stringify(ids)
-      }
-    );
-    if (response.error) throw response.error;
-  },
-
-  bulkTimeoff: async (data: ClassBulkTimeoffRequest): Promise<void> => {
-    const response = await API.call(
-      `${API.url('CLASSES')}/timeoff`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-    if (response.error) throw response.error;
-  }
+  bulkTimeoff: (data: ClassBulkTimeoffRequest): Promise<void> =>
+    base.send(`${base.endpoint()}/timeoff`, 'POST', data),
 };

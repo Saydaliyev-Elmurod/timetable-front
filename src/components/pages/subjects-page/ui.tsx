@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
+import { AvailGrid as SharedAvailGrid } from '@/components/shared';
 import { CL_DAYS } from './constants';
 import { AvailState } from './helpers';
 
@@ -10,98 +11,25 @@ interface AvailGridProps {
   onChange: (next: AvailState) => void;
 }
 
+// Re-export the shared AvailGrid with the subjects-specific look baked in, so
+// existing './ui' import paths (e.g. SubjectEditor) stay stable.
 export function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: AvailGridProps) {
-  const color = '#10B981';
-
-  const toggle = (d: string, p: number) => {
-    const dayAvail = avail[d] || {};
-    const copy = { ...avail, [d]: { ...dayAvail, [p]: !dayAvail[p] } };
-    onChange(copy);
-  };
-
-  // Kun (ustun) toggle — shu kunning barcha periodlari.
-  const toggleDay = (e: React.MouseEvent, d: string) => {
-    e.stopPropagation();
-    const dayAvail = avail[d] || {};
-    const allSelected = periods.every((p) => dayAvail[p]);
-    const nextValue = !allSelected;
-
-    const nextDayAvail = { ...dayAvail };
-    periods.forEach((p) => {
-      nextDayAvail[p] = nextValue;
-    });
-
-    onChange({ ...avail, [d]: nextDayAvail });
-  };
-
-  // Period (qator) toggle — barcha faol kunlar bo'ylab.
-  const togglePeriod = (e: React.MouseEvent, p: number) => {
-    e.stopPropagation();
-    const allSelected = days.every((d) => avail[d]?.[p]);
-    const nextValue = !allSelected;
-
-    const nextAvail = { ...avail };
-    days.forEach((d) => {
-      const dayAvail = { ...(nextAvail[d] || {}) };
-      dayAvail[p] = nextValue;
-      nextAvail[d] = dayAvail;
-    });
-    onChange(nextAvail);
-  };
-
-  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
-      <div key="corner" />
-      {days.map((d) => (
-        <div
-          key={d}
-          onClick={(e) => toggleDay(e, d)}
-          style={{
-            textAlign: 'center',
-            font: '800 11px Plus Jakarta Sans',
-            color: '#475569',
-            cursor: 'pointer',
-            padding: '4px 0',
-          }}
-        >
-          {d}
-        </div>
-      ))}
-      {periods.map((p) => (
-        <React.Fragment key={p}>
-          <div
-            key={'pl-' + p}
-            onClick={(e) => togglePeriod(e, p)}
-            style={{
-              font: '800 10px JetBrains Mono',
-              color: '#94A3B8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              padding: '4px 0',
-            }}
-          >
-            {p}
-          </div>
-          {days.map((d) => (
-            <button
-              key={d + '-' + p}
-              onClick={() => toggle(d, p)}
-              style={{
-                height: 24,
-                borderRadius: 4,
-                border: '1px solid #E2E8F0',
-                background: avail[d]?.[p] ? color : '#fff',
-                cursor: 'pointer',
-                transition: 'all 100ms',
-              }}
-            />
-          ))}
-        </React.Fragment>
-      ))}
-    </div>
+    <SharedAvailGrid
+      avail={avail}
+      periods={periods}
+      days={days}
+      onChange={onChange}
+      onColor="#10B981"
+      offColor="#fff"
+      cellBorder="1px solid #E2E8F0"
+      cellRadius={4}
+      stopPropagation
+      dayHeaderFont="800 11px Plus Jakarta Sans"
+      dayHeaderColor="#475569"
+      headerPadding="4px 0"
+      periodFont="800 10px JetBrains Mono"
+    />
   );
 }
 

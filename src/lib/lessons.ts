@@ -11,17 +11,6 @@ import {
 import { SubjectResponse } from './subjects';
 import { TeacherResponse } from './teachers';
 
-// Day of Week Enum
-export enum DayOfWeek {
-  MONDAY = 'MONDAY',
-  TUESDAY = 'TUESDAY',
-  WEDNESDAY = 'WEDNESDAY',
-  THURSDAY = 'THURSDAY',
-  FRIDAY = 'FRIDAY',
-  SATURDAY = 'SATURDAY',
-  SUNDAY = 'SUNDAY',
-}
-
 // Re-export types for backward compatibility
 export type {
   LessonResponseCompact,

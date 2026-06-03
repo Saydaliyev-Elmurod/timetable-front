@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useCrudResource } from '@/hooks';
-import { Upload, BookOpen, Clock, LayoutGrid, Plus, Edit, Trash2, X, Loader2 } from 'lucide-react';
+import { Upload, BookOpen, Clock, LayoutGrid, Plus, Edit, Trash2, X } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, TeacherBulkUpdateRequest } from '@/lib/teachers';
 import { SubjectService, SubjectResponse } from '@/lib/subjects';
-import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
-import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
+import { CrudPageHeader, BulkActionBar, Pagination, AvailGrid, AvailMini, PageLoading, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
@@ -25,117 +25,7 @@ const SX_PALETTE = [
 
 const palOf = (color?: string) => SX_PALETTE.find(p => p.base === color) || SX_PALETTE[0];
 
-const CL_DAYS = API_DAYS_OF_WEEK;
-
-// ─── Helpers ───────────────────────────────────────────────────────────
-
-type AvailState = Record<string, Record<number, boolean>>;
-
-const getFullAvail = (periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res: AvailState = {};
-  days.forEach(d => {
-    res[d] = {};
-    periods.forEach(p => res[d][p] = true);
-  });
-  return res;
-};
-
-const convertToApiFormat = (state: AvailState): TimeSlot[] => {
-  return Object.entries(state).map(([day, pMap]) => ({
-    dayOfWeek: day,
-    lessons: Object.entries(pMap).filter(([_, v]) => v).map(([p]) => Number(p)).sort((a, b) => a - b)
-  }));
-};
-
-const convertFromApiFormat = (slots: TimeSlot[] | undefined, periods: number[], days: readonly string[] = CL_DAYS): AvailState => {
-  const res = getFullAvail(periods, days);
-  // Reset all to false first
-  days.forEach(d => periods.forEach(p => res[d][p] = false));
-  
-  if (slots) {
-    slots.forEach(s => {
-      if (res[s.dayOfWeek]) {
-        s.lessons.forEach((l: number) => res[s.dayOfWeek][l] = true);
-      }
-    });
-  }
-  return res;
-};
-
 // ─── Components ────────────────────────────────────────────────────────
-
-function AvailMini({ avail, periods, days = CL_DAYS }: { avail: AvailState, periods: number[], days?: readonly string[] }) {
-  const color = '#10B981'; // Fixed green color
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {days.map(d => (
-        <div key={d} style={{ display: 'flex', gap: 1 }}>
-          {periods.map(p => (
-            <div key={p} style={{
-              width: 4, height: 4, borderRadius: 1,
-              background: avail[d]?.[p] ? color : '#E2E8F0'
-            }} />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AvailGrid({ avail, periods, days = CL_DAYS, onChange }: { avail: AvailState, periods: number[], days?: readonly string[], onChange: (s: AvailState) => void }) {
-  const toggle = (d: string, p: number) => {
-    const next = { ...avail, [d]: { ...avail[d], [p]: !avail[d]?.[p] } };
-    onChange(next);
-  };
-
-  // Kun (ustun) toggle — shu kunning barcha periodlari.
-  const toggleDay = (d: string) => {
-    const allOn = periods.every(p => avail[d]?.[p]);
-    const next = { ...avail, [d]: {} as any };
-    periods.forEach(p => next[d][p] = !allOn);
-    onChange(next);
-  };
-
-  // Period (qator) toggle — barcha faol kunlar bo'ylab.
-  const togglePeriod = (p: number) => {
-    const allOn = days.every(d => avail[d]?.[p]);
-    const next = { ...avail };
-    days.forEach(d => {
-      next[d] = { ...next[d], [p]: !allOn };
-    });
-    onChange(next);
-  };
-
-  // Kunlar = ustun (gorizontal), periodlar = qator (vertikal, pastga o'sadi).
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '40px repeat(' + days.length + ', 1fr)', gap: 4 }}>
-      <div />
-      {days.map(d => (
-        <button key={d} onClick={() => toggleDay(d)} style={{ border: 0, background: 'transparent', font: '700 10px Manrope', color: '#94A3B8', cursor: 'pointer' }}>
-          {API_DAY_SHORT[d] || d.slice(0, 3)}
-        </button>
-      ))}
-      {periods.map(p => (
-        <React.Fragment key={p}>
-          <button onClick={() => togglePeriod(p)} style={{ border: 0, background: 'transparent', font: '800 10px JetBrains Mono', color: '#94A3B8', cursor: 'pointer' }}>
-            {p}
-          </button>
-          {days.map(d => (
-            <button
-              key={d}
-              onClick={() => toggle(d, p)}
-              style={{
-                height: 24, borderRadius: 4, border: 0, cursor: 'pointer',
-                background: avail[d]?.[p] ? '#10B981' : '#F1F5F9',
-                transition: 'all 100ms'
-              }}
-            />
-          ))}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
 
 function TeacherRow({ t: _t, teacher, periods, days, selected, onSelect, onEdit, onDelete }: any) {
   const avail = useMemo(() => convertFromApiFormat(teacher.availabilities, periods, days), [teacher, periods, days]);
@@ -276,13 +166,7 @@ export default function TeachersPage() {
   };
 
   if (isLoading && library.length === 0) {
-    return (
-      <PageContainer fullHeight noGap>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
-          <Loader2 className="animate-spin" size={32} color="#4F46E5" />
-        </div>
-      </PageContainer>
-    );
+    return <PageLoading />;
   }
 
   return (
@@ -365,7 +249,7 @@ export default function TeachersPage() {
       )}
 
       {confirmDel && (
-        <ConfirmDialog 
+        <ConfirmDialog
           title={confirmDel.bulk ? "O'qituvchilarni o'chirish" : "O'qituvchini o'chirish"}
           desc={confirmDel.bulk ? `Siz haqiqatan ham ${confirmDel.n} ta o'qituvchini o'chirmoqchimisiz?` : `"${confirmDel.name}" o'qituvchisini o'chirishni tasdiqlaysizmi?`}
           onConfirm={confirmDel.bulk ? handleBulkDelete : () => {
@@ -531,7 +415,7 @@ function TeacherEditor({ initial, periods, days, subjects, t: _t, onClose, onSav
           <div>
             <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 6 }}>Mavjud vaqtlari</label>
             <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 12, padding: 12 }}>
-              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} />
+              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} dayLabel={(d: string) => API_DAY_SHORT[d] || d.slice(0, 3)} />
             </div>
           </div>
         </div>
@@ -543,6 +427,20 @@ function TeacherEditor({ initial, periods, days, subjects, t: _t, onClose, onSav
           </button>
         </footer>
       </div>
+    </div>
+  );
+}
+
+function Select({ label, value, onChange, options }: any) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ font: '700 12px Manrope', color: '#94A3B8' }}>{label}:</span>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{
+        padding: '8px 12px', borderRadius: 9, border: '1.5px solid #E2E8F0',
+        font: '600 13px Manrope', color: '#0F172A', outline: 0, background: '#fff', cursor: 'pointer'
+      }}>
+        {options.map((o: any) => <option key={o.v} value={o.v}>{o.label}</option>)}
+      </select>
     </div>
   );
 }
@@ -561,20 +459,6 @@ function ConfirmDialog({ title, desc, onConfirm, onClose }: any) {
           <button onClick={onConfirm} style={{ ...btnPrimary, flex: 1, justifyContent: 'center', background: '#F43F5E', boxShadow: '0 4px 12px -4px rgba(244,63,94,0.4)' }}>O'chirish</button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Select({ label, value, onChange, options }: any) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ font: '700 12px Manrope', color: '#94A3B8' }}>{label}:</span>
-      <select value={value} onChange={e => onChange(e.target.value)} style={{
-        padding: '8px 12px', borderRadius: 9, border: '1.5px solid #E2E8F0',
-        font: '600 13px Manrope', color: '#0F172A', outline: 0, background: '#fff', cursor: 'pointer'
-      }}>
-        {options.map((o: any) => <option key={o.v} value={o.v}>{o.label}</option>)}
-      </select>
     </div>
   );
 }
