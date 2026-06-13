@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@/i18n/index';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 import {
   Card,
   CardContent,
@@ -83,6 +85,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [generateName, setGenerateName] = useState('');
+  const [useSimpleAlgorithm, setUseSimpleAlgorithm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -419,11 +422,21 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                 autoFocus
               />
             </div>
+            <div className="flex items-center space-x-2 py-1">
+              <Checkbox
+                id="simple-algo"
+                checked={useSimpleAlgorithm}
+                onCheckedChange={(checked) => setUseSimpleAlgorithm(!!checked)}
+              />
+              <Label htmlFor="simple-algo" className="text-sm text-gray-700 cursor-pointer">
+                Kichik maktablar uchun oddiy algoritm (Tezkor SA)
+              </Label>
+            </div>
 
             <div className="flex gap-2 justify-end pt-2">
               <Button
                 variant="outline"
-                onClick={() => { setIsGenerateOpen(false); setGenerateName(''); }}
+                onClick={() => { setIsGenerateOpen(false); setGenerateName(''); setUseSimpleAlgorithm(false); }}
                 className="text-sm"
               >
                 Bekor qilish
@@ -439,7 +452,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                   try {
                     const res = await apiCall<{ taskId: string }>('http://localhost:8080/api/timetable/v1/timetable/generate', {
                       method: 'POST',
-                      body: JSON.stringify({ name }),
+                      body: JSON.stringify({ name, useSimpleAlgorithm }),
                     });
                     if (res.error || !res.data?.taskId) {
                       toast.error(res.error?.message || "Jadval yaratib bo'lmadi");
@@ -454,6 +467,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       toast.info(`"${name}" generatsiyasi boshlandi. Tayyor bo'lganda xabar beramiz…`);
                       setIsGenerateOpen(false);
                       setGenerateName('');
+                      setUseSimpleAlgorithm(false);
                     }
                   } catch (err) {
                     logger.error('Generate error', err);
