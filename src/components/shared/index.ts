@@ -24,5 +24,8 @@ export type { BulkAction, BulkActionBarProps } from './BulkActionBar';
 export { btnPrimary, btnSecondary, btnDanger, inp, inpSearch, countText } from './crudStyles';
 export { btnPrimaryCls, btnSecondaryCls, btnDangerCls, inpCls, inpSearchCls, countTextCls } from './crudStyles';
 
+export { TipsSidebar } from './TipsSidebar';
+export type { TipItem } from './TipsSidebar';
+
 // Types
 export * from './types';

@@ -390,14 +390,14 @@ export default function LessonsPage() {
 
   if (!dataLoaded || !dataProps) {
     return (
-      <PageContainer fullHeight noGap>
+      <PageContainer fullHeight noGap size="full">
         <div className="flex items-center justify-center h-full">Yuklanmoqda...</div>
       </PageContainer>
     );
   }
 
   return (
-    <PageContainer fullHeight noGap className="relative">
+    <PageContainer fullHeight noGap size="full" className="relative">
       <div className="flex flex-col h-full relative">
       {isSaving && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[200] bg-white px-4 py-2 rounded-full shadow-md border border-indigo-100 flex items-center gap-2 animate-pulse">

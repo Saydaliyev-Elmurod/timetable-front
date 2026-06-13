@@ -19,6 +19,35 @@ import { ExcelImportModal } from './et-lessons/ExcelImportModal';
 import { DesignNotes, TemplatesModal } from './et-lessons/modals';
 import { EditEntityDrawer, SidePanel } from './et-lessons/side-panels';
 import { Stat, ghostBtnT, primaryBtnT } from './et-lessons/ui';
+import { TipsSidebar, TipItem } from '@/components/shared';
+import { BookOpen, Clock, LayoutGrid, AlertTriangle } from 'lucide-react';
+
+const LESSON_TIPS: TipItem[] = [
+  {
+    id: 'manage_groups',
+    title: 'Sinf guruhlarini boshqarish',
+    description: 'Chet tili, jismoniy tarbiya yoki informatika kabi darslarda sinfni guruhlarga bo\'lib, alohida o\'qituvchi va xona biriktiring.',
+    icon: BookOpen,
+  },
+  {
+    id: 'lesson_duration',
+    title: 'Dars davomiyligi (Bloklash)',
+    description: 'Qo\'shaloq (juft) darslarni (masalan, 2 soat ketma-ket Fizika) davomiylikni 2 qilib belgilash orqali joriy qiling.',
+    icon: Clock,
+  },
+  {
+    id: 'weekly_hours',
+    title: 'Haftalik dars soati yuklamasi',
+    description: 'Har bir sinf uchun o\'quv rejasida belgilangan dars soatlarini to\'liq va to\'g\'ri kiritganingizga ishonch hosil qiling.',
+    icon: LayoutGrid,
+  },
+  {
+    id: 'avoid_conflicts',
+    title: 'Bir vaqtda darslarni rejalashtirish',
+    description: 'Bitta o\'qituvchi yoki bitta xonaga bir vaqtning o\'zida bir nechta dars rejalashtirib qo\'ymaslikka e\'tibor bering.',
+    icon: AlertTriangle,
+  },
+];
 
 // Re-export catalog initializer + types so external callers keep the same import surface.
 export { initLessonsData } from './et-lessons/catalog';
@@ -175,7 +204,7 @@ function LessonsPage({
   ).length;
 
   return (
-    <div style={{ display: 'flex' as const, height: '100vh', overflow: 'hidden' as const }}>
+    <div style={{ display: 'flex' as const, height: '100%', width: '100%', overflow: 'hidden' as const, gap: 64 }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex' as const, flexDirection: 'column' as const, background: '#F8FAFC' }}>
         {/* Topbar */}
         <header style={{
@@ -306,6 +335,7 @@ function LessonsPage({
       </main>
 
       <SidePanel rows={rows} filterClasses={[]} />
+      <TipsSidebar pageKey="lessons" tips={LESSON_TIPS} />
 
       {showExcel && <ExcelImportModal onClose={() => setShowExcel(false)} onImported={onImported} />}
       {showTmpl && <TemplatesModal onClose={() => setShowTmpl(false)} onApply={applyTemplate} />}

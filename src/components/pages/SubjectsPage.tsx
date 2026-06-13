@@ -6,7 +6,7 @@ import { TimeSlot } from '@/lib/teachers';
 import { organizationApi } from '@/api/organizationApi';
 import { toast } from 'sonner';
 import { Plus, Trash2, Filter, SortAsc, LayoutGrid, Check, X, ChevronDown, HelpCircle, Edit } from 'lucide-react';
-import { CrudPageHeader, BulkActionBar, Pagination, getActiveApiDays, AvailMini, PageLoading } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, getActiveApiDays, AvailMini, PageLoading, TipsSidebar, TipItem } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 import { CL_DAYS, palOf, dayMapFromApi } from './subjects-page/constants';
 import {
@@ -26,6 +26,33 @@ import {
 import { btnPrimary, iconRowBtn, inp } from './subjects-page/styles';
 import { SubjectEditor } from './subjects-page/SubjectEditor';
 import { TemplatesModal } from './subjects-page/TemplatesModal';
+
+const SUBJECT_TIPS: TipItem[] = [
+  {
+    id: 'descr_name',
+    title: 'Tavsifli nom bering',
+    description: '“Matematika 5-A” emas, faqat “Matematika”. Sinf darslarni biriktirishda aniqlanadi.',
+    icon: Edit,
+  },
+  {
+    id: 'weight_imp',
+    title: 'Vazn = muhimlik',
+    description: 'Yuqori vaznli fanlar jadvalda avval va ertalabki soatlarga joylashtiriladi.',
+    icon: SortAsc,
+  },
+  {
+    id: 'limit_avail',
+    title: 'Mavjud vaqtni cheklang',
+    description: 'Fizika faqat ertalab kerakmi? Mos kataklarni o\'chiring — qolgani avtomatik to\'ldiriladi.',
+    icon: LayoutGrid,
+  },
+  {
+    id: 'use_abbr',
+    title: 'Qisqartmadan foydalaning',
+    description: 'MAT, FIZ kabi 3 harfli kodlar tor jadval kataklarida toza ko\'rinadi.',
+    icon: HelpCircle,
+  },
+];
 
 // ─── Sub-Components ─────────────────────────────────────────────────────
 
@@ -196,121 +223,124 @@ export default function SubjectsPage() {
   }
 
   return (
-    <PageContainer fullHeight noGap>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <CrudPageHeader
-        searchValue={query}
-        onSearchChange={setQuery}
-        searchPlaceholder={t('subjects.search_placeholder', 'Fanni qidiring...')}
-        leftExtras={
-          <SelectField
-            label={t('subjects.sort_by', 'Saralash')}
-            value={sortBy}
-            onChange={(v: any) => { setSortBy(v); setPage(0); }}
-            options={[
-              { v: 'name', label: t('subjects.sort_name', 'Nomi (A–Z)') },
-              { v: 'weight', label: t('subjects.sort_weight', 'Vazni (yuqoridan)') },
+    <PageContainer fullHeight noGap size="full">
+      <div style={{ display: 'flex', flexDirection: 'row', height: '100%', width: '100%', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden', minWidth: 0, paddingRight: 64 }}>
+          <CrudPageHeader
+            searchValue={query}
+            onSearchChange={setQuery}
+            searchPlaceholder={t('subjects.search_placeholder', 'Fanni qidiring...')}
+            leftExtras={
+              <SelectField
+                label={t('subjects.sort_by', 'Saralash')}
+                value={sortBy}
+                onChange={(v: any) => { setSortBy(v); setPage(0); }}
+                options={[
+                  { v: 'name', label: t('subjects.sort_name', 'Nomi (A–Z)') },
+                  { v: 'weight', label: t('subjects.sort_weight', 'Vazni (yuqoridan)') },
+                ]}
+              />
+            }
+            count={totalElements}
+            countLabel="ta fan"
+            actions={[
+              { id: 'templates', label: "To'plamlar", icon: LayoutGrid, onClick: () => setShowTmpl(true), variant: 'secondary' },
+              { id: 'add', label: 'Yangi fan', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
             ]}
           />
-        }
-        count={totalElements}
-        countLabel="ta fan"
-        actions={[
-          { id: 'templates', label: "To'plamlar", icon: LayoutGrid, onClick: () => setShowTmpl(true), variant: 'secondary' },
-          { id: 'add', label: 'Yangi fan', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
-        ]}
-      />
 
-      {/* List */}
-      <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: 'var(--et-shadow-sm)' }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '30px 4px 1.4fr 1.1fr 130px 90px',
-            gap: 18, padding: '10px 18px',
-            background: '#FAFBFD', borderBottom: '1px solid #E2E8F0',
-            font: '700 10px Plus Jakarta Sans', color: '#64748B',
-            letterSpacing: '.08em', textTransform: 'uppercase',
-          }}>
-            <button onClick={toggleSelectAll} style={{
-              width: 20, height: 20, borderRadius: 5,
-              border: allSelected ? '2px solid #4F46E5' : '1.5px solid #CBD5E1',
-              background: allSelected ? '#4F46E5' : (someSelected ? '#EEF2FF' : 'transparent'),
-              cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {allSelected ? <Check size={11} stroke="#fff" strokeWidth={3} />
-                : someSelected ? <span style={{ width: 8, height: 2, background: '#4F46E5', borderRadius: 2 }} />
-                  : null}
-            </button>
-            <span />
-            <span>Fan</span>
-            <span>Vazn</span>
-            <span>Mavjud vaqt</span>
-            <span style={{ textAlign: 'right' }}>Amallar</span>
+          {/* List */}
+          <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: 'var(--et-shadow-sm)' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '30px 4px 1.4fr 1.1fr 130px 90px',
+                gap: 18, padding: '10px 18px',
+                background: '#FAFBFD', borderBottom: '1px solid #E2E8F0',
+                font: '700 10px Plus Jakarta Sans', color: '#64748B',
+                letterSpacing: '.08em', textTransform: 'uppercase',
+              }}>
+                <button onClick={toggleSelectAll} style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  border: allSelected ? '2px solid #4F46E5' : '1.5px solid #CBD5E1',
+                  background: allSelected ? '#4F46E5' : (someSelected ? '#EEF2FF' : 'transparent'),
+                  cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {allSelected ? <Check size={11} stroke="#fff" strokeWidth={3} />
+                    : someSelected ? <span style={{ width: 8, height: 2, background: '#4F46E5', borderRadius: 2 }} />
+                      : null}
+                </button>
+                <span />
+                <span>Fan</span>
+                <span>Vazn</span>
+                <span>Mavjud vaqt</span>
+                <span style={{ textAlign: 'right' }}>Amallar</span>
+              </div>
+
+              {sorted.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '70px 20px', color: '#94A3B8' }}>
+                  <div style={{ font: '800 16px Plus Jakarta Sans', color: '#0F172A' }}>Hech narsa topilmadi</div>
+                </div>
+              ) : (
+                sorted.map(s => (
+                  <SubjectRow key={s.id} sub={s} periods={periods} days={activeDays}
+                    selected={selected.has(s.id)}
+                    onSelect={toggleSelect}
+                    onEdit={setEditing}
+                    onDelete={(id: number, name: string) => setConfirmDel({ id, name })} />
+                ))
+              )}
+            </div>
+
+            {/* Footer actions & Pagination */}
+            <Pagination
+              page={page}
+              size={size}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              onPageChange={setPage}
+              onSizeChange={(s) => { setSize(s); setPage(0); }}
+            />
           </div>
 
-          {sorted.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '70px 20px', color: '#94A3B8' }}>
-              <div style={{ font: '800 16px Plus Jakarta Sans', color: '#0F172A' }}>Hech narsa topilmadi</div>
-            </div>
-          ) : (
-            sorted.map(s => (
-              <SubjectRow key={s.id} sub={s} periods={periods} days={activeDays}
-                selected={selected.has(s.id)}
-                onSelect={toggleSelect}
-                onEdit={setEditing}
-                onDelete={(id: number, name: string) => setConfirmDel({ id, name })} />
-            ))
+          <BulkActionBar
+            count={selected.size}
+            actions={[
+              { id: 'bulk-weight', label: "Vaznni o'zgartirish", icon: Edit, onClick: () => setEditing({ bulkWeight: true }) },
+              { id: 'bulk-timeoff', label: "Vaqtlarni o'zgartirish", icon: LayoutGrid, onClick: () => setEditing({ bulkTimeoff: true }) },
+            ]}
+            onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
+            onClear={clearSelection}
+          />
+
+          {/* Modals */}
+          {editing && (
+            <SubjectEditor
+              initial={(editing as any).new ? null : editing}
+              periods={periods}
+              days={activeDays}
+              onClose={() => setEditing(null)}
+              onSave={handleSave} />
+          )}
+          {showTmpl && (
+            <TemplatesModal 
+              onClose={() => setShowTmpl(false)} 
+              onApply={applyTemplates} 
+              templates={templates} 
+              locale={locale}
+            />
+          )}
+          {confirmDel && (
+            <ConfirmDelete
+              payload={confirmDel}
+              onCancel={() => setConfirmDel(null)}
+              onConfirm={() => {
+                if (confirmDel.bulk) handleBulkDelete();
+                else if (confirmDel.id) handleDelete(confirmDel.id);
+              }} />
           )}
         </div>
-
-        {/* Footer actions & Pagination */}
-        <Pagination
-          page={page}
-          size={size}
-          totalPages={totalPages}
-          totalElements={totalElements}
-          onPageChange={setPage}
-          onSizeChange={(s) => { setSize(s); setPage(0); }}
-        />
-      </div>
-
-      <BulkActionBar
-        count={selected.size}
-        actions={[
-          { id: 'bulk-weight', label: "Vaznni o'zgartirish", icon: Edit, onClick: () => setEditing({ bulkWeight: true }) },
-          { id: 'bulk-timeoff', label: "Vaqtlarni o'zgartirish", icon: LayoutGrid, onClick: () => setEditing({ bulkTimeoff: true }) },
-        ]}
-        onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
-        onClear={clearSelection}
-      />
-
-      {/* Modals */}
-      {editing && (
-        <SubjectEditor
-          initial={(editing as any).new ? null : editing}
-          periods={periods}
-          days={activeDays}
-          onClose={() => setEditing(null)}
-          onSave={handleSave} />
-      )}
-      {showTmpl && (
-        <TemplatesModal 
-          onClose={() => setShowTmpl(false)} 
-          onApply={applyTemplates} 
-          templates={templates} 
-          locale={locale}
-        />
-      )}
-      {confirmDel && (
-        <ConfirmDelete
-          payload={confirmDel}
-          onCancel={() => setConfirmDel(null)}
-          onConfirm={() => {
-            if (confirmDel.bulk) handleBulkDelete();
-            else if (confirmDel.id) handleDelete(confirmDel.id);
-          }} />
-      )}
+        <TipsSidebar pageKey="subjects" tips={SUBJECT_TIPS} />
       </div>
     </PageContainer>
   );

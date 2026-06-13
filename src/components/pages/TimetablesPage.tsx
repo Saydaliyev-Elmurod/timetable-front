@@ -203,7 +203,7 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   };
 
   return (
-    <PageContainer>
+    <PageContainer size="full">
       {/* Page Header — clean, no gradients */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

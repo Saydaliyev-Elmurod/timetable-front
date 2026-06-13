@@ -7,10 +7,37 @@ import { TeacherService, TeacherResponse, TeacherRequest, TeacherUpdateRequest, 
 import { SubjectService, SubjectResponse } from '@/lib/subjects';
 import { organizationApi } from '@/api/organizationApi';
 import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
-import { CrudPageHeader, BulkActionBar, Pagination, AvailGrid, AvailMini, PageLoading, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, AvailGrid, AvailMini, PageLoading, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays, TipsSidebar, TipItem } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 const ImportModal = lazy(() => import('@/components/shared/ImportModal'));
+
+const TEACHER_TIPS: TipItem[] = [
+  {
+    id: 'balance_load',
+    title: 'Ish yuklamasini muvozanatlang',
+    description: 'O\'qituvchilarning haftalik dars soatlarini real imkoniyatlariga qarab taqsimlang.',
+    icon: BookOpen,
+  },
+  {
+    id: 'teacher_avail',
+    title: 'Mavjud vaqtni to\'g\'ri belgilang',
+    description: 'Metodika kuni yoki boshqa sabablar bilan ishlay olmaydigan soatlarini oldindan o\'chirib qo\'ying.',
+    icon: Clock,
+  },
+  {
+    id: 'link_subjects',
+    title: 'Fanlarni biriktiring',
+    description: 'O\'qituvchiga faqat u dars bera oladigan fanlarni biriktirish avtomatik jadval tuzishni osonlashtiradi.',
+    icon: LayoutGrid,
+  },
+  {
+    id: 'short_names',
+    title: 'Qisqartma ismlar',
+    description: 'Jadvalda joyni tejash uchun o\'qituvchi ism-familiyasini qisqartma shaklda (masalan, A.A.) kiriting.',
+    icon: Edit,
+  },
+];
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
@@ -170,121 +197,122 @@ export default function TeachersPage() {
   }
 
   return (
-    <PageContainer fullHeight noGap>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <CrudPageHeader
-        searchValue={query}
-        onSearchChange={setQuery}
-        searchPlaceholder={t('teachers.search_placeholder', "O'qituvchini qidiring...")}
-        count={totalElements}
-        countLabel={t('teachers.teachers_count', "ta o'qituvchi")}
-        actions={[
-          { id: 'import', label: t('teachers.import', 'Import'), icon: Upload, onClick: () => setShowImport(true) },
-          { id: 'add', label: t('teachers.add_new', "Yangi o'qituvchi"), icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
-        ]}
-      />
+    <PageContainer fullHeight noGap size="full">
+      <div style={{ display: 'flex', flexDirection: 'row', height: '100%', width: '100%', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden', minWidth: 0, paddingRight: 64 }}>
+          <CrudPageHeader
+            searchValue={query}
+            onSearchChange={setQuery}
+            searchPlaceholder={t('teachers.search_placeholder', "O'qituvchini qidiring...")}
+            count={totalElements}
+            countLabel={t('teachers.teachers_count', "ta o'qituvchi")}
+            actions={[
+              { id: 'import', label: t('teachers.import', 'Import'), icon: Upload, onClick: () => setShowImport(true) },
+              { id: 'add', label: t('teachers.add_new', "Yangi o'qituvchi"), icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
+            ]}
+          />
 
-      {/* List */}
-      <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '30px 1.4fr 1.1fr 130px 90px',
-            padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
-            font: '700 11px Plus Jakarta Sans', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}>
-            <input type="checkbox" checked={selected.size === library.length && library.length > 0} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} />
-            <span>O'qituvchi</span>
-            <span>Fanlar</span>
-            <span>Mavjudlik</span>
-            <span style={{ textAlign: 'right' }}>Amallar</span>
+          {/* List */}
+          <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
+            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{
+                display: 'grid', gridTemplateColumns: '30px 1.4fr 1.1fr 130px 90px',
+                padding: '12px 16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0',
+                font: '700 11px Plus Jakarta Sans', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em'
+              }}>
+                <input type="checkbox" checked={selected.size === library.length && library.length > 0} onChange={toggleSelectAll} style={{ cursor: 'pointer' }} />
+                <span>O'qituvchi</span>
+                <span>Fanlar</span>
+                <span>Mavjudlik</span>
+                <span style={{ textAlign: 'right' }}>Amallar</span>
+              </div>
+
+              {library.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '70px 20px', color: '#94A3B8' }}>
+                  <div style={{ font: '800 16px Plus Jakarta Sans', color: '#0F172A' }}>Hech narsa topilmadi</div>
+                </div>
+              ) : (
+                library.map(teacher => (
+                  <TeacherRow key={teacher.id} teacher={teacher} periods={periods} days={activeDays} t={t}
+                    selected={selected.has(teacher.id)}
+                    onSelect={toggleSelect}
+                    onEdit={setEditing}
+                    onDelete={(id: number, name: string) => setConfirmDel({ id, name })} />
+                ))
+              )}
+            </div>
+
+            {/* Footer & Pagination */}
+            <Pagination
+              page={page}
+              size={size}
+              totalPages={totalPages}
+              totalElements={totalElements}
+              onPageChange={setPage}
+              onSizeChange={(s) => { setSize(s); setPage(0); }}
+            />
           </div>
 
-          {library.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '70px 20px', color: '#94A3B8' }}>
-              <div style={{ font: '800 16px Plus Jakarta Sans', color: '#0F172A' }}>Hech narsa topilmadi</div>
-            </div>
-          ) : (
-            library.map(teacher => (
-              <TeacherRow key={teacher.id} teacher={teacher} periods={periods} days={activeDays} t={t}
-                selected={selected.has(teacher.id)}
-                onSelect={toggleSelect}
-                onEdit={setEditing}
-                onDelete={(id: number, name: string) => setConfirmDel({ id, name })} />
-            ))
+          <BulkActionBar
+            count={selected.size}
+            actions={[
+              {
+                id: 'bulk-timeoff',
+                label: "Vaqtlarni o'zgartirish",
+                icon: Clock,
+                onClick: () => setEditing({ bulkTimeoff: true }),
+              },
+            ]}
+            onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
+            onClear={clearSelection}
+          />
+
+          {/* Modals */}
+          {editing && (
+            <TeacherEditor 
+              initial={editing} periods={periods} days={activeDays} subjects={subjects} t={t}
+              onClose={() => setEditing(null)} 
+              onSave={handleSave} 
+            />
+          )}
+
+          {confirmDel && (
+            <ConfirmDialog
+              title={confirmDel.bulk ? "O'qituvchilarni o'chirish" : "O'qituvchini o'chirish"}
+              desc={confirmDel.bulk ? `Siz haqiqatan ham ${confirmDel.n} ta o'qituvchini o'chirmoqchimisiz?` : `"${confirmDel.name}" o'qituvchisini o'chirishni tasdiqlaysizmi?`}
+              onConfirm={confirmDel.bulk ? handleBulkDelete : () => {
+                TeacherService.delete(confirmDel.id!).then(() => {
+                  toast.success("O'qituvchi o'chirildi");
+                  setConfirmDel(null);
+                  fetchData();
+                });
+              }}
+              onClose={() => setConfirmDel(null)}
+            />
+          )}
+          {showImport && (
+            <Suspense fallback={null}>
+              <ImportModal
+                title={t('teachers.import_teachers', "O'qituvchilarni import qilish")}
+                description={t('teachers.import_description', "Excel yoki CSV fayli orqali o'qituvchilarni ommaviy qo'shing")}
+                templateColumns={['Ism', 'Qisqa nom']}
+                mapping={(row: any) => ({
+                  fullName: row['Ism'],
+                  shortName: row['Qisqa nom'],
+                  subjects: [],
+                  availabilities: convertToApiFormat(getFullAvail(periods, activeDays))
+                })}
+                onImport={async (data) => {
+                  await TeacherService.bulkAdd(data);
+                  toast.success(t('teachers.import_success', "Ma'lumotlar muvaffaqiyatli import qilindi"));
+                  fetchData();
+                }}
+                onClose={() => setShowImport(false)}
+              />
+            </Suspense>
           )}
         </div>
-
-        {/* Footer & Pagination */}
-        <Pagination
-          page={page}
-          size={size}
-          totalPages={totalPages}
-          totalElements={totalElements}
-          onPageChange={setPage}
-          onSizeChange={(s) => { setSize(s); setPage(0); }}
-        />
-      </div>
-
-      <BulkActionBar
-        count={selected.size}
-        actions={[
-          {
-            id: 'bulk-timeoff',
-            label: "Vaqtlarni o'zgartirish",
-            icon: Clock,
-            onClick: () => setEditing({ bulkTimeoff: true }),
-          },
-        ]}
-        onDelete={() => setConfirmDel({ bulk: true, n: selected.size })}
-        onClear={clearSelection}
-      />
-
-      {/* Modals */}
-      {editing && (
-        <TeacherEditor 
-          initial={editing} periods={periods} days={activeDays} subjects={subjects} t={t}
-          onClose={() => setEditing(null)} 
-          onSave={handleSave} 
-        />
-      )}
-
-      {confirmDel && (
-        <ConfirmDialog
-          title={confirmDel.bulk ? "O'qituvchilarni o'chirish" : "O'qituvchini o'chirish"}
-          desc={confirmDel.bulk ? `Siz haqiqatan ham ${confirmDel.n} ta o'qituvchini o'chirmoqchimisiz?` : `"${confirmDel.name}" o'qituvchisini o'chirishni tasdiqlaysizmi?`}
-          onConfirm={confirmDel.bulk ? handleBulkDelete : () => {
-            TeacherService.delete(confirmDel.id!).then(() => {
-              toast.success("O'qituvchi o'chirildi");
-              setConfirmDel(null);
-              fetchData();
-            });
-          }}
-          onClose={() => setConfirmDel(null)}
-        />
-      )}
-      {showImport && (
-        <Suspense fallback={null}>
-          <ImportModal
-            title={t('teachers.import_teachers', "O'qituvchilarni import qilish")}
-            description={t('teachers.import_description', "Excel yoki CSV fayli orqali o'qituvchilarni ommaviy qo'shing")}
-            templateColumns={['Ism', 'Qisqa nom']}
-            mapping={(row: any) => ({
-              fullName: row['Ism'],
-              shortName: row['Qisqa nom'],
-              subjects: [],
-              availabilities: convertToApiFormat(getFullAvail(periods, activeDays))
-            })}
-            onImport={async (data) => {
-              await TeacherService.bulkAdd(data);
-              toast.success(t('teachers.import_success', "Ma'lumotlar muvaffaqiyatli import qilindi"));
-              fetchData();
-            }}
-            onClose={() => setShowImport(false)}
-          />
-        </Suspense>
-      )}
-
-
+        <TipsSidebar pageKey="teachers" tips={TEACHER_TIPS} />
       </div>
     </PageContainer>
   );

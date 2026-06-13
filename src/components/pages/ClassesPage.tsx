@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCrudResource } from '@/hooks';
-import { Upload, Plus, Edit, Trash2, X, Layers, Users, LayoutGrid } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, X, Layers, Users, LayoutGrid, Clock } from 'lucide-react';
 import { useTranslation } from '@/i18n/index';
 import { toast } from 'sonner';
 import { ClassService, ClassResponse } from '@/lib/classes';
@@ -9,8 +9,35 @@ import { TeacherService, TeacherResponse } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
 import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
-import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays, AvailGrid, AvailMini, PageLoading } from '@/components/shared';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays, AvailGrid, AvailMini, PageLoading, TipsSidebar, TipItem } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
+
+const CLASS_TIPS: TipItem[] = [
+  {
+    id: 'class_name',
+    title: 'Sinf nomi qanday bo\'lishi kerak?',
+    description: 'Sinflarni oddiy, tushunarli formatda nomlang (masalan, “5-A”, “9-B”). Bu dars jadvalini shakllantirishda qulaylik yaratadi.',
+    icon: Layers,
+  },
+  {
+    id: 'class_teacher',
+    title: 'Sinf rahbari (ustoz) biriktirish',
+    description: 'Har bir sinfga mas\'ul o\'qituvchini biriktirish jadval to\'qnashuvlarini nazorat qilishga yordam beradi.',
+    icon: Users,
+  },
+  {
+    id: 'class_avail',
+    title: 'Dars vaqtlarini cheklash',
+    description: 'Agar sinf faqat 2-smenada o\'qisa, 1-smenadagi soatlarini dars jadvalidan o\'chirib qo\'ying.',
+    icon: Clock,
+  },
+  {
+    id: 'class_groups',
+    title: 'Guruhlar (nim guruhlar)',
+    description: 'Ingliz tili yoki Informatika fanlari uchun sinf tarkibida nim guruhlarni (masalan: 1-guruh, 2-guruh) to\'g\'ri sozlashingiz muhim.',
+    icon: LayoutGrid,
+  },
+];
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
@@ -173,20 +200,21 @@ export default function ClassesPage() {
   }
 
   return (
-    <PageContainer fullHeight noGap>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-      <CrudPageHeader
-        searchValue={query}
-        onSearchChange={setQuery}
-        searchPlaceholder="Sinfni qidiring..."
-        count={totalElements}
-        countLabel="ta sinf"
-        actions={[
-          { id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImport(true) },
-          { id: 'batch', label: 'Guruhli yaratish', icon: Layers, onClick: () => setShowBatch(true) },
-          { id: 'add', label: 'Yangi sinf', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
-        ]}
-      />
+    <PageContainer fullHeight noGap size="full">
+      <div style={{ display: 'flex', flexDirection: 'row', height: '100%', width: '100%', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden', minWidth: 0, paddingRight: 64 }}>
+          <CrudPageHeader
+            searchValue={query}
+            onSearchChange={setQuery}
+            searchPlaceholder="Sinfni qidiring..."
+            count={totalElements}
+            countLabel="ta sinf"
+            actions={[
+              { id: 'import', label: 'Import', icon: Upload, onClick: () => setShowImport(true) },
+              { id: 'batch', label: 'Guruhli yaratish', icon: Layers, onClick: () => setShowBatch(true) },
+              { id: 'add', label: 'Yangi sinf', icon: Plus, onClick: () => setEditing({ new: true }), variant: 'primary' },
+            ]}
+          />
 
       {/* Table */}
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.05)' }}>
@@ -281,6 +309,8 @@ export default function ClassesPage() {
           onSave={handleSave}
         />
       )}
+        </div>
+        <TipsSidebar pageKey="classes" tips={CLASS_TIPS} />
       </div>
     </PageContainer>
   );

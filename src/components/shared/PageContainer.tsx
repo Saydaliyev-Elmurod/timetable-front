@@ -37,7 +37,8 @@ export function PageContainer({
   return (
     <div
       className={cn(
-        'mx-auto w-full px-6 py-6 flex flex-col',
+        'mx-auto w-full py-6 flex flex-col',
+        size === 'full' ? 'px-16' : 'px-6',
         !noGap && 'gap-6',
         fullHeight && 'h-full',
         SIZE_MAP[size],
