@@ -273,7 +273,10 @@ export function useTimetableEditor({
             return { ok: false, reason: 'Xona band' };
           }
           if (l.classId === card.classId) {
-            return { ok: false, reason: 'Sinf band' };
+            // Conflict if either is a whole-class lesson (no groupId) or they belong to the same group
+            if (!l.groupId || !card.groupId || l.groupId === card.groupId) {
+              return { ok: false, reason: 'Sinf band' };
+            }
           }
         }
       }
@@ -387,7 +390,14 @@ export function useTimetableEditor({
   // Ular bir xil sinf+kun+soat+haftada turadi. Bittasini sudraganda hammasi birga ko'chsin.
   const slotMates = useCallback((card: Lesson): Lesson[] => {
     const pos = lessonPos(card);
-    if (!pos) return [card]; // unscheduled — faqat o'zi
+    if (!pos) {
+      // Unscheduled — find other groups of the same lesson in the unplaced list.
+      // They have the same classId and subjectId.
+      const mates = unplacedRef.current.filter(
+        (l) => l.classId === card.classId && l.subjectId === card.subjectId
+      );
+      return mates.length > 0 ? mates : [card];
+    }
     const mates = scheduledRef.current.filter(
       (l) =>
         l.classId === card.classId &&

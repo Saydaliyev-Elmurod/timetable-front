@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { cn } from '../../ui/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { DraggableLessonCard } from '../timetable-view/DraggableLessonCard';
 import { DisplayOptions, Lesson, UnplacedLesson } from '../timetable-view/types';
@@ -29,6 +30,10 @@ export function UnplacedSidebar({
   collapsed,
   onToggleCollapse,
 }: Props) {
+  // Rang holatdan emas, sondan kelib chiqadi: unplaced bor → qizil, yo'q → yashil.
+  // Yopiq/ochiqdan mustaqil (qo'lda yopilsa ham qizil qoladi).
+  const hasUnplaced = unplacedLessons.length > 0;
+
   // Yopiq: tor vertikal bar, gorizontal scrollda ham doim ko'rinadi (pin).
   if (collapsed) {
     return (
@@ -36,17 +41,26 @@ export function UnplacedSidebar({
         type="button"
         onClick={onToggleCollapse}
         title="Joylashtirilmagan darslarni ochish"
-        className="w-10 flex-shrink-0 sticky top-32 self-start flex flex-col items-center gap-2 py-3 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors"
+        className={cn(
+          'w-10 flex-shrink-0 sticky top-32 self-start flex flex-col items-center gap-2 py-3 rounded-lg border transition-colors',
+          hasUnplaced
+            ? 'border-red-200 bg-red-50 hover:bg-red-100'
+            : 'border-green-200 bg-green-50 hover:bg-green-100',
+        )}
       >
-        <ChevronLeft className="h-5 w-5 text-orange-700" />
-        <AlertCircle className="h-5 w-5 text-orange-700" />
-        {unplacedLessons.length > 0 && (
-          <span className="text-xs font-semibold text-white bg-orange-500 rounded-full w-6 h-6 flex items-center justify-center">
-            {unplacedLessons.length}
-          </span>
+        <ChevronLeft className={cn('h-5 w-5', hasUnplaced ? 'text-red-700' : 'text-green-700')} />
+        {hasUnplaced ? (
+          <>
+            <AlertCircle className="h-5 w-5 text-red-700" />
+            <span className="text-xs font-semibold text-white bg-red-500 rounded-full w-6 h-6 flex items-center justify-center">
+              {unplacedLessons.length}
+            </span>
+          </>
+        ) : (
+          <CheckCircle2 className="h-5 w-5 text-green-700" />
         )}
         <span
-          className="text-xs font-medium text-orange-800 mt-1"
+          className={cn('text-xs font-medium mt-1', hasUnplaced ? 'text-red-800' : 'text-green-800')}
           style={{ writingMode: 'vertical-rl' }}
         >
           Unplaced
@@ -57,18 +71,26 @@ export function UnplacedSidebar({
 
   // Ochiq: to'liq sidebar (sticky, pin).
   return (
-    <Card className="w-80 flex-shrink-0 shadow-sm h-fit sticky top-32 self-start border-gray-200">
-      <CardHeader className="bg-orange-50 border-b border-orange-100 p-4">
+    <Card
+      className={cn(
+        'w-80 flex-shrink-0 shadow-sm h-fit sticky top-32 self-start',
+        hasUnplaced ? 'border-red-200' : 'border-green-200',
+      )}
+    >
+      <CardHeader className={cn('border-b p-4', hasUnplaced ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100')}>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-orange-900 text-base">
-            <AlertCircle className="h-5 w-5" />
+          <CardTitle className={cn('flex items-center gap-2 text-base', hasUnplaced ? 'text-red-900' : 'text-green-900')}>
+            {hasUnplaced ? <AlertCircle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
             Unplaced Lessons
           </CardTitle>
           <button
             type="button"
             onClick={onToggleCollapse}
             title="Yopish"
-            className="flex-shrink-0 p-1 rounded hover:bg-orange-100 text-orange-700 transition-colors"
+            className={cn(
+              'flex-shrink-0 p-1 rounded transition-colors',
+              hasUnplaced ? 'hover:bg-red-100 text-red-700' : 'hover:bg-green-100 text-green-700',
+            )}
           >
             <ChevronRight className="h-5 w-5" />
           </button>

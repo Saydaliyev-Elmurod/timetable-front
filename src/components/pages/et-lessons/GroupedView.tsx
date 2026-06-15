@@ -71,7 +71,7 @@ function headStripe(head: any, groupBy: any) {
   if (groupBy === 'class') {
     return {
       avatar: (
-        <div style={{ width: 42, height: 42, borderRadius: 10, background: 'linear-gradient(135deg,#4F46E5,#6366F1)', color: '#fff', font: '800 14px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const, letterSpacing: '-0.02em' }}>{head.title}</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#4F46E5,#6366F1)', color: '#fff', font: '800 14px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const, letterSpacing: '-0.02em' }}>{head.title}</div>
       ),
     };
   }
@@ -79,21 +79,21 @@ function headStripe(head: any, groupBy: any) {
     const [bg, fg, _bar] = subjColors(head.subject);
     return {
       avatar: (
-        <div style={{ width: 42, height: 42, borderRadius: 10, background: bg, color: fg, font: '800 16px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const }}>{head.subject.short[0]}</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: bg, color: fg, font: '800 16px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const }}>{head.subject.short[0]}</div>
       ),
     };
   }
   if (groupBy === 'teacher' && head.teacher) {
     return {
       avatar: (
-        <div style={{ width: 42, height: 42, borderRadius: 999, background: head.teacher.tone, color: '#fff', font: '800 14px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const, letterSpacing: '-0.02em' }}>{head.teacher.avatar}</div>
+        <div style={{ width: 34, height: 34, borderRadius: 999, background: head.teacher.tone, color: '#fff', font: '800 14px Plus Jakarta Sans', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const, letterSpacing: '-0.02em' }}>{head.teacher.avatar}</div>
       ),
     };
   }
   if (groupBy === 'room' && head.room) {
     return {
       avatar: (
-        <div style={{ width: 42, height: 42, borderRadius: 10, background: '#F1F5F9', color: '#334155', font: '700 11px JetBrains Mono', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const }}>{head.title}</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: '#F1F5F9', color: '#334155', font: '700 11px JetBrains Mono', display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const }}>{head.title}</div>
       ),
     };
   }
@@ -116,12 +116,12 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
       transition: 'box-shadow 200ms ease',
     }}>
       <header style={{
-        display: 'grid' as const, gridTemplateColumns: 'auto 1fr auto', gap: 14, alignItems: 'center' as const,
-        padding: '14px 16px', cursor: 'pointer' as const, userSelect: 'none' as const,
+        display: 'grid' as const, gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center' as const,
+        padding: '9px 14px', cursor: 'pointer' as const, userSelect: 'none' as const,
       }} onClick={onToggle}>
-        <div style={{ display: 'flex' as const, alignItems: 'center' as const, gap: 12 }}>
+        <div style={{ display: 'flex' as const, alignItems: 'center' as const, gap: 10 }}>
           <button onClick={(e: any) => { e.stopPropagation(); onToggle(); }} style={{
-            width: 28, height: 28, border: 0, background: '#F1F5F9', borderRadius: 7,
+            width: 26, height: 26, border: 0, background: '#F1F5F9', borderRadius: 7,
             display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'center' as const, cursor: 'pointer' as const,
             transition: 'transform 200ms ease', transform: open ? 'rotate(90deg)' : 'none',
           }}>
@@ -133,7 +133,7 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
             {head.sub && <div style={{ font: '500 12px Manrope', color: '#94A3B8', marginTop: 1 }}>{head.sub}</div>}
           </div>
         </div>
-        <div style={{ display: 'flex' as const, alignItems: 'center' as const, gap: 18, flexWrap: 'wrap' as const }}>
+        <div style={{ display: 'flex' as const, alignItems: 'center' as const, gap: 12, flexWrap: 'wrap' as const }}>
           {head.meta.map(([label, val]: any, i: number) => (
             <div key={i} style={{ display: 'flex' as const, alignItems: 'baseline' as const, gap: 5 }}>
               <span style={{ font: '700 16px JetBrains Mono', color: '#0F172A' }}>{val}</span>
@@ -146,7 +146,7 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
             <button onClick={(e: any) => { e.stopPropagation(); onEdit(); }} title={EDIT_TITLE[groupBy] || 'Tahrirlash'} style={{
               display: 'inline-flex' as const, alignItems: 'center' as const, gap: 6,
               font: '600 12px Manrope', color: '#475569', background: '#fff',
-              border: '1px solid #E2E8F0', padding: '8px 12px', borderRadius: 8, cursor: 'pointer' as const,
+              border: '1px solid #E2E8F0', padding: '6px 10px', borderRadius: 8, cursor: 'pointer' as const,
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
               Tahrirlash
@@ -155,7 +155,7 @@ function GroupCard({ head, groupBy, open, onToggle, onAdd, onEdit, children }: a
           <button onClick={(e: any) => { e.stopPropagation(); onAdd(); }} style={{
             display: 'inline-flex' as const, alignItems: 'center' as const, gap: 6,
             font: '700 12px Manrope', color: '#fff', background: '#0F172A',
-            border: 0, padding: '8px 14px', borderRadius: 8, cursor: 'pointer' as const,
+            border: 0, padding: '6px 10px', borderRadius: 8, cursor: 'pointer' as const,
           }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
             Dars qo'shish
@@ -258,7 +258,7 @@ export function GroupedView({ rows, groupBy, expanded, setExpanded, onAddToGroup
   });
 
   return (
-    <div style={{ display: 'flex' as const, flexDirection: 'column' as const, gap: 10 }}>
+    <div style={{ display: 'flex' as const, flexDirection: 'column' as const, gap: 8 }}>
       {filtGroups.length === 0 && (
         <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 14, padding: '40px 24px', textAlign: 'center' as const, color: '#94A3B8', font: '500 14px Manrope' }}>
           Bu yo'nalish bo'yicha guruhlar topilmadi

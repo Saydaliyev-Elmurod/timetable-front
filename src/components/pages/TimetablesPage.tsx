@@ -60,6 +60,21 @@ interface TimetableEntity {
   updatedDate: string;
 }
 
+// Foydalanuvchi yoqib/o'chira oladigan soft constraintlar katalogi.
+// `key` backend `ConstraintKey` enum nomi bilan AYNAN mos kelishi shart. Penalty qiymatlari
+// o'zgartirilmaydi — faqat enable/disable. Bu yerda yo'q constraintlar har doim ON ishlaydi.
+type SoftConstraintOption = { key: string; label: string; hint: string };
+const SOFT_CONSTRAINTS: SoftConstraintOption[] = [
+  { key: 'CLASS_CONTINUITY', label: "Sinf darslarida bo'sh soat ('deraza') bo'lmasin", hint: "O'quvchilar darslari uzluksiz ketadi" },
+  { key: 'MORNING_GRAVITY', label: 'Darslar erta boshlanib erta tugasin', hint: "Bo'sh birinchi soatlarning oldini oladi" },
+  { key: 'SUBJECT_SPACING', label: 'Bir fan hafta kunlariga teng taqsimlansin', hint: 'Bir fan ketma-ket kunlarga tushib qolmaydi' },
+  { key: 'ANTI_CONSECUTIVE_SAME_SUBJECT', label: 'Bir xil fan kunda ketma-ket kelmasin', hint: 'Para holatidan tashqari back-to-back takror' },
+  { key: 'TEACHER_CONTINUITY', label: "O'qituvchi darslarida bo'sh soat bo'lmasin", hint: "O'qituvchi 'derazalari' kamayadi" },
+  { key: 'BALANCED_LOAD', label: "Kunlik dars yuki muvozanatli bo'lsin", hint: "Bir kun 7 ta, boshqasi 2 ta bo'lib qolmaydi" },
+  { key: 'NO_CONSECUTIVE_HEAVY_SUBJECTS', label: "Og'ir fanlar ketma-ket kelmasin", hint: 'Masalan matematika + fizika ketma-ket emas' },
+  { key: 'TEACHER_DAY_COMPRESSION', label: "O'qituvchi ish kunlari ixcham bo'lsin", hint: "O'qituvchi kamroq kunda ishlaydi" },
+];
+
 const formatDate = (dateString: string) => {
   try {
     const date = new Date(dateString);
@@ -86,6 +101,9 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [generateName, setGenerateName] = useState('');
   const [useSimpleAlgorithm, setUseSimpleAlgorithm] = useState(false);
+  // O'chirilgan soft constraint kalitlari (default: bo'sh = barchasi yoqilgan).
+  const [disabledSoft, setDisabledSoft] = useState<Set<string>>(new Set());
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -433,10 +451,57 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
               </Label>
             </div>
 
+            {/* Soft constraint toggles — qiymatlar o'zgarmaydi, faqat yoqish/o'chirish */}
+            <div className="border-t border-gray-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                className="flex items-center justify-between w-full text-sm font-medium text-gray-700"
+              >
+                <span>Qoidalar (soft cheklovlar)</span>
+                <span className="text-xs text-gray-400">
+                  {disabledSoft.size > 0
+                    ? `${SOFT_CONSTRAINTS.length - disabledSoft.size}/${SOFT_CONSTRAINTS.length} yoqilgan`
+                    : 'Barchasi yoqilgan'}
+                </span>
+              </button>
+              {showAdvanced && (
+                <div className="mt-2 space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {SOFT_CONSTRAINTS.map((sc) => {
+                    const enabled = !disabledSoft.has(sc.key);
+                    return (
+                      <div key={sc.key} className="flex items-start space-x-2">
+                        <Checkbox
+                          id={`sc-${sc.key}`}
+                          checked={enabled}
+                          onCheckedChange={(checked) =>
+                            setDisabledSoft((prev) => {
+                              const next = new Set(prev);
+                              if (checked) next.delete(sc.key);
+                              else next.add(sc.key);
+                              return next;
+                            })
+                          }
+                          className="mt-0.5"
+                        />
+                        <Label
+                          htmlFor={`sc-${sc.key}`}
+                          className="text-sm text-gray-700 cursor-pointer leading-tight"
+                        >
+                          {sc.label}
+                          <span className="block text-xs text-gray-400 font-normal">{sc.hint}</span>
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 justify-end pt-2">
               <Button
                 variant="outline"
-                onClick={() => { setIsGenerateOpen(false); setGenerateName(''); setUseSimpleAlgorithm(false); }}
+                onClick={() => { setIsGenerateOpen(false); setGenerateName(''); setUseSimpleAlgorithm(false); setDisabledSoft(new Set()); setShowAdvanced(false); }}
                 className="text-sm"
               >
                 Bekor qilish
@@ -452,7 +517,11 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                   try {
                     const res = await apiCall<{ taskId: string }>('http://localhost:8080/api/timetable/v1/timetable/generate', {
                       method: 'POST',
-                      body: JSON.stringify({ name, useSimpleAlgorithm }),
+                      body: JSON.stringify({
+                        name,
+                        useSimpleAlgorithm,
+                        disabledSoftConstraints: Array.from(disabledSoft),
+                      }),
                     });
                     if (res.error || !res.data?.taskId) {
                       toast.error(res.error?.message || "Jadval yaratib bo'lmadi");
@@ -468,6 +537,8 @@ export default function TimetablesPage({ onNavigate }: { onNavigate?: (page: str
                       setIsGenerateOpen(false);
                       setGenerateName('');
                       setUseSimpleAlgorithm(false);
+                      setDisabledSoft(new Set());
+                      setShowAdvanced(false);
                     }
                   } catch (err) {
                     logger.error('Generate error', err);

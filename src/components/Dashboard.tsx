@@ -192,7 +192,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
+        <header className={
+          currentPage.startsWith('timetable-view')
+            ? "h-11 shrink-0 border-b border-border bg-card flex items-center justify-between px-4"
+            : "h-16 shrink-0 border-b border-border bg-card flex items-center justify-between px-6"
+        }>
           <div>
             <h1 className="text-foreground">
               {navigationItems.find(item => item.id === currentPage)?.label ||

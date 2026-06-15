@@ -17,6 +17,18 @@ export const DAY_LABELS: Record<string, string> = {
   SUNDAY: 'Sunday',
 };
 
+// Compact day labels — used in grid headers so the weekday/period axis steals as
+// little space as possible from the timetable cells themselves.
+export const DAY_LABELS_SHORT: Record<string, string> = {
+  MONDAY: 'Mon',
+  TUESDAY: 'Tue',
+  WEDNESDAY: 'Wed',
+  THURSDAY: 'Thu',
+  FRIDAY: 'Fri',
+  SATURDAY: 'Sat',
+  SUNDAY: 'Sun',
+};
+
 export const SUBJECT_COLORS: Record<string, string> = {
   Mathematics: 'bg-blue-100 border-blue-300 text-blue-900',
   Physics: 'bg-purple-100 border-purple-300 text-purple-900',

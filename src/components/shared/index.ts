@@ -27,5 +27,14 @@ export { btnPrimaryCls, btnSecondaryCls, btnDangerCls, inpCls, inpSearchCls, cou
 export { TipsSidebar } from './TipsSidebar';
 export type { TipItem } from './TipsSidebar';
 
+// Entity editor modals — single source of truth, shared by the CRUD management
+// pages AND the timetable view (so the modal is 1:1 identical everywhere).
+export { ClassEditor } from './editors/ClassEditor';
+export type { ClassEditorProps, ClassEditorInitial } from './editors/ClassEditor';
+export { TeacherEditor } from './editors/TeacherEditor';
+export type { TeacherEditorProps, TeacherEditorInitial } from './editors/TeacherEditor';
+export { RoomEditor } from './editors/RoomEditor';
+export type { RoomEditorProps, RoomEditorInitial } from './editors/RoomEditor';
+
 // Types
 export * from './types';

@@ -8,8 +8,8 @@ import { ClassService, ClassResponse } from '@/lib/classes';
 import { TeacherService, TeacherResponse } from '@/lib/teachers';
 import { RoomService, RoomResponse } from '@/lib/rooms';
 import { organizationApi } from '@/api/organizationApi';
-import { AvailState, getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
-import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, inp, API_DAYS_OF_WEEK, API_DAY_SHORT, getActiveApiDays, AvailGrid, AvailMini, PageLoading, TipsSidebar, TipItem } from '@/components/shared';
+import { getFullAvail, convertToApiFormat, convertFromApiFormat } from '@/lib/availability';
+import { CrudPageHeader, BulkActionBar, Pagination, btnPrimary, btnSecondary, API_DAYS_OF_WEEK, getActiveApiDays, AvailMini, PageLoading, TipsSidebar, TipItem, ClassEditor } from '@/components/shared';
 import { PageContainer } from '@/components/shared/PageContainer';
 
 const CLASS_TIPS: TipItem[] = [
@@ -133,7 +133,7 @@ export default function ClassesPage() {
     totalPages,
     page, size, setPage, setSize,
     query, setQuery,
-    selected, toggleSelect, clearSelection,
+    selected, toggleSelect, clearSelection, setSelected,
     refresh: fetchData,
   } = useCrudResource<ClassResponse>(fetchClasses);
 
@@ -195,6 +195,13 @@ export default function ClassesPage() {
     return library.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || c.shortName.toLowerCase().includes(query.toLowerCase()));
   }, [library, query]);
 
+  // "Hammasini belgilash" — ko'rinib turgan (filtered) sinflar ustida ishlaydi.
+  const allSelected = filtered.length > 0 && filtered.every(c => selected.has(c.id));
+  const toggleSelectAll = () => {
+    if (allSelected) clearSelection();
+    else setSelected(new Set(filtered.map(c => c.id)));
+  };
+
   if (isLoading && library.length === 0) {
     return <PageLoading />;
   }
@@ -216,6 +223,9 @@ export default function ClassesPage() {
             ]}
           />
 
+      {/* Scrollable list area — without this the column (overflow:hidden) clips
+          rows past the viewport, so bigger page sizes "show" only ~10. */}
+      <div style={{ flex: 1, overflow: 'auto', paddingBottom: 100 }} className="et-premium-scrollbar">
       {/* Table */}
       <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.05)' }}>
         <div style={{
@@ -223,7 +233,13 @@ export default function ClassesPage() {
           gap: 18, padding: '14px 18px', background: '#FAFBFD', borderBottom: '1px solid #E2E8F0',
           font: '800 11px Plus Jakarta Sans', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em'
         }}>
-          <div />
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleSelectAll}
+            title="Hammasini belgilash"
+            style={{ cursor: 'pointer', width: 18, height: 18 }}
+          />
           <span>Sinf nomi</span>
           <span>Sinf rahbari</span>
           <span>Mavjud vaqt</span>
@@ -257,6 +273,7 @@ export default function ClassesPage() {
         onPageChange={setPage}
         onSizeChange={(s) => { setSize(s); setPage(0); }}
       />
+      </div>
 
       <BulkActionBar
         count={selected.size}
@@ -422,133 +439,6 @@ function BatchCreateModal({ library, periods, days, onClose, onSave }: any) {
           <button onClick={onClose} style={btnSecondary}>Bekor qilish</button>
           <button onClick={handleCreate} disabled={generated.length === 0} style={{ ...btnPrimary, opacity: generated.length === 0 ? 0.5 : 1 }}>
             {generated.filter(c => !c.exists).length} ta sinf yaratish
-          </button>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
-// ─── Class Editor Modal ───────────────────────────────────────────────
-
-function ClassEditor({ initial, periods, days, teachers, rooms: _rooms, onClose, onSave }: any) {
-  const isEdit = !!initial && !('bulkTimeoff' in initial) && !('new' in initial);
-  const isBulk = !!initial && 'bulkTimeoff' in initial;
-  const isNew = !!initial && 'new' in initial;
-
-  const [entries, setEntries] = useState(() => 
-    isEdit ? [{ name: initial.name, shortName: initial.shortName }] : [{ name: '', shortName: '' }]
-  );
-  const [teacherId, setTeacherId] = useState<string>(isEdit ? String(initial.teacher?.id || '') : '');
-  const [avail, setAvail] = useState<AvailState>(() =>
-    isEdit ? convertFromApiFormat(initial.availabilities, periods, days) : getFullAvail(periods, days)
-  );
-
-  const handleSave = () => {
-    if (isBulk) {
-      onSave({ availabilities: convertToApiFormat(avail) });
-      return;
-    }
-
-    const filled = entries.filter(e => e.name.trim());
-    if (filled.length === 0) {
-      toast.error("Sinf nomini kiritish majburiy");
-      return;
-    }
-
-    if (isEdit) {
-      const e = filled[0];
-      onSave({
-        name: e.name.trim(),
-        shortName: e.shortName.trim() || e.name.trim(),
-        teacherId: teacherId ? parseInt(teacherId) : null,
-        availabilities: convertToApiFormat(avail)
-      });
-    } else {
-      const requests = filled.map(e => ({
-        name: e.name.trim(),
-        shortName: e.shortName.trim() || e.name.trim(),
-        teacherId: teacherId ? parseInt(teacherId) : null,
-        availabilities: convertToApiFormat(avail)
-      }));
-      onSave(requests);
-    }
-  };
-
-  const addEntry = () => setEntries(prev => [...prev, { name: '', shortName: '' }]);
-  const updateEntry = (i: number, patch: any) => setEntries(prev => prev.map((e, idx) => idx === i ? { ...e, ...patch } : e));
-  const removeEntry = (i: number) => setEntries(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div style={{ background: '#fff', width: '100%', maxWidth: 540, borderRadius: 24, boxShadow: '0 32px 64px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: '92vh', overflow: 'hidden' }}>
-        <header style={{ padding: '24px 28px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ font: '800 11px Plus Jakarta Sans', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{isBulk ? "Ommaviy tahrirlash" : "Sinf Ma'lumotlari"}</div>
-            <h2 style={{ font: '800 22px Plus Jakarta Sans', color: '#0F172A', marginTop: 2 }}>{isBulk ? "Vaqtlarni o'zgartirish" : (isEdit ? entries[0].name : "Yangi sinf qo'shish")}</h2>
-          </div>
-          <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 12, border: 0, background: '#F1F5F9', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={20} />
-          </button>
-        </header>
-
-        <div style={{ flex: 1, overflow: 'auto', padding: 28, display: 'flex', flexDirection: 'column', gap: 24 }} className="et-premium-scrollbar">
-          {!isBulk && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {entries.map((e, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.6fr' + (isNew && entries.length > 1 ? ' 44px' : ''), gap: 12, alignItems: 'flex-end' }}>
-                    <div>
-                      {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Sinf nomi *</label>}
-                      <input value={e.name} onChange={ev => updateEntry(i, { name: ev.target.value })} style={inp} placeholder="Masalan: 10-A" autoFocus={i === 0} />
-                    </div>
-                    <div>
-                      {i === 0 && <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Qisqa nomi</label>}
-                      <input value={e.shortName} onChange={ev => updateEntry(i, { shortName: ev.target.value.toUpperCase() })} style={{ ...inp, fontFamily: 'JetBrains Mono' }} placeholder="10A" />
-                    </div>
-                    {isNew && entries.length > 1 && (
-                      <button onClick={() => removeEntry(i)} style={{ width: 42, height: 42, borderRadius: 12, border: '1.5px solid #E2E8F0', color: '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                
-                {isNew && (
-                  <button onClick={addEntry} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, font: '700 13px Manrope', color: '#4F46E5', background: '#EEF2FF', border: '1.5px dashed #C7D2FE', padding: '10px 16px', borderRadius: 12, marginTop: 4, cursor: 'pointer' }}>
-                    <Plus size={16} /> Yangi sinf
-                  </button>
-                )}
-              </div>
-
-              <div>
-                <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Sinf rahbari</label>
-                <select 
-                  value={teacherId} 
-                  onChange={e => setTeacherId(e.target.value)} 
-                  style={{ ...inp, appearance: 'none', background: '#fff' }}
-                >
-                  <option value="">Tanlanmagan</option>
-                  {teachers.map((t: any) => (
-                    <option key={t.id} value={t.id}>{t.fullName}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div>
-            <label style={{ font: '700 12px Manrope', color: '#64748B', display: 'block', marginBottom: 8 }}>Mavjud dars soatlari</label>
-            <div style={{ background: '#FAFBFD', border: '1px solid #F1F5F9', borderRadius: 16, padding: 16 }}>
-              <AvailGrid avail={avail} periods={periods} days={days} onChange={setAvail} dayLabel={(d) => API_DAY_SHORT[d] || d.slice(0, 3)} />
-            </div>
-          </div>
-        </div>
-
-        <footer style={{ padding: '20px 28px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#FAFBFD' }}>
-          <button onClick={onClose} style={btnSecondary}>Bekor</button>
-          <button onClick={handleSave} style={btnPrimary}>
-            {isBulk ? "Hammasiga qo'llash" : (isEdit ? "Saqlash" : (entries.length > 1 ? "Barchasini qo'shish" : "Qo'shish"))}
           </button>
         </footer>
       </div>

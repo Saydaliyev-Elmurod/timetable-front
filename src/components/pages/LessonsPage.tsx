@@ -7,8 +7,6 @@ import { TeacherService } from '@/lib/teachers';
 import { RoomService, RoomType } from '@/lib/rooms';
 import { toast } from 'sonner';
 import { LessonsWithMetadataResponse, LessonRequest, GroupLessonDetail } from '@/types/api';
-import { Plus } from 'lucide-react';
-import { Button } from '../ui/button';
 import { PageContainer } from '../shared/PageContainer';
 import { logger } from '../../lib/logger';
 
@@ -406,22 +404,13 @@ export default function LessonsPage() {
         </div>
       )}
       
-      <div className="absolute top-4 right-4 z-[100] flex gap-2">
-        <Button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg flex items-center gap-2"
-        >
-          <Plus size={18} />
-          Modal orqali qo'shish
-        </Button>
-      </div>
-      
       <EtLessonsPage
         onSave={(rows: any) => handleSave(rows)}
         onRowsChange={(rows: any) => setCurrentRows(rows)}
         resolveEntity={resolveEntity}
         onEntitySave={handleEntitySave}
         onImported={loadData}
+        onAddViaModal={() => setIsModalOpen(true)}
         {...dataProps}
       />
 

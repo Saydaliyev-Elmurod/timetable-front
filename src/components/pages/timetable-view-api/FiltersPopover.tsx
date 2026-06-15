@@ -60,7 +60,7 @@ export function FiltersPopover({
         <Button
           variant="outline"
           size="sm"
-          className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+          className="gap-2 border-gray-200 bg-white text-gray-700 hover:bg-gray-50 h-8"
         >
           <Filter className="h-4 w-4" />
           Filter

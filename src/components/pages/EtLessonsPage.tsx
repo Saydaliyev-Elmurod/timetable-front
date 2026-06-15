@@ -16,8 +16,8 @@ import {
 } from './et-lessons/GroupedView';
 import { MatrixModal } from './et-lessons/MatrixView';
 import { ExcelImportModal } from './et-lessons/ExcelImportModal';
-import { DesignNotes, TemplatesModal } from './et-lessons/modals';
-import { EditEntityDrawer, SidePanel } from './et-lessons/side-panels';
+import { TemplatesModal } from './et-lessons/modals';
+import { EditEntityDrawer } from './et-lessons/side-panels';
 import { Stat, ghostBtnT, primaryBtnT } from './et-lessons/ui';
 import { TipsSidebar, TipItem } from '@/components/shared';
 import { BookOpen, Clock, LayoutGrid, AlertTriangle } from 'lucide-react';
@@ -73,6 +73,7 @@ function LessonsPage({
   resolveEntity,
   onEntitySave,
   onImported,
+  onAddViaModal,
 }: any) {
   // Sync module-level catalog whenever props change. The catalog has to be a
   // mutable singleton because every picker/chip reads through it.
@@ -111,7 +112,6 @@ function LessonsPage({
   const [query, setQuery] = React.useState('');
   const [showExcel, setShowExcel] = React.useState(false);
   const [showTmpl, setShowTmpl] = React.useState(false);
-  const [showNotes, setShowNotes] = React.useState(false);
   const [editEntity, setEditEntity] = React.useState<{ kind: string; key: string } | null>(null);
   const [showMatrix, setShowMatrix] = React.useState(false);
 
@@ -204,7 +204,7 @@ function LessonsPage({
   ).length;
 
   return (
-    <div style={{ display: 'flex' as const, height: '100%', width: '100%', overflow: 'hidden' as const, gap: 64 }}>
+    <div style={{ display: 'flex' as const, height: '100%', width: '100%', overflow: 'hidden' as const }}>
       <main style={{ flex: 1, minWidth: 0, display: 'flex' as const, flexDirection: 'column' as const, background: '#F8FAFC' }}>
         {/* Topbar */}
         <header style={{
@@ -212,8 +212,7 @@ function LessonsPage({
           display: 'flex' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, flexShrink: 0,
         }}>
           <div>
-            <div style={{ font: '500 11px Manrope', color: '#94A3B8', letterSpacing: '.02em' }}>2025–2026 · Kuzgi semestr</div>
-            <div style={{ font: '800 24px Plus Jakarta Sans', color: '#0F172A', letterSpacing: '-0.02em', marginTop: 1 }}>Darslar</div>
+            <div style={{ font: '800 24px Plus Jakarta Sans', color: '#0F172A', letterSpacing: '-0.02em' }}>Darslar</div>
             <div style={{ font: '500 12px Manrope', color: '#94A3B8', marginTop: 3 }}>
               Har bir sinf/o'qituvchi uchun fan, soat va davomiyligini kiriting
             </div>
@@ -236,10 +235,6 @@ function LessonsPage({
             <button onClick={() => setShowMatrix(true)} style={ghostBtnT}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>
               Matritsa
-            </button>
-            <button onClick={() => setShowNotes(true)} style={{ ...ghostBtnT, background: '#F8FAFC' }} title="UX logikasi">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
-              UX logika
             </button>
             <button style={primaryBtnT} onClick={() => onSave && onSave(rows)}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
@@ -296,6 +291,16 @@ function LessonsPage({
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
                 Yangi dars
               </button>
+              {onAddViaModal && (
+                <button onClick={onAddViaModal} style={{
+                  display: 'inline-flex' as const, alignItems: 'center' as const, gap: 7,
+                  font: '700 13px Manrope', color: '#fff', background: '#4F46E5',
+                  border: 0, padding: '10px 16px', borderRadius: 10, cursor: 'pointer' as const,
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                  Modal orqali qo'shish
+                </button>
+              )}
               <div style={{
                 flex: 1, display: 'flex' as const, alignItems: 'center' as const, gap: 8,
                 background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, padding: '0 12px',
@@ -334,12 +339,10 @@ function LessonsPage({
         </div>
       </main>
 
-      <SidePanel rows={rows} filterClasses={[]} />
       <TipsSidebar pageKey="lessons" tips={LESSON_TIPS} />
 
       {showExcel && <ExcelImportModal onClose={() => setShowExcel(false)} onImported={onImported} />}
       {showTmpl && <TemplatesModal onClose={() => setShowTmpl(false)} onApply={applyTemplate} />}
-      <DesignNotes open={showNotes} onClose={() => setShowNotes(false)} />
       {editEntity && (
         <EditEntityDrawer
           kind={editEntity.kind}

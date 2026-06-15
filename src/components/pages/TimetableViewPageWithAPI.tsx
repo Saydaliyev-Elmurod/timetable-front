@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -18,6 +18,8 @@ import { TimetableHeader, ViewMode } from './timetable-view-api/TimetableHeader'
 import { FilterBy } from './timetable-view-api/FiltersPopover';
 import { MainGrid } from './timetable-view-api/MainGrid';
 import { UnplacedSidebar } from './timetable-view-api/UnplacedSidebar';
+import { EntityEditorProvider } from './timetable-view-api/EntityEditorProvider';
+import { useFullscreen } from './timetable-view-api/useFullscreen';
 
 const TimetableContent = ({
   timetableId,
@@ -38,7 +40,11 @@ const TimetableContent = ({
   });
   const [selectedLesson, setSelectedLesson] = useState<Lesson | UnplacedLesson | null>(null);
   // Unplaced panel yopiq/ochiq holati (sidebar kabi pin, > tugma bilan toggle).
-  const [unplacedCollapsed, setUnplacedCollapsed] = useState(false);
+  const [unplacedCollapsed, setUnplacedCollapsed] = useState(true);
+
+  // To'liq ekran (fullscreen) — butun timetable konteynerini fizik ekranga ochadi.
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(fullscreenRef);
 
   const {
     isLoading,
@@ -112,6 +118,20 @@ const TimetableContent = ({
       initializeMockLessons(scheduledLessons);
     }
   }, [scheduledLessons.length]);
+
+  // Unplaced panelni soni nol chegarasini KESIB O'TGANDAGINA avto ochish/yopish:
+  //  - 0 → >0  : ochiladi (qizil)
+  //  - >0 → 0  : yopiladi (yashil)
+  // Orada qo'lda yopilsa qayta ochilmaydi (chegara kesilmagani uchun). Rang esa
+  // har doim sonni aks ettiradi — yopilgan bo'lsa ham qizil qoladi.
+  const hasUnplaced = unplacedLessons.length > 0;
+  const prevHasUnplaced = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (prevHasUnplaced.current !== hasUnplaced) {
+      setUnplacedCollapsed(!hasUnplaced);
+      prevHasUnplaced.current = hasUnplaced;
+    }
+  }, [hasUnplaced]);
 
   // Toggle-select for manual placement mode.
   const handleSelectLesson = (lesson: Lesson | UnplacedLesson) => {
@@ -233,13 +253,18 @@ const TimetableContent = ({
   }
 
   return (
+    <div
+      ref={fullscreenRef}
+      className={isFullscreen ? 'bg-gray-50 h-screen overflow-auto' : undefined}
+    >
+    <EntityEditorProvider onSaved={refetchData}>
     <DragContextProvider
       teachers={apiTeachers}
       classes={apiClasses}
       subjects={apiSubjects}
       scheduledLessons={dragContextLessons}
     >
-      <PageContainer size="full" noGap>
+      <PageContainer size="full" noGap className="pt-2 pb-4 px-6 md:px-10">
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -279,6 +304,8 @@ const TimetableContent = ({
           unplacedCount={unplacedLessons.length}
           onOptimize={handleOptimize}
           onExport={handleExport}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
           onUndo={undo}
           onRedo={redo}
           onSave={save}
@@ -326,6 +353,8 @@ const TimetableContent = ({
 
       <DragStatusLegend />
     </DragContextProvider>
+    </EntityEditorProvider>
+    </div>
   );
 };
 
